@@ -8,6 +8,7 @@
  * - User profile quick access
  * - Bonus balance display
  * - Quick reorder from favorites
+ * - Personalized recommendations based on order history
  */
 
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,10 @@ import { useTelegram } from "@/contexts/TelegramContext";
 import { useUserStore, formatPoints } from "@/stores/userStore";
 import { useFavoritesStore } from "@/stores/favoritesStore";
 import { useCartStore } from "@/stores/cartStore";
-import { Coffee, MapPin, QrCode, User, Gift, ChevronRight, Sparkles, Heart, Plus } from "lucide-react";
-import { Link } from "wouter";
+import { useOrderHistoryStore } from "@/stores/orderHistoryStore";
+import Recommendations from "@/components/Recommendations";
+import { Coffee, MapPin, QrCode, User, Gift, ChevronRight, Sparkles, Heart, Plus, History, TrendingUp } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -33,9 +36,13 @@ export default function Home() {
   const { profile, loyalty } = useUserStore();
   const { favorites } = useFavoritesStore();
   const { addItem, machine } = useCartStore();
+  const { getOrderStats, getCompletedOrders } = useOrderHistoryStore();
+  const [, navigate] = useLocation();
   
   const displayName = user?.first_name || profile?.firstName || mockUser.firstName;
   const points = loyalty?.pointsBalance || mockUser.pointsBalance;
+  const orderStats = getOrderStats();
+  const hasOrderHistory = getCompletedOrders().length > 0;
 
   const handleQrScan = () => {
     haptic.impact('medium');
@@ -59,9 +66,18 @@ export default function Home() {
     toast.success(`${item.name} добавлен в корзину`);
   };
 
+  const handleRecommendationClick = (itemId: string) => {
+    haptic.selection();
+    // Navigate to menu with the item highlighted or show item details
+    navigate('/locations');
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ru-RU').format(price);
   };
+
+  // Get favorite IDs to exclude from recommendations
+  const favoriteIds = favorites.map(f => f.id);
 
   return (
     <div className="min-h-screen bg-background coffee-pattern safe-top safe-bottom">
@@ -109,12 +125,75 @@ export default function Home() {
           </Card>
         </motion.div>
 
+        {/* Personalized Recommendations Section */}
+        {hasOrderHistory && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+          >
+            <Recommendations
+              title="Рекомендации для вас"
+              limit={5}
+              excludeIds={[]}
+              showReason={true}
+              variant="horizontal"
+              onItemClick={handleRecommendationClick}
+            />
+          </motion.div>
+        )}
+
+        {/* Order Stats Summary (if has history) */}
+        {hasOrderHistory && orderStats.totalOrders > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            <Card className="coffee-card bg-gradient-to-r from-[#FDF8F3] to-[#F5EDE4]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-caramel/20 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-caramel" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">Ваша статистика</p>
+                  <div className="flex items-center gap-4 mt-1">
+                    <div>
+                      <span className="font-display font-bold text-foreground">{orderStats.totalOrders}</span>
+                      <span className="text-xs text-muted-foreground ml-1">заказов</span>
+                    </div>
+                    <div className="w-px h-4 bg-border" />
+                    <div>
+                      <span className="font-display font-bold text-foreground">
+                        {formatPrice(orderStats.totalSpent)}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-1">UZS</span>
+                    </div>
+                    {orderStats.favoriteCategory && (
+                      <>
+                        <div className="w-px h-4 bg-border" />
+                        <div>
+                          <span className="text-xs text-muted-foreground">Любимое: </span>
+                          <span className="text-xs font-medium text-foreground capitalize">
+                            {orderStats.favoriteCategory === 'coffee' ? 'Кофе' : 
+                             orderStats.favoriteCategory === 'tea' ? 'Чай' : 'Другое'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Quick Favorites Section */}
         {favorites.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.05 }}
+            transition={{ duration: 0.4, delay: hasOrderHistory ? 0.15 : 0.05 }}
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -169,7 +248,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: favorites.length > 0 ? 0.15 : 0.1 }}
+          transition={{ duration: 0.4, delay: hasOrderHistory ? 0.2 : (favorites.length > 0 ? 0.15 : 0.1) }}
         >
           <Card className="coffee-card">
             <div className="text-center py-6">
@@ -210,7 +289,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: favorites.length > 0 ? 0.25 : 0.2 }}
+          transition={{ duration: 0.4, delay: hasOrderHistory ? 0.25 : (favorites.length > 0 ? 0.25 : 0.2) }}
         >
           <Link href="/profile/bonuses">
             <Card className="coffee-card hover:shadow-lg transition-shadow cursor-pointer">
@@ -254,7 +333,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: favorites.length > 0 ? 0.35 : 0.3 }}
+          transition={{ duration: 0.4, delay: hasOrderHistory ? 0.3 : (favorites.length > 0 ? 0.35 : 0.3) }}
           className="grid grid-cols-2 gap-3"
         >
           <Link href="/profile/favorites">
@@ -275,9 +354,12 @@ export default function Home() {
             <Card className="coffee-card hover:shadow-md transition-shadow cursor-pointer p-4">
               <div className="flex flex-col items-center text-center gap-2">
                 <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <Coffee className="w-5 h-5 text-[#5D4037]" />
+                  <History className="w-5 h-5 text-[#5D4037]" />
                 </div>
                 <span className="text-sm font-medium">История заказов</span>
+                {orderStats.totalOrders > 0 && (
+                  <span className="text-xs text-muted-foreground">{orderStats.totalOrders} заказов</span>
+                )}
               </div>
             </Card>
           </Link>
