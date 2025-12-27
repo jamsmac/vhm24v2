@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useUserStore, formatPoints, getLoyaltyLevelName } from "@/stores/userStore";
-import { ArrowLeft, Gift, History, Settings, HelpCircle, ChevronRight, Sparkles, User, LogOut } from "lucide-react";
+import { ArrowLeft, Gift, History, Settings, HelpCircle, ChevronRight, Sparkles, User, LogOut, Heart } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 
@@ -47,6 +47,7 @@ export default function Profile() {
   const levelProgress = ((displayLoyalty.lifetimePoints / displayLoyalty.nextLevelPoints) * 100);
 
   const menuItems = [
+    { icon: Heart, label: "Избранное", href: "/profile/favorites" },
     { icon: History, label: "История заказов", href: "/profile/history" },
     { icon: Gift, label: "Бонусы и уровни", href: "/profile/bonuses" },
     { icon: Settings, label: "Настройки", href: "/profile/settings" },

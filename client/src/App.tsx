@@ -17,6 +17,7 @@ import Bonuses from "./pages/Bonuses";
 import Settings from "./pages/Settings";
 import Help from "./pages/Help";
 import OrderSuccess from "./pages/OrderSuccess";
+import Favorites from "./pages/Favorites";
 
 function Router() {
   return (
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/profile/history" component={OrderHistory} />
       <Route path="/profile/bonuses" component={Bonuses} />
+      <Route path="/profile/favorites" component={Favorites} />
       <Route path="/profile/settings" component={Settings} />
       <Route path="/profile/help" component={Help} />
       

@@ -7,15 +7,19 @@
  * - Location selection
  * - User profile quick access
  * - Bonus balance display
+ * - Quick reorder from favorites
  */
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useUserStore, formatPoints } from "@/stores/userStore";
-import { Coffee, MapPin, QrCode, User, Gift, ChevronRight, Sparkles } from "lucide-react";
+import { useFavoritesStore } from "@/stores/favoritesStore";
+import { useCartStore } from "@/stores/cartStore";
+import { Coffee, MapPin, QrCode, User, Gift, ChevronRight, Sparkles, Heart, Plus } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 // Mock user data for demo
 const mockUser = {
@@ -27,6 +31,8 @@ const mockUser = {
 export default function Home() {
   const { user, haptic, isTelegram } = useTelegram();
   const { profile, loyalty } = useUserStore();
+  const { favorites } = useFavoritesStore();
+  const { addItem, machine } = useCartStore();
   
   const displayName = user?.first_name || profile?.firstName || mockUser.firstName;
   const points = loyalty?.pointsBalance || mockUser.pointsBalance;
@@ -34,6 +40,27 @@ export default function Home() {
   const handleQrScan = () => {
     haptic.impact('medium');
     // In real app, this would open camera or use Telegram's QR scanner
+  };
+
+  const handleQuickAdd = (item: typeof favorites[0]) => {
+    haptic.impact('light');
+    if (!machine) {
+      toast.error('Сначала выберите автомат');
+      return;
+    }
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      category: item.category,
+      isAvailable: true,
+    });
+    toast.success(`${item.name} добавлен в корзину`);
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ru-RU').format(price);
   };
 
   return (
@@ -82,11 +109,67 @@ export default function Home() {
           </Card>
         </motion.div>
 
+        {/* Quick Favorites Section */}
+        {favorites.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Heart className="w-4 h-4 text-red-400 fill-red-400" />
+                <h3 className="font-display font-semibold text-foreground">Быстрый заказ</h3>
+              </div>
+              <Link href="/profile/favorites">
+                <Button variant="ghost" size="sm" className="text-muted-foreground h-8">
+                  Все
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {favorites.slice(0, 5).map((item, index) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex-shrink-0"
+                >
+                  <Card className="coffee-card w-32 p-3">
+                    <div className="relative w-full aspect-square rounded-lg overflow-hidden mb-2">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h4 className="font-medium text-sm text-foreground truncate">{item.name}</h4>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-xs text-muted-foreground">
+                        {formatPrice(item.price)}
+                      </span>
+                      <Button
+                        size="icon"
+                        className="w-6 h-6 rounded-full bg-[#5D4037] hover:bg-[#4E342E]"
+                        onClick={() => handleQuickAdd(item)}
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* QR Scanner Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
+          transition={{ duration: 0.4, delay: favorites.length > 0 ? 0.15 : 0.1 }}
         >
           <Card className="coffee-card">
             <div className="text-center py-6">
@@ -127,7 +210,7 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
+          transition={{ duration: 0.4, delay: favorites.length > 0 ? 0.25 : 0.2 }}
         >
           <Link href="/profile/bonuses">
             <Card className="coffee-card hover:shadow-lg transition-shadow cursor-pointer">
@@ -171,9 +254,23 @@ export default function Home() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          transition={{ duration: 0.4, delay: favorites.length > 0 ? 0.35 : 0.3 }}
           className="grid grid-cols-2 gap-3"
         >
+          <Link href="/profile/favorites">
+            <Card className="coffee-card hover:shadow-md transition-shadow cursor-pointer p-4">
+              <div className="flex flex-col items-center text-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                  <Heart className="w-5 h-5 text-red-400" />
+                </div>
+                <span className="text-sm font-medium">Избранное</span>
+                {favorites.length > 0 && (
+                  <span className="text-xs text-muted-foreground">{favorites.length} напитков</span>
+                )}
+              </div>
+            </Card>
+          </Link>
+          
           <Link href="/profile/history">
             <Card className="coffee-card hover:shadow-md transition-shadow cursor-pointer p-4">
               <div className="flex flex-col items-center text-center gap-2">
@@ -181,17 +278,6 @@ export default function Home() {
                   <Coffee className="w-5 h-5 text-[#5D4037]" />
                 </div>
                 <span className="text-sm font-medium">История заказов</span>
-              </div>
-            </Card>
-          </Link>
-          
-          <Link href="/profile/settings">
-            <Card className="coffee-card hover:shadow-md transition-shadow cursor-pointer p-4">
-              <div className="flex flex-col items-center text-center gap-2">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <User className="w-5 h-5 text-[#5D4037]" />
-                </div>
-                <span className="text-sm font-medium">Настройки</span>
               </div>
             </Card>
           </Link>

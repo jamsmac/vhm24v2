@@ -6,6 +6,7 @@
  * - Category tabs
  * - Product cards with images
  * - Add to cart functionality
+ * - Favorite button on each item
  * - Floating cart button
  */
 
@@ -14,9 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore, MenuItem } from "@/stores/cartStore";
-import { ArrowLeft, Plus, Minus, ShoppingCart, Coffee } from "lucide-react";
+import { useFavoritesStore } from "@/stores/favoritesStore";
+import { ArrowLeft, Plus, Minus, ShoppingCart, Heart } from "lucide-react";
 import { Link, useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 // Mock menu data
 const mockMenu: MenuItem[] = [
@@ -118,6 +121,7 @@ export default function Menu() {
   const [, navigate] = useLocation();
   const { haptic } = useTelegram();
   const { machine, items, addItem, updateQuantity, getTotalItems, getTotal } = useCartStore();
+  const { isFavorite, toggleFavorite } = useFavoritesStore();
   const [activeCategory, setActiveCategory] = useState("all");
 
   // Redirect if no machine selected
@@ -149,6 +153,25 @@ export default function Menu() {
     haptic.selection();
     const currentQty = getItemQuantity(itemId);
     updateQuantity(itemId, currentQty + delta);
+  };
+
+  const handleToggleFavorite = (item: MenuItem) => {
+    haptic.impact('light');
+    const wasFavorite = isFavorite(item.id);
+    toggleFavorite({
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      price: item.price,
+      image: item.image || '',
+      category: item.category,
+    });
+    
+    if (wasFavorite) {
+      toast.success(`${item.name} удалён из избранного`);
+    } else {
+      toast.success(`${item.name} добавлен в избранное`);
+    }
   };
 
   const totalItems = getTotalItems();
@@ -205,6 +228,24 @@ export default function Menu() {
                     alt={item.name}
                     className="w-full h-full object-cover"
                   />
+                  {/* Favorite Button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleFavorite(item);
+                    }}
+                    className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                      isFavorite(item.id)
+                        ? 'bg-red-50 text-red-500'
+                        : 'bg-white/80 text-gray-400 hover:text-red-400'
+                    }`}
+                  >
+                    <Heart
+                      className={`w-4 h-4 transition-transform ${
+                        isFavorite(item.id) ? 'fill-current scale-110' : ''
+                      }`}
+                    />
+                  </button>
                   {!item.isAvailable && (
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                       <span className="text-white text-sm font-medium">Нет в наличии</span>
