@@ -109,3 +109,10 @@
 - [x] Update route steps and ETA after recalculation
 - [x] Voice announcement of new route when enabled
 - [x] Test route recalculation functionality (48 tests passing)
+
+## Manual Route Recalculation
+- [x] Add recalculate button to route panel controls (RefreshCw icon)
+- [x] Allow manual recalculation without cooldown restriction
+- [x] Show loading state on button during recalculation (spinning icon)
+- [x] Error handling for missing location/route
+- [x] Test manual recalculation functionality (48 tests passing)

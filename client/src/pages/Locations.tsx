@@ -19,7 +19,7 @@ import {
   ShoppingBag, Map, List, ExternalLink, Filter, Clock, 
   Footprints, Car, X, Loader2, Route, ChevronDown, ChevronUp,
   ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Flag,
-  Volume2, VolumeX, Play, Square, Locate, LocateFixed, LocateOff
+  Volume2, VolumeX, Play, Square, Locate, LocateFixed, LocateOff, RefreshCw
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link, useLocation, useSearch } from "wouter";
@@ -632,12 +632,12 @@ export default function Locations() {
     return minDistance;
   }, []);
 
-  // Recalculate route from current position
-  const recalculateRoute = useCallback(async () => {
+  // Recalculate route from current position (internal - respects cooldown)
+  const recalculateRoute = useCallback(async (bypassCooldown = false) => {
     if (!locationState.currentLocation || !destinationRef.current || isRecalculating) return;
     
     const now = Date.now();
-    if (now - lastRecalculationTimeRef.current < RECALCULATION_COOLDOWN) {
+    if (!bypassCooldown && now - lastRecalculationTimeRef.current < RECALCULATION_COOLDOWN) {
       return; // Still in cooldown
     }
     
@@ -728,6 +728,20 @@ export default function Locations() {
       setIsRecalculating(false);
     }
   }, [locationState.currentLocation, travelMode, initDirections, haptic, voiceState.isEnabled, voiceActions, locationActions]);
+
+  // Manual recalculate handler - bypasses cooldown
+  const handleManualRecalculate = useCallback(() => {
+    if (!locationState.currentLocation) {
+      toast.error('Включите отслеживание для перестроения маршрута');
+      return;
+    }
+    if (!destinationRef.current) {
+      toast.error('Нет активного маршрута');
+      return;
+    }
+    haptic.selection();
+    recalculateRoute(true); // Bypass cooldown for manual recalculation
+  }, [locationState.currentLocation, recalculateRoute, haptic]);
 
   // Detect route deviation and trigger recalculation
   useEffect(() => {
@@ -1000,6 +1014,24 @@ export default function Locations() {
                         </div>
                         
                         <div className="flex items-center gap-1">
+                          {/* Manual Recalculate Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(
+                              "h-8 px-2 text-xs",
+                              isRecalculating && "opacity-50 cursor-not-allowed"
+                            )}
+                            onClick={handleManualRecalculate}
+                            disabled={isRecalculating}
+                            title="Перестроить маршрут"
+                          >
+                            <RefreshCw className={cn(
+                              "w-4 h-4",
+                              isRecalculating && "animate-spin"
+                            )} />
+                          </Button>
+                          
                           {/* Location Tracking Toggle */}
                           {locationState.isSupported && (
                             <Button
