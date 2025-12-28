@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore } from "@/stores/cartStore";
 import { ArrowLeft, Plus, Minus, Trash2, Tag, MapPin, CreditCard, Check, X } from "lucide-react";
+import CartRecommendations from "@/components/CartRecommendations";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -291,6 +292,9 @@ export default function Cart() {
             ))}
           </div>
         </Card>
+
+        {/* You Might Also Like */}
+        <CartRecommendations limit={3} />
 
         {/* Order Summary */}
         <Card className="coffee-card">
