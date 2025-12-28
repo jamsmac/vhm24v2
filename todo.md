@@ -225,3 +225,10 @@
 - [x] Add visual indicators for credits (+) and debits (-)
 - [x] Add navigation link from Profile menu
 - [x] Test points history page (126 tests passing)
+
+## Points Notifications
+- [x] Add notification creation to addPointsTransaction function
+- [x] Create notification templates for credits (task, order, referral)
+- [x] Create notification templates for debits (redemption, payment)
+- [x] Include amount and new balance in notification message
+- [x] Test points notifications (137 tests passing)

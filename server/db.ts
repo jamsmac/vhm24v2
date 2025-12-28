@@ -899,10 +899,14 @@ export async function addPointsTransaction(
   type: 'task_completion' | 'order_reward' | 'referral_bonus' | 'admin_adjustment' | 'redemption' | 'expiration',
   description?: string,
   referenceType?: string,
-  referenceId?: number
+  referenceId?: number,
+  skipNotification?: boolean
 ): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
+  
+  // Import notification helper
+  const { getPointsNotification } = await import('./pointsNotifications');
   
   // Get current balance
   const currentBalance = await getUserPointsBalance(userId);
@@ -923,6 +927,24 @@ export async function addPointsTransaction(
     balanceAfter: newBalance,
     description,
   });
+  
+  // Create notification for points change (unless skipped)
+  if (!skipNotification) {
+    const notification = getPointsNotification(type, amount, newBalance, description);
+    await createNotification({
+      userId,
+      type: 'bonus',
+      title: notification.title,
+      message: notification.message,
+      data: { 
+        transactionType: type,
+        amount,
+        newBalance,
+        referenceType,
+        referenceId,
+      },
+    });
+  }
   
   return result[0]?.insertId || 0;
 }
