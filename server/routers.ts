@@ -212,14 +212,28 @@ export const appRouter = router({
         // Update user stats
         await db.updateUserStats(ctx.user.id, input.total);
         
-        // Add earned points
+        // Add earned points with transaction record
         if (pointsEarned > 0) {
-          await db.updateUserPoints(ctx.user.id, pointsEarned);
+          await db.addPointsTransaction(
+            ctx.user.id,
+            pointsEarned,
+            'order_reward',
+            `Кэшбэк за заказ ${orderNumber}`,
+            'order',
+            orderId
+          );
         }
         
-        // Deduct used points
+        // Deduct used points with transaction record
         if (input.pointsUsed > 0) {
-          await db.updateUserPoints(ctx.user.id, -input.pointsUsed);
+          await db.addPointsTransaction(
+            ctx.user.id,
+            -input.pointsUsed,
+            'redemption',
+            `Оплата баллами заказа ${orderNumber}`,
+            'order',
+            orderId
+          );
         }
         
         // Increment promo code usage

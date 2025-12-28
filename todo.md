@@ -204,3 +204,15 @@
 - [x] Support promo codes for machine entry
 - [x] Update admin panel for new reward fields
 - [x] Test points-based rewards functionality (113 tests passing)
+
+## Points Payment Integration (1 point = 1 sum)
+- [x] Add points balance display in Cart page
+- [x] Add toggle/slider for using points in payment
+- [x] Allow partial payment (use some points + pay remaining)
+- [x] Allow full payment with points (if balance sufficient)
+- [x] Update order total calculation with points discount
+- [x] Add API endpoint for order with points payment
+- [x] Deduct points from user balance on successful order
+- [x] Record points transaction in history
+- [x] Show points used in order confirmation
+- [x] Test points payment functionality (126 tests passing)
