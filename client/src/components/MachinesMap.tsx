@@ -16,8 +16,14 @@ import {
   Navigation,
   X,
   Filter,
-  Coffee
+  Coffee,
+  Route,
+  ExternalLink,
+  Footprints,
+  Car,
+  Loader2
 } from "lucide-react";
+import { useRouteNavigation, TravelMode } from "@/hooks/useRouteNavigation";
 import { cn } from "@/lib/utils";
 
 // Machine type definition
@@ -37,6 +43,7 @@ interface MachinesMapProps {
   className?: string;
   onMachineSelect?: (machine: Machine) => void;
   showFilters?: boolean;
+  showRouteNavigation?: boolean;
   initialCenter?: google.maps.LatLngLiteral;
   initialZoom?: number;
 }
@@ -109,6 +116,7 @@ export function MachinesMap({
   className,
   onMachineSelect,
   showFilters = true,
+  showRouteNavigation = true,
   initialCenter = { lat: 41.311081, lng: 69.240562 }, // Tashkent default
   initialZoom = 12,
 }: MachinesMapProps) {
@@ -119,6 +127,19 @@ export function MachinesMap({
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline' | 'maintenance'>('all');
   const [isMapReady, setIsMapReady] = useState(false);
+  const [showRoutePanel, setShowRoutePanel] = useState(false);
+  
+  // Route navigation hook
+  const {
+    isCalculating,
+    routeInfo,
+    error: routeError,
+    travelMode,
+    setTravelMode,
+    calculateRoute,
+    clearRoute,
+    openInExternalMaps,
+  } = useRouteNavigation({ map: mapRef.current });
 
   // Filter machines based on status
   const filteredMachines = machines.filter(machine => {
@@ -404,13 +425,169 @@ export function MachinesMap({
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            {onMachineSelect && (
-              <Button
-                className="w-full mt-3 bg-amber-600 hover:bg-amber-700"
-                onClick={() => onMachineSelect(selectedMachine)}
-              >
-                Подробнее
-              </Button>
+            <div className="flex gap-2 mt-3">
+              {showRouteNavigation && (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowRoutePanel(!showRoutePanel)}
+                >
+                  <Route className="w-4 h-4 mr-2" />
+                  Маршрут
+                </Button>
+              )}
+              {onMachineSelect && (
+                <Button
+                  className="flex-1 bg-amber-600 hover:bg-amber-700"
+                  onClick={() => onMachineSelect(selectedMachine)}
+                >
+                  Подробнее
+                </Button>
+              )}
+            </div>
+            
+            {/* Route Panel */}
+            {showRoutePanel && showRouteNavigation && (
+              <div className="mt-4 pt-4 border-t space-y-3">
+                {/* Travel Mode Selector */}
+                <div className="flex gap-2">
+                  <Button
+                    variant={travelMode === 'WALKING' ? 'default' : 'outline'}
+                    size="sm"
+                    className={cn("flex-1", travelMode === 'WALKING' && "bg-amber-600 hover:bg-amber-700")}
+                    onClick={() => setTravelMode('WALKING')}
+                    disabled={isCalculating}
+                  >
+                    <Footprints className="w-4 h-4 mr-1" />
+                    Пешком
+                  </Button>
+                  <Button
+                    variant={travelMode === 'DRIVING' ? 'default' : 'outline'}
+                    size="sm"
+                    className={cn("flex-1", travelMode === 'DRIVING' && "bg-amber-600 hover:bg-amber-700")}
+                    onClick={() => setTravelMode('DRIVING')}
+                    disabled={isCalculating}
+                  >
+                    <Car className="w-4 h-4 mr-1" />
+                    На авто
+                  </Button>
+                </div>
+                
+                {/* Route Error */}
+                {routeError && (
+                  <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">
+                    {routeError}
+                  </div>
+                )}
+                
+                {/* Route Info */}
+                {routeInfo && (
+                  <div className="flex items-center gap-4 p-2 rounded-lg bg-secondary text-sm">
+                    <div className="flex items-center gap-1">
+                      <Navigation className="w-4 h-4 text-amber-600" />
+                      <span className="font-medium">{routeInfo.distance}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted-foreground">~{routeInfo.duration}</span>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  {!routeInfo ? (
+                    <Button
+                      className="flex-1 bg-amber-600 hover:bg-amber-700"
+                      onClick={async () => {
+                        if (selectedMachine?.latitude && selectedMachine?.longitude) {
+                          await calculateRoute('current', {
+                            lat: parseFloat(selectedMachine.latitude),
+                            lng: parseFloat(selectedMachine.longitude),
+                          });
+                        }
+                      }}
+                      disabled={isCalculating}
+                    >
+                      {isCalculating ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Построение...
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="w-4 h-4 mr-2" />
+                          Построить маршрут
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          clearRoute();
+                        }}
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Очистить
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          if (selectedMachine?.latitude && selectedMachine?.longitude) {
+                            openInExternalMaps(
+                              { lat: parseFloat(selectedMachine.latitude), lng: parseFloat(selectedMachine.longitude) },
+                              selectedMachine.name,
+                              'google'
+                            );
+                          }
+                        }}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+                
+                {/* External Maps Links */}
+                {routeInfo && (
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => {
+                        if (selectedMachine?.latitude && selectedMachine?.longitude) {
+                          openInExternalMaps(
+                            { lat: parseFloat(selectedMachine.latitude), lng: parseFloat(selectedMachine.longitude) },
+                            selectedMachine.name,
+                            'google'
+                          );
+                        }
+                      }}
+                    >
+                      Google Maps
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      onClick={() => {
+                        if (selectedMachine?.latitude && selectedMachine?.longitude) {
+                          openInExternalMaps(
+                            { lat: parseFloat(selectedMachine.latitude), lng: parseFloat(selectedMachine.longitude) },
+                            selectedMachine.name,
+                            'yandex'
+                          );
+                        }
+                      }}
+                    >
+                      Яндекс Карты
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

@@ -36,3 +36,13 @@
 - [x] Integrate map into admin panel (/admin/machines/map)
 - [x] Add list/map view toggle
 - [x] Test map functionality
+
+## Route Navigation
+- [x] Create useRouteNavigation hook with Google Directions API
+- [x] Create RoutePanel component for route info display
+- [x] Add "Build Route" button to machine cards
+- [x] Display route on map with walking/driving options
+- [x] Show estimated time and distance
+- [x] Add option to open in external maps app (Google Maps, Яндекс.Карты, 2GIS)
+- [x] Integrate into Locations page with NavigatorDialog
+- [x] Test route navigation functionality
