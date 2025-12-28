@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 type Theme = "light" | "dark";
 
@@ -6,6 +6,7 @@ interface ThemeContextType {
   theme: Theme;
   toggleTheme?: () => void;
   switchable: boolean;
+  isTransitioning: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -28,6 +29,7 @@ export function ThemeProvider({
     }
     return defaultTheme;
   });
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -42,14 +44,32 @@ export function ThemeProvider({
     }
   }, [theme, switchable]);
 
-  const toggleTheme = switchable
-    ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
-      }
-    : undefined;
+  const toggleTheme = useCallback(() => {
+    if (!switchable) return;
+    
+    const root = document.documentElement;
+    
+    // Add transition class for smooth animation
+    root.classList.add("theme-transition");
+    setIsTransitioning(true);
+    
+    // Change theme
+    setTheme(prev => (prev === "light" ? "dark" : "light"));
+    
+    // Remove transition class after animation completes
+    setTimeout(() => {
+      root.classList.remove("theme-transition");
+      setIsTransitioning(false);
+    }, 400);
+  }, [switchable]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      toggleTheme: switchable ? toggleTheme : undefined, 
+      switchable,
+      isTransitioning 
+    }}>
       {children}
     </ThemeContext.Provider>
   );
