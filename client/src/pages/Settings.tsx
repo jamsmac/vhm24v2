@@ -1,7 +1,7 @@
 /**
  * VendHub TWA - Settings Page
  * "Warm Brew" Design System
- * Dark theme toggle enabled with Auto and Telegram modes
+ * Full Telegram themeParams integration
  */
 
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw, Monitor, Send } from "lucide-react";
+import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw, Monitor, Send, Palette } from "lucide-react";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -24,11 +24,12 @@ const languages = [
 
 export default function Settings() {
   const { haptic, isTelegram } = useTelegram();
-  const { theme, themeMode, setThemeMode, isTelegramAvailable } = useTheme();
+  const { theme, themeMode, setThemeMode, isTelegramAvailable, telegramThemeParams } = useTheme();
   const { resetOnboarding } = useOnboardingStore();
   const [language, setLanguage] = useState('ru');
   const [notifications, setNotifications] = useState(true);
   const [showLanguages, setShowLanguages] = useState(false);
+  const [showThemeParams, setShowThemeParams] = useState(false);
 
   const handleLanguageChange = (code: string) => {
     haptic.selection();
@@ -205,7 +206,14 @@ export default function Settings() {
                         : 'border-border hover:border-muted-foreground/30'
                     }`}
                   >
-                    <div className="rounded-lg mb-1.5 aspect-[4/3] bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
+                    <div 
+                      className="rounded-lg mb-1.5 aspect-[4/3] flex items-center justify-center"
+                      style={{
+                        background: telegramThemeParams?.button_color 
+                          ? `linear-gradient(135deg, ${telegramThemeParams.button_color}, ${telegramThemeParams.link_color || telegramThemeParams.button_color})`
+                          : 'linear-gradient(135deg, #2481cc, #1d6fa5)'
+                      }}
+                    >
                       <Send className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex items-center justify-center gap-1">
@@ -229,11 +237,109 @@ export default function Settings() {
                 )}
                 {isTelegramMode && (
                   <p className="text-xs text-muted-foreground text-center">
-                    Тема синхронизируется с настройками Telegram
+                    Тема и цвета синхронизируются с настройками Telegram
                   </p>
                 )}
               </motion.div>
             </motion.div>
+            
+            {/* Telegram Theme Params Info - only show when in Telegram mode */}
+            {isTelegramMode && telegramThemeParams && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mt-4 pt-4 border-t border-border"
+              >
+                <button
+                  onClick={() => {
+                    haptic.selection();
+                    setShowThemeParams(!showThemeParams);
+                  }}
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
+                      <Palette className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-sm font-medium">Цвета Telegram</span>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${showThemeParams ? 'rotate-90' : ''}`} />
+                </button>
+                
+                {showThemeParams && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-3 space-y-2"
+                  >
+                    {/* Color swatches */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {telegramThemeParams.bg_color && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                          <div 
+                            className="w-6 h-6 rounded-md border border-border"
+                            style={{ backgroundColor: telegramThemeParams.bg_color }}
+                          />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Фон</p>
+                            <p className="text-xs font-mono">{telegramThemeParams.bg_color}</p>
+                          </div>
+                        </div>
+                      )}
+                      {telegramThemeParams.text_color && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                          <div 
+                            className="w-6 h-6 rounded-md border border-border"
+                            style={{ backgroundColor: telegramThemeParams.text_color }}
+                          />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Текст</p>
+                            <p className="text-xs font-mono">{telegramThemeParams.text_color}</p>
+                          </div>
+                        </div>
+                      )}
+                      {telegramThemeParams.button_color && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                          <div 
+                            className="w-6 h-6 rounded-md border border-border"
+                            style={{ backgroundColor: telegramThemeParams.button_color }}
+                          />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Кнопка</p>
+                            <p className="text-xs font-mono">{telegramThemeParams.button_color}</p>
+                          </div>
+                        </div>
+                      )}
+                      {telegramThemeParams.link_color && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50">
+                          <div 
+                            className="w-6 h-6 rounded-md border border-border"
+                            style={{ backgroundColor: telegramThemeParams.link_color }}
+                          />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground">Ссылка</p>
+                            <p className="text-xs font-mono">{telegramThemeParams.link_color}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Demo button with Telegram colors */}
+                    <div className="pt-2">
+                      <button 
+                        className="w-full btn-telegram"
+                        onClick={() => {
+                          haptic.impact('light');
+                          toast.success('Кнопка в стиле Telegram!', { icon: '✈️' });
+                        }}
+                      >
+                        Кнопка Telegram
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
           </Card>
         </motion.div>
 
@@ -402,7 +508,10 @@ export default function Settings() {
           <p className="text-sm text-muted-foreground">Версия 1.0.0</p>
           <p className="text-xs text-muted-foreground mt-1">© 2024 VendHub. Все права защищены.</p>
           {isTelegram && (
-            <p className="text-xs text-sky-500 mt-2">Запущено в Telegram</p>
+            <p className="text-xs text-sky-500 mt-2 flex items-center justify-center gap-1">
+              <Send className="w-3 h-3" />
+              Запущено в Telegram
+            </p>
           )}
         </motion.div>
       </main>

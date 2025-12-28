@@ -346,6 +346,61 @@
   }
 }
 
+/* Telegram WebApp theme integration */
+:root {
+  /* Telegram theme params - will be set dynamically via JS */
+  --tg-bg-color: transparent;
+  --tg-text-color: inherit;
+  --tg-hint-color: inherit;
+  --tg-link-color: inherit;
+  --tg-button-color: inherit;
+  --tg-button-text-color: inherit;
+  --tg-secondary-bg-color: transparent;
+}
+
+/* Telegram-themed components - only active when in Telegram mode */
+.tg-mode .tg-bg {
+  background-color: var(--tg-bg-color, var(--background));
+}
+
+.tg-mode .tg-text {
+  color: var(--tg-text-color, var(--foreground));
+}
+
+.tg-mode .tg-hint {
+  color: var(--tg-hint-color, var(--muted-foreground));
+}
+
+.tg-mode .tg-link {
+  color: var(--tg-link-color, var(--primary));
+}
+
+.tg-mode .tg-button {
+  background-color: var(--tg-button-color, var(--primary));
+  color: var(--tg-button-text-color, var(--primary-foreground));
+}
+
+.tg-mode .tg-secondary-bg {
+  background-color: var(--tg-secondary-bg-color, var(--secondary));
+}
+
+/* Telegram button style */
+.btn-telegram {
+  background-color: var(--tg-button-color, #2481cc);
+  color: var(--tg-button-text-color, #ffffff);
+  @apply rounded-xl px-6 py-3 font-semibold transition-all duration-200;
+  box-shadow: 0 4px 14px -2px rgba(36, 129, 204, 0.4);
+}
+
+.btn-telegram:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px -2px rgba(36, 129, 204, 0.5);
+}
+
+.btn-telegram:active {
+  transform: translateY(0) scale(0.98);
+}
+
 /* Telegram WebApp specific styles */
 @supports (padding-top: env(safe-area-inset-top)) {
   .safe-top {

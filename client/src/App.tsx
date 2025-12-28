@@ -3,11 +3,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { ThemeProvider } from "./contexts/ThemeContext";
+import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { TelegramProvider } from "./contexts/TelegramContext";
 import BottomNav from "./components/BottomNav";
 import Onboarding from "./components/Onboarding";
 import { useOnboardingStore } from "./stores/onboardingStore";
+import { useEffect } from "react";
 
 // Pages
 import Home from "./pages/Home";
@@ -57,37 +58,97 @@ function Router() {
   );
 }
 
+// Component to manage tg-mode class on html element
+function TelegramModeManager() {
+  const { themeMode, telegramThemeParams } = useTheme();
+  
+  useEffect(() => {
+    const root = document.documentElement;
+    if (themeMode === 'telegram') {
+      root.classList.add('tg-mode');
+    } else {
+      root.classList.remove('tg-mode');
+    }
+    
+    return () => {
+      root.classList.remove('tg-mode');
+    };
+  }, [themeMode]);
+  
+  return null;
+}
+
+// Toaster with theme-aware styles
+function ThemedToaster() {
+  const { theme, themeMode, telegramThemeParams } = useTheme();
+  
+  // Get toast styles based on theme mode
+  const getToastStyle = () => {
+    if (themeMode === 'telegram' && telegramThemeParams) {
+      return {
+        background: telegramThemeParams.secondary_bg_color || telegramThemeParams.bg_color || '#FDF8F3',
+        border: `1px solid ${theme === 'dark' ? '#3a3a3a' : '#E8DDD4'}`,
+        color: telegramThemeParams.text_color || '#2C1810',
+      };
+    }
+    
+    if (theme === 'dark') {
+      return {
+        background: '#2a2a2a',
+        border: '1px solid #3a3a3a',
+        color: '#f5f5f5',
+      };
+    }
+    
+    return {
+      background: '#FDF8F3',
+      border: '1px solid #E8DDD4',
+      color: '#2C1810',
+    };
+  };
+  
+  return (
+    <Toaster 
+      position="top-center"
+      toastOptions={{
+        style: getToastStyle(),
+      }}
+    />
+  );
+}
+
 /**
  * VendHub Telegram Web App
  * Modern design with bottom navigation
+ * Full Telegram themeParams integration
  */
-function App() {
+function AppContent() {
   const { shouldShowOnboarding, completeOnboarding } = useOnboardingStore();
   const showOnboarding = shouldShowOnboarding();
 
+  return (
+    <>
+      <TelegramModeManager />
+      <ThemedToaster />
+      {showOnboarding ? (
+        <Onboarding onComplete={completeOnboarding} />
+      ) : (
+        <>
+          <Router />
+          <BottomNav />
+        </>
+      )}
+    </>
+  );
+}
+
+function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" switchable>
         <TelegramProvider>
           <TooltipProvider>
-            <Toaster 
-              position="top-center"
-              toastOptions={{
-                style: {
-                  background: '#FDF8F3',
-                  border: '1px solid #E8DDD4',
-                  color: '#2C1810',
-                },
-              }}
-            />
-            {showOnboarding ? (
-              <Onboarding onComplete={completeOnboarding} />
-            ) : (
-              <>
-                <Router />
-                <BottomNav />
-              </>
-            )}
+            <AppContent />
           </TooltipProvider>
         </TelegramProvider>
       </ThemeProvider>

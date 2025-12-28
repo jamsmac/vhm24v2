@@ -3,6 +3,16 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 type Theme = "light" | "dark";
 type ThemeMode = "light" | "dark" | "auto" | "telegram";
 
+interface TelegramThemeParams {
+  bg_color?: string;
+  text_color?: string;
+  hint_color?: string;
+  link_color?: string;
+  button_color?: string;
+  button_text_color?: string;
+  secondary_bg_color?: string;
+}
+
 interface ThemeContextType {
   theme: Theme;
   themeMode: ThemeMode;
@@ -11,6 +21,7 @@ interface ThemeContextType {
   switchable: boolean;
   isTransitioning: boolean;
   isTelegramAvailable: boolean;
+  telegramThemeParams: TelegramThemeParams | null;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -37,9 +48,69 @@ function getTelegramTheme(): Theme | null {
   return null;
 }
 
+// Get Telegram themeParams
+function getTelegramThemeParams(): TelegramThemeParams | null {
+  if (typeof window !== "undefined" && window.Telegram?.WebApp?.themeParams) {
+    return window.Telegram.WebApp.themeParams;
+  }
+  return null;
+}
+
 // Check if running in Telegram
 function isTelegramWebApp(): boolean {
   return typeof window !== "undefined" && !!window.Telegram?.WebApp;
+}
+
+// Convert hex color to OKLCH (approximate conversion for CSS)
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+}
+
+// Apply Telegram theme params as CSS variables
+function applyTelegramThemeParams(params: TelegramThemeParams | null) {
+  if (!params) return;
+  
+  const root = document.documentElement;
+  
+  // Map Telegram themeParams to CSS custom properties
+  if (params.bg_color) {
+    root.style.setProperty('--tg-bg-color', params.bg_color);
+  }
+  if (params.text_color) {
+    root.style.setProperty('--tg-text-color', params.text_color);
+  }
+  if (params.hint_color) {
+    root.style.setProperty('--tg-hint-color', params.hint_color);
+  }
+  if (params.link_color) {
+    root.style.setProperty('--tg-link-color', params.link_color);
+  }
+  if (params.button_color) {
+    root.style.setProperty('--tg-button-color', params.button_color);
+  }
+  if (params.button_text_color) {
+    root.style.setProperty('--tg-button-text-color', params.button_text_color);
+  }
+  if (params.secondary_bg_color) {
+    root.style.setProperty('--tg-secondary-bg-color', params.secondary_bg_color);
+  }
+}
+
+// Remove Telegram theme CSS variables
+function removeTelegramThemeParams() {
+  const root = document.documentElement;
+  root.style.removeProperty('--tg-bg-color');
+  root.style.removeProperty('--tg-text-color');
+  root.style.removeProperty('--tg-hint-color');
+  root.style.removeProperty('--tg-link-color');
+  root.style.removeProperty('--tg-button-color');
+  root.style.removeProperty('--tg-button-text-color');
+  root.style.removeProperty('--tg-secondary-bg-color');
 }
 
 export function ThemeProvider({
@@ -78,13 +149,25 @@ export function ThemeProvider({
   });
 
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [telegramThemeParams, setTelegramThemeParams] = useState<TelegramThemeParams | null>(
+    getTelegramThemeParams()
+  );
 
   // Listen for Telegram theme changes when in telegram mode
   useEffect(() => {
-    if (themeMode !== "telegram" || !isTelegramAvailable) return;
+    if (themeMode !== "telegram" || !isTelegramAvailable) {
+      // Remove Telegram CSS variables when not in telegram mode
+      removeTelegramThemeParams();
+      return;
+    }
 
     const tg = window.Telegram?.WebApp;
     if (!tg) return;
+
+    // Apply initial Telegram theme params
+    const params = getTelegramThemeParams();
+    setTelegramThemeParams(params);
+    applyTelegramThemeParams(params);
 
     const handleThemeChange = () => {
       const root = document.documentElement;
@@ -94,8 +177,13 @@ export function ThemeProvider({
       const newTheme = tg.colorScheme;
       setTheme(newTheme);
       
+      // Update Telegram theme params
+      const newParams = getTelegramThemeParams();
+      setTelegramThemeParams(newParams);
+      applyTelegramThemeParams(newParams);
+      
       // Update Telegram header/background colors
-      const bgColor = newTheme === 'dark' ? '#1a1a1a' : '#FDF8F3';
+      const bgColor = newParams?.bg_color || (newTheme === 'dark' ? '#1a1a1a' : '#FDF8F3');
       tg.setHeaderColor(bgColor);
       tg.setBackgroundColor(bgColor);
       
@@ -106,7 +194,10 @@ export function ThemeProvider({
     };
 
     tg.onEvent('themeChanged', handleThemeChange);
-    return () => tg.offEvent('themeChanged', handleThemeChange);
+    return () => {
+      tg.offEvent('themeChanged', handleThemeChange);
+      removeTelegramThemeParams();
+    };
   }, [themeMode, isTelegramAvailable]);
 
   // Listen for system theme changes when in auto mode
@@ -137,10 +228,17 @@ export function ThemeProvider({
     if (themeMode === "telegram") {
       const telegramTheme = getTelegramTheme();
       setTheme(telegramTheme || getSystemTheme());
+      
+      // Apply Telegram theme params
+      const params = getTelegramThemeParams();
+      setTelegramThemeParams(params);
+      applyTelegramThemeParams(params);
     } else if (themeMode === "auto") {
       setTheme(getSystemTheme());
+      setTelegramThemeParams(null);
     } else {
       setTheme(themeMode as Theme);
+      setTelegramThemeParams(null);
     }
   }, [themeMode]);
 
@@ -155,7 +253,7 @@ export function ThemeProvider({
 
     // Update Telegram header/background colors if available
     if (isTelegramAvailable && window.Telegram?.WebApp) {
-      const bgColor = theme === 'dark' ? '#1a1a1a' : '#FDF8F3';
+      const bgColor = telegramThemeParams?.bg_color || (theme === 'dark' ? '#1a1a1a' : '#FDF8F3');
       window.Telegram.WebApp.setHeaderColor(bgColor);
       window.Telegram.WebApp.setBackgroundColor(bgColor);
     }
@@ -165,7 +263,7 @@ export function ThemeProvider({
       // Clean up old key
       localStorage.removeItem("theme");
     }
-  }, [theme, themeMode, switchable, isTelegramAvailable]);
+  }, [theme, themeMode, switchable, isTelegramAvailable, telegramThemeParams]);
 
   // Set theme mode with animation
   const setThemeMode = useCallback((mode: ThemeMode) => {
@@ -220,7 +318,8 @@ export function ThemeProvider({
       toggleTheme: switchable ? toggleTheme : undefined, 
       switchable,
       isTransitioning,
-      isTelegramAvailable
+      isTelegramAvailable,
+      telegramThemeParams
     }}>
       {children}
     </ThemeContext.Provider>
