@@ -12,7 +12,7 @@ import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore, Machine } from "@/stores/cartStore";
 import { usePendingOrderStore } from "@/stores/pendingOrderStore";
 import { MapView } from "@/components/Map";
-import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag, Map, List } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag, Map, List, ExternalLink } from "lucide-react";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -382,25 +382,44 @@ export default function Locations() {
                       </div>
                     </div>
                     
-                    {/* Action Button */}
-                    <Button
-                      className={`w-full mt-4 h-12 rounded-xl font-semibold ${
-                        selectedLocation.isAvailable 
-                          ? 'bg-espresso hover:bg-espresso/90 text-white' 
-                          : 'bg-muted text-muted-foreground cursor-not-allowed'
-                      }`}
-                      disabled={!selectedLocation.isAvailable}
-                      onClick={() => handleSelectLocation(selectedLocation)}
-                    >
-                      {selectedLocation.isAvailable ? (
-                        <>
-                          {isOrderMode ? 'Выбрать и заказать' : 'Выбрать автомат'}
-                          <ChevronRight className="w-5 h-5 ml-2" />
-                        </>
-                      ) : (
-                        'Автомат недоступен'
-                      )}
-                    </Button>
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 mt-4">
+                      {/* Navigate Button */}
+                      <Button
+                        variant="outline"
+                        className="flex-1 h-12 rounded-xl font-semibold border-2 border-caramel text-caramel hover:bg-caramel/10"
+                        onClick={() => {
+                          haptic.impact('light');
+                          // Open navigation in Google Maps or Yandex Maps
+                          const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedLocation.lat},${selectedLocation.lng}&travelmode=walking`;
+                          window.open(url, '_blank');
+                        }}
+                      >
+                        <Navigation className="w-5 h-5 mr-2" />
+                        Маршрут
+                        <ExternalLink className="w-4 h-4 ml-1 opacity-60" />
+                      </Button>
+                      
+                      {/* Select Button */}
+                      <Button
+                        className={`flex-1 h-12 rounded-xl font-semibold ${
+                          selectedLocation.isAvailable 
+                            ? 'bg-espresso hover:bg-espresso/90 text-white' 
+                            : 'bg-muted text-muted-foreground cursor-not-allowed'
+                        }`}
+                        disabled={!selectedLocation.isAvailable}
+                        onClick={() => handleSelectLocation(selectedLocation)}
+                      >
+                        {selectedLocation.isAvailable ? (
+                          <>
+                            {isOrderMode ? 'Заказать' : 'Выбрать'}
+                            <ChevronRight className="w-5 h-5 ml-1" />
+                          </>
+                        ) : (
+                          'Недоступен'
+                        )}
+                      </Button>
+                    </div>
                   </Card>
                 </motion.div>
               )}
@@ -503,13 +522,27 @@ export default function Locations() {
                           </div>
                           
                           <div className="flex items-center justify-between mt-3">
-                            {/* Distance */}
-                            {location.distance && (
-                              <div className="flex items-center gap-1 text-sm text-caramel font-medium">
-                                <Navigation className="w-4 h-4" />
-                                <span>{location.distance} км</span>
-                              </div>
-                            )}
+                            {/* Distance & Navigate */}
+                            <div className="flex items-center gap-3">
+                              {location.distance && (
+                                <div className="flex items-center gap-1 text-sm text-caramel font-medium">
+                                  <Navigation className="w-4 h-4" />
+                                  <span>{location.distance} км</span>
+                                </div>
+                              )}
+                              <button
+                                className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  haptic.impact('light');
+                                  const url = `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}&travelmode=walking`;
+                                  window.open(url, '_blank');
+                                }}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                Маршрут
+                              </button>
+                            </div>
                             
                             {/* Status */}
                             <div className={`px-2 py-1 rounded-full text-xs font-medium ${
