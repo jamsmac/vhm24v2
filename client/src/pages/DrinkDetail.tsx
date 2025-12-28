@@ -1,6 +1,7 @@
 /**
  * VendHub TWA - Drink Detail Page
  * Shows drink info with description and Order button
+ * Uses Telegram MainButton for ordering
  */
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import { ArrowLeft, Heart, Star, Coffee, Droplets, Flame } from "lucide-react";
 import { Link, useLocation, useParams } from "wouter";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { useTelegramMainButton } from "@/hooks/useTelegramMainButton";
+import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
 
 // Drink data (in real app this would come from API)
 const drinksData: Record<string, {
@@ -94,7 +97,7 @@ const drinksData: Record<string, {
 export default function DrinkDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const { haptic } = useTelegram();
+  const { haptic, isTelegram } = useTelegram();
   const { isFavorite, addFavorite, removeFavorite } = useFavoritesStore();
   const { setPendingDrink } = usePendingOrderStore();
 
@@ -137,8 +140,22 @@ export default function DrinkDetail() {
     navigate('/locations?order=true');
   };
 
+  // Telegram BackButton - navigate back to home
+  useTelegramBackButton({
+    isVisible: true,
+    onClick: () => navigate('/')
+  });
+
+  // Telegram MainButton for ordering
+  useTelegramMainButton({
+    text: `Заказать · ${formatPrice(drink.price)} UZS`,
+    isVisible: true,
+    isActive: true,
+    onClick: handleOrder
+  });
+
   return (
-    <div className="min-h-screen bg-background pb-32">
+    <div className={`min-h-screen bg-background ${isTelegram ? 'pb-4' : 'pb-32'}`}>
       {/* Hero Image */}
       <div className="relative">
         <div className="aspect-square bg-secondary/50 relative overflow-hidden">
@@ -151,23 +168,25 @@ export default function DrinkDetail() {
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
         </div>
         
-        {/* Back button */}
-        <Link href="/">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute top-4 left-4 rounded-full bg-white/80 backdrop-blur hover:bg-white"
-            onClick={() => haptic.selection()}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        {/* Back button - only show when not in Telegram (BackButton is used instead) */}
+        {!isTelegram && (
+          <Link href="/">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute top-4 left-4 rounded-full bg-white/80 backdrop-blur hover:bg-white"
+              onClick={() => haptic.selection()}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+        )}
         
         {/* Favorite button */}
         <Button 
           variant="ghost" 
           size="icon" 
-          className="absolute top-4 right-4 rounded-full bg-white/80 backdrop-blur hover:bg-white"
+          className={`absolute top-4 ${isTelegram ? 'left-4' : 'right-4'} rounded-full bg-white/80 backdrop-blur hover:bg-white`}
           onClick={handleFavorite}
         >
           <Heart className={`w-5 h-5 ${favorite ? 'fill-red-500 text-red-500' : ''}`} />
@@ -201,7 +220,7 @@ export default function DrinkDetail() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
               <div className="text-center p-3 bg-secondary/50 rounded-xl">
-                <Coffee className="w-5 h-5 mx-auto mb-1 text-espresso" />
+                <Coffee className="w-5 h-5 mx-auto mb-1 text-espresso dark:text-[#D4A574]" />
                 <p className="font-semibold text-sm">{drink.volume}</p>
                 <p className="text-xs text-muted-foreground">Объём</p>
               </div>
@@ -232,27 +251,36 @@ export default function DrinkDetail() {
               ))}
             </div>
           </Card>
+
+          {/* Price info for Telegram users */}
+          {isTelegram && (
+            <div className="mt-4 text-center">
+              <p className="text-xs text-muted-foreground">Нажмите кнопку внизу для заказа</p>
+            </div>
+          )}
         </motion.div>
       </main>
 
-      {/* Fixed bottom bar with price and order button */}
-      <div className="fixed bottom-20 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-4 py-4 z-40">
-        <div className="flex items-center justify-between max-w-md mx-auto">
-          <div>
-            <p className="text-xs text-muted-foreground">Цена</p>
-            <p className="font-display text-2xl font-bold text-espresso">
-              {formatPrice(drink.price)} <span className="text-base font-normal">UZS</span>
-            </p>
+      {/* Fixed bottom bar with price and order button - only show when not in Telegram */}
+      {!isTelegram && (
+        <div className="fixed bottom-20 left-0 right-0 bg-background/95 backdrop-blur border-t border-border px-4 py-4 z-40">
+          <div className="flex items-center justify-between max-w-md mx-auto">
+            <div>
+              <p className="text-xs text-muted-foreground">Цена</p>
+              <p className="font-display text-2xl font-bold text-espresso dark:text-[#D4A574]">
+                {formatPrice(drink.price)} <span className="text-base font-normal">UZS</span>
+              </p>
+            </div>
+            <Button 
+              size="lg"
+              className="btn-espresso px-8 h-14 text-lg"
+              onClick={handleOrder}
+            >
+              Заказать
+            </Button>
           </div>
-          <Button 
-            size="lg"
-            className="btn-espresso px-8 h-14 text-lg"
-            onClick={handleOrder}
-          >
-            Заказать
-          </Button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

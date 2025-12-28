@@ -7,9 +7,10 @@
  * - Promo code input
  * - Payment method selection (Click, Payme, Uzum)
  * - Order summary
+ * - Telegram MainButton for checkout
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ import CartRecommendations from "@/components/CartRecommendations";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useTelegramMainButton } from "@/hooks/useTelegramMainButton";
+import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('ru-RU').format(price);
@@ -35,7 +38,7 @@ const paymentMethods: Array<{ id: PaymentProvider; name: string; logo: string; c
 
 export default function Cart() {
   const [, navigate] = useLocation();
-  const { haptic, webApp } = useTelegram();
+  const { haptic, isTelegram } = useTelegram();
   const { 
     machine, 
     items, 
@@ -59,6 +62,61 @@ export default function Cart() {
   const subtotal = getSubtotal();
   const discount = getDiscount();
   const total = getTotal();
+
+  // Telegram BackButton - navigate back to menu or locations
+  useTelegramBackButton({
+    isVisible: true,
+    onClick: () => {
+      if (machine) {
+        navigate(`/menu/${machine.id}`);
+      } else {
+        navigate('/locations');
+      }
+    }
+  });
+
+  // Handle checkout action
+  const handleCheckout = async () => {
+    if (items.length === 0) return;
+    
+    setIsProcessing(true);
+    haptic.impact('medium');
+    
+    // Show progress on MainButton if in Telegram
+    if (mainButton.isAvailable) {
+      mainButton.showProgress(true);
+    }
+    
+    // Simulate payment processing
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // In real app, this would redirect to payment provider
+    haptic.notification('success');
+    toast.success('Заказ оформлен!');
+    clearCart();
+    
+    if (mainButton.isAvailable) {
+      mainButton.hideProgress();
+    }
+    
+    navigate('/order/success');
+    setIsProcessing(false);
+  };
+
+  // Telegram MainButton for checkout
+  const mainButton = useTelegramMainButton({
+    text: `Оплатить ${formatPrice(total)} UZS`,
+    isVisible: items.length > 0,
+    isActive: !isProcessing && items.length > 0,
+    onClick: handleCheckout
+  });
+
+  // Update MainButton text when total changes
+  useEffect(() => {
+    if (mainButton.isAvailable && items.length > 0) {
+      mainButton.setText(`Оплатить ${formatPrice(total)} UZS`);
+    }
+  }, [total, items.length, mainButton]);
 
   const handleApplyPromo = async () => {
     if (!promoInput.trim()) return;
@@ -93,24 +151,6 @@ export default function Cart() {
     toast.info('Промокод удалён');
   };
 
-  const handleCheckout = async () => {
-    if (items.length === 0) return;
-    
-    setIsProcessing(true);
-    haptic.impact('medium');
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // In real app, this would redirect to payment provider
-    haptic.notification('success');
-    toast.success('Заказ оформлен!');
-    clearCart();
-    navigate('/order/success');
-    
-    setIsProcessing(false);
-  };
-
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-background safe-top safe-bottom flex flex-col">
@@ -140,7 +180,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="min-h-screen bg-background safe-top safe-bottom pb-32">
+    <div className={`min-h-screen bg-background safe-top safe-bottom ${isTelegram ? 'pb-4' : 'pb-32'}`}>
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center gap-3">
         <Link href={machine ? `/menu/${machine.id}` : '/locations'}>
@@ -157,7 +197,7 @@ export default function Cart() {
           <Card className="coffee-card">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-[#5D4037]" />
+                <MapPin className="w-5 h-5 text-[#5D4037] dark:text-[#D4A574]" />
               </div>
               <div>
                 <p className="font-semibold text-foreground">{machine.name}</p>
@@ -234,11 +274,11 @@ export default function Cart() {
         <Card className="coffee-card">
           <h2 className="font-semibold text-foreground mb-3">Промокод</h2>
           {promoCode ? (
-            <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
               <div className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-green-600" />
-                <span className="font-medium text-green-700">{promoCode}</span>
-                <span className="text-sm text-green-600">(-{promoDiscount}%)</span>
+                <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <span className="font-medium text-green-700 dark:text-green-300">{promoCode}</span>
+                <span className="text-sm text-green-600 dark:text-green-400">(-{promoDiscount}%)</span>
               </div>
               <Button
                 size="icon"
@@ -282,7 +322,7 @@ export default function Cart() {
                 }}
                 className={`p-3 rounded-xl border-2 transition-all ${
                   selectedPayment === method.id
-                    ? 'border-[#5D4037] bg-[#5D4037]/5'
+                    ? 'border-[#5D4037] dark:border-[#D4A574] bg-[#5D4037]/5 dark:bg-[#D4A574]/10'
                     : 'border-border hover:border-muted-foreground/30'
                 }`}
               >
@@ -305,39 +345,48 @@ export default function Cart() {
               <span>{formatPrice(subtotal)} UZS</span>
             </div>
             {discount > 0 && (
-              <div className="flex justify-between text-green-600">
+              <div className="flex justify-between text-green-600 dark:text-green-400">
                 <span>Скидка ({promoDiscount}%)</span>
                 <span>-{formatPrice(discount)} UZS</span>
               </div>
             )}
             <div className="pt-2 border-t border-border flex justify-between font-semibold text-base">
               <span>К оплате</span>
-              <span className="text-[#5D4037]">{formatPrice(total)} UZS</span>
+              <span className="text-[#5D4037] dark:text-[#D4A574]">{formatPrice(total)} UZS</span>
             </div>
           </div>
         </Card>
+
+        {/* Telegram MainButton info */}
+        {isTelegram && (
+          <p className="text-xs text-center text-muted-foreground">
+            Нажмите кнопку внизу для оплаты
+          </p>
+        )}
       </main>
 
-      {/* Checkout Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border safe-bottom">
-        <Button
-          className="w-full h-14 rounded-2xl btn-espresso text-base"
-          onClick={handleCheckout}
-          disabled={isProcessing}
-        >
-          {isProcessing ? (
-            <span className="flex items-center gap-2">
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Обработка...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Оплатить {formatPrice(total)} UZS
-            </span>
-          )}
-        </Button>
-      </div>
+      {/* Fallback Checkout Button - only show when not in Telegram */}
+      {!isTelegram && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border safe-bottom">
+          <Button
+            className="w-full h-14 rounded-2xl btn-espresso text-base"
+            onClick={handleCheckout}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <span className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Обработка...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Оплатить {formatPrice(total)} UZS
+              </span>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

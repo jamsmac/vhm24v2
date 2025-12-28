@@ -7,7 +7,7 @@
  * - Product cards with images
  * - Add to cart functionality
  * - Favorite button on each item
- * - Floating cart button
+ * - Telegram MainButton for cart navigation
  */
 
 import { useState, useEffect } from "react";
@@ -20,6 +20,8 @@ import { ArrowLeft, Plus, Minus, ShoppingCart, Heart } from "lucide-react";
 import { Link, useParams, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useTelegramMainButton } from "@/hooks/useTelegramMainButton";
+import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
 
 // Mock menu data
 const mockMenu: MenuItem[] = [
@@ -119,7 +121,7 @@ function formatPrice(price: number): string {
 export default function Menu() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const { haptic } = useTelegram();
+  const { haptic, isTelegram } = useTelegram();
   const { machine, items, addItem, updateQuantity, getTotalItems, getTotal } = useCartStore();
   const { isFavorite, toggleFavorite } = useFavoritesStore();
   const [activeCategory, setActiveCategory] = useState("all");
@@ -177,16 +179,48 @@ export default function Menu() {
   const totalItems = getTotalItems();
   const totalPrice = getTotal();
 
+  // Telegram BackButton - navigate back to locations
+  useTelegramBackButton({
+    isVisible: true,
+    onClick: () => navigate('/locations')
+  });
+
+  // Telegram MainButton for cart - show when items are in cart
+  const mainButton = useTelegramMainButton({
+    text: totalItems > 0 ? `Корзина · ${formatPrice(totalPrice)} UZS` : 'Выберите напитки',
+    isVisible: totalItems > 0,
+    isActive: totalItems > 0,
+    onClick: () => {
+      haptic.impact('medium');
+      navigate('/cart');
+    }
+  });
+
+  // Update MainButton when cart changes
+  useEffect(() => {
+    if (mainButton.isAvailable) {
+      if (totalItems > 0) {
+        mainButton.setText(`Корзина (${totalItems}) · ${formatPrice(totalPrice)} UZS`);
+        mainButton.show();
+        mainButton.enable();
+      } else {
+        mainButton.hide();
+      }
+    }
+  }, [totalItems, totalPrice, mainButton]);
+
   return (
-    <div className="min-h-screen bg-background safe-top safe-bottom pb-24">
+    <div className={`min-h-screen bg-background safe-top safe-bottom ${isTelegram ? 'pb-4' : 'pb-24'}`}>
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="px-4 py-3 flex items-center gap-3">
-          <Link href="/locations">
-            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => haptic.selection()}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          {!isTelegram && (
+            <Link href="/locations">
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => haptic.selection()}>
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            </Link>
+          )}
           <div className="flex-1 min-w-0">
             <h1 className="font-display text-lg font-bold truncate">{machine?.name || 'Меню'}</h1>
             <p className="text-xs text-muted-foreground truncate">{machine?.machineNumber} · {machine?.locationName}</p>
@@ -317,38 +351,40 @@ export default function Menu() {
         </div>
       </main>
 
-      {/* Floating Cart Button */}
-      <AnimatePresence>
-        {totalItems > 0 && (
-          <motion.div
-            initial={{ y: 100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 100, opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-6 left-4 right-4 z-50"
-          >
-            <Link href="/cart">
-              <Button 
-                className="w-full h-14 rounded-2xl btn-espresso text-base"
-                onClick={() => haptic.impact('medium')}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <ShoppingCart className="w-5 h-5" />
-                      <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#D4A574] rounded-full text-xs flex items-center justify-center font-bold">
-                        {totalItems}
-                      </span>
+      {/* Floating Cart Button - only show when not in Telegram */}
+      {!isTelegram && (
+        <AnimatePresence>
+          {totalItems > 0 && (
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed bottom-6 left-4 right-4 z-50"
+            >
+              <Link href="/cart">
+                <Button 
+                  className="w-full h-14 rounded-2xl btn-espresso text-base"
+                  onClick={() => haptic.impact('medium')}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <ShoppingCart className="w-5 h-5" />
+                        <span className="absolute -top-2 -right-2 w-5 h-5 bg-[#D4A574] rounded-full text-xs flex items-center justify-center font-bold">
+                          {totalItems}
+                        </span>
+                      </div>
+                      <span>Корзина</span>
                     </div>
-                    <span>Корзина</span>
+                    <span className="font-bold">{formatPrice(totalPrice)} UZS</span>
                   </div>
-                  <span className="font-bold">{formatPrice(totalPrice)} UZS</span>
-                </div>
-              </Button>
-            </Link>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </Button>
+              </Link>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
     </div>
   );
 }
