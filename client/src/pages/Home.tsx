@@ -252,10 +252,10 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { name: 'Капучино', price: 20000, image: '/images/cappuccino-card.png' },
-              { name: 'Латте', price: 22000, image: '/images/cappuccino-card.png' },
-              { name: 'Американо', price: 15000, image: '/images/americano-card.png' },
-              { name: 'Эспрессо', price: 12000, image: '/images/espresso-card.png' },
+              { id: 'cappuccino', name: 'Капучино', price: 20000, image: '/images/cappuccino-card.png' },
+              { id: 'latte', name: 'Латте', price: 22000, image: '/images/cappuccino-card.png' },
+              { id: 'americano', name: 'Американо', price: 15000, image: '/images/americano-card.png' },
+              { id: 'espresso', name: 'Эспрессо', price: 12000, image: '/images/espresso-card.png' },
             ].map((item, index) => (
               <motion.div
                 key={item.name}
@@ -267,7 +267,7 @@ export default function Home() {
                   className="overflow-hidden border-0 bg-card rounded-2xl cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     haptic.selection();
-                    navigate('/locations');
+                    navigate(`/drink/${item.id}`);
                   }}
                 >
                   <div className="aspect-square relative bg-secondary/50">

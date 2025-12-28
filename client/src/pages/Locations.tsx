@@ -1,25 +1,22 @@
 /**
  * VendHub TWA - Locations Page
- * "Warm Brew" Design System
- * 
- * Features:
- * - Search locations
- * - Filter by city
- * - Distance-based sorting
- * - Machine availability status
+ * Shows nearby vending machines, sorted by distance
+ * Handles pending order flow - adds drink to cart after selection
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore, Machine } from "@/stores/cartStore";
-import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { usePendingOrderStore } from "@/stores/pendingOrderStore";
+import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag } from "lucide-react";
+import { Link, useLocation, useSearch } from "wouter";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
-// Mock locations data
+// Mock locations data - sorted by distance
 const mockLocations: Array<Machine & { distance?: number; machineCount: number }> = [
   {
     id: "1",
@@ -75,9 +72,14 @@ const mockLocations: Array<Machine & { distance?: number; machineCount: number }
 
 export default function Locations() {
   const [, navigate] = useLocation();
+  const searchParams = useSearch();
   const { haptic } = useTelegram();
-  const { setMachine } = useCartStore();
+  const { setMachine, addItem } = useCartStore();
+  const { pendingDrink, clearPendingDrink } = usePendingOrderStore();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Check if we're in order mode (coming from drink detail)
+  const isOrderMode = searchParams.includes('order=true');
 
   const filteredLocations = mockLocations.filter(
     (loc) =>
@@ -89,10 +91,13 @@ export default function Locations() {
   const handleSelectLocation = (location: typeof mockLocations[0]) => {
     if (!location.isAvailable) {
       haptic.notification('error');
+      toast.error('Этот автомат сейчас недоступен');
       return;
     }
     
     haptic.impact('medium');
+    
+    // Set the selected machine
     setMachine({
       id: location.id,
       machineNumber: location.machineNumber,
@@ -101,20 +106,48 @@ export default function Locations() {
       address: location.address,
       isAvailable: location.isAvailable,
     });
-    navigate(`/menu/${location.id}`);
+
+    // If we have a pending drink (came from drink detail), add it to cart
+    if (pendingDrink && isOrderMode) {
+      addItem({
+        id: pendingDrink.id,
+        name: pendingDrink.name,
+        price: pendingDrink.price,
+        image: pendingDrink.image,
+        description: pendingDrink.description,
+        category: 'coffee',
+        isAvailable: true,
+      });
+      clearPendingDrink();
+      toast.success(`${pendingDrink.name} добавлен в корзину`);
+      // Navigate to cart
+      navigate('/cart');
+    } else {
+      // Normal flow - go to menu
+      navigate(`/menu/${location.id}`);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background safe-top safe-bottom">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
         <div className="flex items-center gap-3">
-          <Link href="/">
+          <Link href={isOrderMode && pendingDrink ? `/drink/${pendingDrink.id}` : "/"}>
             <Button variant="ghost" size="icon" className="rounded-full" onClick={() => haptic.selection()}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <h1 className="font-display text-xl font-bold">Выбрать автомат</h1>
+          <div>
+            <h1 className="font-display text-xl font-bold">
+              {isOrderMode ? 'Выберите автомат' : 'Выбрать автомат'}
+            </h1>
+            {isOrderMode && pendingDrink && (
+              <p className="text-sm text-muted-foreground">
+                для заказа: {pendingDrink.name}
+              </p>
+            )}
+          </div>
         </div>
         
         {/* Search */}
@@ -130,8 +163,40 @@ export default function Locations() {
         </div>
       </header>
 
+      {/* Pending drink banner */}
+      {isOrderMode && pendingDrink && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mt-4"
+        >
+          <Card className="bg-espresso/10 border-espresso/20 p-3 rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg overflow-hidden bg-secondary">
+                <img src={pendingDrink.image} alt={pendingDrink.name} className="w-full h-full object-cover" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-foreground">{pendingDrink.name}</p>
+                <p className="text-sm text-espresso font-semibold">
+                  {new Intl.NumberFormat('ru-RU').format(pendingDrink.price)} UZS
+                </p>
+              </div>
+              <ShoppingBag className="w-5 h-5 text-espresso" />
+            </div>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* Nearest label */}
+      <div className="px-4 pt-4 pb-2">
+        <p className="text-sm text-muted-foreground flex items-center gap-1">
+          <Navigation className="w-4 h-4" />
+          Ближайшие автоматы
+        </p>
+      </div>
+
       {/* Locations List */}
-      <main className="px-4 py-4 space-y-3">
+      <main className="px-4 space-y-3">
         {filteredLocations.length === 0 ? (
           <div className="text-center py-12">
             <MapPin className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -150,14 +215,14 @@ export default function Locations() {
                   location.isAvailable 
                     ? 'hover:shadow-lg active:scale-[0.98]' 
                     : 'opacity-60'
-                }`}
+                } ${index === 0 && location.isAvailable ? 'ring-2 ring-espresso/30' : ''}`}
                 onClick={() => handleSelectLocation(location)}
               >
                 <div className="flex items-start gap-4">
                   {/* Icon */}
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                     location.isAvailable 
-                      ? 'bg-gradient-to-br from-[#5D4037] to-[#3E2723]' 
+                      ? 'bg-gradient-to-br from-espresso to-espresso/80' 
                       : 'bg-muted'
                   }`}>
                     <Coffee className={`w-6 h-6 ${location.isAvailable ? 'text-white' : 'text-muted-foreground'}`} />
@@ -167,7 +232,14 @@ export default function Locations() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h3 className="font-semibold text-foreground truncate">{location.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-foreground truncate">{location.name}</h3>
+                          {index === 0 && location.isAvailable && (
+                            <span className="px-1.5 py-0.5 bg-espresso/10 text-espresso text-xs rounded font-medium">
+                              Ближайший
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">{location.locationName}</p>
                       </div>
                       <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-1" />
@@ -183,7 +255,7 @@ export default function Locations() {
                     <div className="flex items-center justify-between mt-3">
                       {/* Distance */}
                       {location.distance && (
-                        <div className="flex items-center gap-1 text-sm text-[#D4A574]">
+                        <div className="flex items-center gap-1 text-sm text-caramel font-medium">
                           <Navigation className="w-4 h-4" />
                           <span>{location.distance} км</span>
                         </div>
@@ -205,9 +277,6 @@ export default function Locations() {
           ))
         )}
       </main>
-
-      {/* Bottom safe area spacer */}
-      <div className="h-8" />
     </div>
   );
 }
