@@ -10,6 +10,18 @@ interface TelegramUser {
   photo_url?: string;
 }
 
+interface PopupButton {
+  id?: string;
+  type?: 'default' | 'ok' | 'close' | 'cancel' | 'destructive';
+  text?: string;
+}
+
+interface PopupParams {
+  title?: string;
+  message: string;
+  buttons?: PopupButton[];
+}
+
 interface TelegramWebApp {
   initData: string;
   initDataUnsafe: {
@@ -71,7 +83,7 @@ interface TelegramWebApp {
   setBackgroundColor: (color: string) => void;
   enableClosingConfirmation: () => void;
   disableClosingConfirmation: () => void;
-  showPopup: (params: { title?: string; message: string; buttons?: Array<{ id?: string; type?: string; text?: string }> }, callback?: (buttonId: string) => void) => void;
+  showPopup: (params: PopupParams, callback?: (buttonId: string) => void) => void;
   showAlert: (message: string, callback?: () => void) => void;
   showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
   openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
@@ -102,8 +114,16 @@ interface TelegramContextType {
     notification: (type: 'success' | 'error' | 'warning') => void;
     selection: () => void;
   };
+  popup: {
+    showAlert: (message: string) => Promise<void>;
+    showConfirm: (message: string) => Promise<boolean>;
+    showPopup: (params: PopupParams) => Promise<string>;
+  };
   updateHeaderColor: (color: string) => void;
   updateBackgroundColor: (color: string) => void;
+  closeApp: () => void;
+  enableClosingConfirmation: () => void;
+  disableClosingConfirmation: () => void;
 }
 
 const TelegramContext = createContext<TelegramContextType | null>(null);
@@ -180,6 +200,21 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     webApp?.setBackgroundColor(color);
   }, [webApp]);
 
+  // Close the app
+  const closeApp = useCallback(() => {
+    webApp?.close();
+  }, [webApp]);
+
+  // Enable closing confirmation
+  const enableClosingConfirmation = useCallback(() => {
+    webApp?.enableClosingConfirmation();
+  }, [webApp]);
+
+  // Disable closing confirmation
+  const disableClosingConfirmation = useCallback(() => {
+    webApp?.disableClosingConfirmation();
+  }, [webApp]);
+
   const haptic = {
     impact: (style: 'light' | 'medium' | 'heavy' = 'light') => {
       webApp?.HapticFeedback?.impactOccurred(style);
@@ -189,6 +224,57 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     },
     selection: () => {
       webApp?.HapticFeedback?.selectionChanged();
+    },
+  };
+
+  // Popup methods with Promise-based API
+  const popup = {
+    /**
+     * Show a simple alert message
+     * Falls back to browser alert when not in Telegram
+     */
+    showAlert: (message: string): Promise<void> => {
+      return new Promise((resolve) => {
+        if (webApp) {
+          webApp.showAlert(message, () => resolve());
+        } else {
+          alert(message);
+          resolve();
+        }
+      });
+    },
+
+    /**
+     * Show a confirmation dialog
+     * Falls back to browser confirm when not in Telegram
+     */
+    showConfirm: (message: string): Promise<boolean> => {
+      return new Promise((resolve) => {
+        if (webApp) {
+          webApp.showConfirm(message, (confirmed) => resolve(confirmed));
+        } else {
+          const result = confirm(message);
+          resolve(result);
+        }
+      });
+    },
+
+    /**
+     * Show a custom popup with buttons
+     * Falls back to browser confirm when not in Telegram
+     */
+    showPopup: (params: PopupParams): Promise<string> => {
+      return new Promise((resolve) => {
+        if (webApp) {
+          webApp.showPopup(params, (buttonId) => resolve(buttonId));
+        } else {
+          // Fallback: use browser confirm for simple yes/no
+          const result = confirm(`${params.title ? params.title + '\n\n' : ''}${params.message}`);
+          // Return first button id if confirmed, last button id if cancelled
+          const buttons = params.buttons || [{ id: 'ok', type: 'ok' }];
+          resolve(result ? (buttons[0]?.id || 'ok') : (buttons[buttons.length - 1]?.id || 'cancel'));
+        }
+      });
     },
   };
 
@@ -202,8 +288,12 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       themeParams,
       onThemeChange,
       haptic,
+      popup,
       updateHeaderColor,
-      updateBackgroundColor
+      updateBackgroundColor,
+      closeApp,
+      enableClosingConfirmation,
+      disableClosingConfirmation
     }}>
       {children}
     </TelegramContext.Provider>

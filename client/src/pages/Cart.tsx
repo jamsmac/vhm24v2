@@ -38,7 +38,7 @@ const paymentMethods: Array<{ id: PaymentProvider; name: string; logo: string; c
 
 export default function Cart() {
   const [, navigate] = useLocation();
-  const { haptic, isTelegram } = useTelegram();
+  const { haptic, isTelegram, popup } = useTelegram();
   const { 
     machine, 
     items, 
@@ -75,9 +75,28 @@ export default function Cart() {
     }
   });
 
-  // Handle checkout action
+  // Handle checkout action with confirmation popup
   const handleCheckout = async () => {
     if (items.length === 0) return;
+    
+    // Show confirmation popup before payment
+    const itemsCount = items.reduce((sum, item) => sum + item.quantity, 0);
+    const itemsText = itemsCount === 1 ? 'напиток' : itemsCount < 5 ? 'напитка' : 'напитков';
+    
+    // Use Telegram popup for confirmation
+    const confirmed = await popup.showPopup({
+      title: 'Подтверждение заказа',
+      message: `Вы заказываете ${itemsCount} ${itemsText} на сумму ${formatPrice(total)} UZS.\n\nСпособ оплаты: ${paymentMethods.find(p => p.id === selectedPayment)?.name}\n\nПодтвердить оплату?`,
+      buttons: [
+        { id: 'cancel', type: 'cancel', text: 'Отмена' },
+        { id: 'confirm', type: 'default', text: 'Оплатить' }
+      ]
+    });
+    
+    if (confirmed !== 'confirm') {
+      haptic.selection();
+      return;
+    }
     
     setIsProcessing(true);
     haptic.impact('medium');
