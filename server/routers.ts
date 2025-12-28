@@ -481,6 +481,43 @@ export const appRouter = router({
         return await db.getAllMachines();
       }),
       
+      create: adminProcedure
+        .input(z.object({
+          machineCode: z.string(),
+          name: z.string(),
+          address: z.string().optional(),
+          latitude: z.string().optional(),
+          longitude: z.string().optional(),
+          status: z.enum(['online', 'offline', 'maintenance']).default('online'),
+          imageUrl: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createMachine(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          machineCode: z.string().optional(),
+          name: z.string().optional(),
+          address: z.string().optional(),
+          latitude: z.string().optional(),
+          longitude: z.string().optional(),
+          status: z.enum(['online', 'offline', 'maintenance']).optional(),
+          imageUrl: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateMachine(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteMachine(input.id);
+          return { success: true };
+        }),
+      
       updateStatus: adminProcedure
         .input(z.object({
           id: z.number(),
@@ -489,6 +526,43 @@ export const appRouter = router({
         .mutation(async ({ input }) => {
           await db.updateMachineStatus(input.id, input.status);
           return { success: true };
+        }),
+      
+      // Inventory management
+      getInventory: adminProcedure
+        .input(z.object({ machineId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getMachineInventory(input.machineId);
+        }),
+      
+      updateInventory: adminProcedure
+        .input(z.object({
+          machineId: z.number(),
+          productId: z.number(),
+          currentStock: z.number(),
+        }))
+        .mutation(async ({ input }) => {
+          await db.updateMachineInventory(input.machineId, input.productId, input.currentStock);
+          return { success: true };
+        }),
+      
+      // Maintenance logs
+      getMaintenanceLogs: adminProcedure
+        .input(z.object({ machineId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getMachineMaintenanceLogs(input.machineId);
+        }),
+      
+      addMaintenanceLog: adminProcedure
+        .input(z.object({
+          machineId: z.number(),
+          type: z.enum(['routine', 'repair', 'restock', 'cleaning', 'other']).default('routine'),
+          description: z.string().optional(),
+          performedBy: z.string().optional(),
+          cost: z.number().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.addMaintenanceLog(input);
         }),
     }),
     

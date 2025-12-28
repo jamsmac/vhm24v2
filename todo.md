@@ -17,6 +17,13 @@
 - [x] Create promo codes management page (CRUD)
 - [x] Add admin-only API endpoints
 - [x] Add admin routes to App.tsx
-- [ ] Create machines management page
+- [x] Create machines management page
 - [ ] Add admin role protection
 - [ ] Write vitest tests for admin endpoints
+
+## Machines Management
+- [x] Update database schema for machine inventory tracking
+- [x] Create machines management page with status monitoring
+- [x] Add inventory level tracking per machine
+- [x] Add API endpoints for machines CRUD and inventory
+- [x] Test machines management functionality

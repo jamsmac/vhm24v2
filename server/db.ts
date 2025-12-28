@@ -8,7 +8,9 @@ import {
   InsertCartItem, cartItems,
   InsertOrder, orders, Order,
   InsertPromoCode, promoCodes, PromoCode,
-  InsertNotification, notifications
+  InsertNotification, notifications,
+  InsertMachineInventory, machineInventory,
+  InsertMaintenanceLog, maintenanceLogs
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -185,10 +187,11 @@ export async function getMachineById(id: number): Promise<Machine | undefined> {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function createMachine(machine: InsertMachine): Promise<void> {
+export async function createMachine(machine: InsertMachine): Promise<number> {
   const db = await getDb();
-  if (!db) return;
-  await db.insert(machines).values(machine);
+  if (!db) return 0;
+  const result = await db.insert(machines).values(machine);
+  return result[0]?.insertId || 0;
 }
 
 // ==================== FAVORITES QUERIES ====================
@@ -579,4 +582,128 @@ export async function getAdminStats() {
     totalUsers: usersResult[0]?.count || 0,
     activePromoCodes: promoResult[0]?.count || 0,
   };
+}
+
+
+// ==================== MACHINE MANAGEMENT ====================
+
+export async function updateMachine(id: number, data: Partial<InsertMachine>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(machines).set({ ...data, updatedAt: new Date() }).where(eq(machines.id, id));
+}
+
+export async function deleteMachine(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  // Delete related inventory and maintenance logs first
+  await db.delete(machineInventory).where(eq(machineInventory.machineId, id));
+  await db.delete(maintenanceLogs).where(eq(maintenanceLogs.machineId, id));
+  await db.delete(machines).where(eq(machines.id, id));
+}
+
+// ==================== MACHINE INVENTORY ====================
+
+export async function getMachineInventory(machineId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const inventory = await db.select({
+    id: machineInventory.id,
+    machineId: machineInventory.machineId,
+    productId: machineInventory.productId,
+    currentStock: machineInventory.currentStock,
+    maxCapacity: machineInventory.maxCapacity,
+    lowStockThreshold: machineInventory.lowStockThreshold,
+    lastRestocked: machineInventory.lastRestocked,
+    productName: products.nameRu,
+  })
+  .from(machineInventory)
+  .leftJoin(products, eq(machineInventory.productId, products.id))
+  .where(eq(machineInventory.machineId, machineId))
+  .orderBy(products.name);
+  
+  return inventory;
+}
+
+export async function updateMachineInventory(machineId: number, productId: number, currentStock: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Check if inventory record exists
+  const existing = await db.select().from(machineInventory)
+    .where(and(
+      eq(machineInventory.machineId, machineId),
+      eq(machineInventory.productId, productId)
+    ))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    // Update existing record
+    await db.update(machineInventory)
+      .set({ 
+        currentStock, 
+        lastRestocked: new Date(),
+        updatedAt: new Date() 
+      })
+      .where(and(
+        eq(machineInventory.machineId, machineId),
+        eq(machineInventory.productId, productId)
+      ));
+  } else {
+    // Create new record
+    await db.insert(machineInventory).values({
+      machineId,
+      productId,
+      currentStock,
+      lastRestocked: new Date(),
+    });
+  }
+}
+
+export async function initializeMachineInventory(machineId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Get all products
+  const allProducts = await db.select().from(products);
+  
+  // Create inventory records for each product
+  for (const product of allProducts) {
+    const existing = await db.select().from(machineInventory)
+      .where(and(
+        eq(machineInventory.machineId, machineId),
+        eq(machineInventory.productId, product.id)
+      ))
+      .limit(1);
+    
+    if (existing.length === 0) {
+      await db.insert(machineInventory).values({
+        machineId,
+        productId: product.id,
+        currentStock: 50, // Default initial stock
+        maxCapacity: 100,
+        lowStockThreshold: 10,
+      });
+    }
+  }
+}
+
+// ==================== MAINTENANCE LOGS ====================
+
+export async function getMachineMaintenanceLogs(machineId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(maintenanceLogs)
+    .where(eq(maintenanceLogs.machineId, machineId))
+    .orderBy(desc(maintenanceLogs.createdAt))
+    .limit(50);
+}
+
+export async function addMaintenanceLog(data: InsertMaintenanceLog): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db.insert(maintenanceLogs).values(data);
+  return result[0]?.insertId || 0;
 }

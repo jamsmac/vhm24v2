@@ -180,3 +180,37 @@ export const notifications = mysqlTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+/**
+ * Machine inventory - tracks product stock levels per machine
+ */
+export const machineInventory = mysqlTable("machine_inventory", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  productId: int("productId").notNull(),
+  currentStock: int("currentStock").default(0).notNull(),
+  maxCapacity: int("maxCapacity").default(100).notNull(),
+  lowStockThreshold: int("lowStockThreshold").default(10).notNull(),
+  lastRestocked: timestamp("lastRestocked"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineInventory = typeof machineInventory.$inferSelect;
+export type InsertMachineInventory = typeof machineInventory.$inferInsert;
+
+/**
+ * Machine maintenance logs
+ */
+export const maintenanceLogs = mysqlTable("maintenance_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  type: mysqlEnum("type", ["routine", "repair", "restock", "cleaning", "other"]).default("routine").notNull(),
+  description: text("description"),
+  performedBy: varchar("performedBy", { length: 128 }),
+  cost: int("cost").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MaintenanceLog = typeof maintenanceLogs.$inferSelect;
+export type InsertMaintenanceLog = typeof maintenanceLogs.$inferInsert;
