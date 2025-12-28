@@ -15,7 +15,8 @@ import {
   LogOut,
   Menu,
   X,
-  Bell
+  Bell,
+  Gift
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/admin/orders", icon: ShoppingCart, label: "Заказы" },
   { href: "/admin/promo", icon: Ticket, label: "Промокоды" },
   { href: "/admin/machines", icon: MapPin, label: "Автоматы" },
+  { href: "/admin/tasks", icon: Gift, label: "Задания" },
   { href: "/admin/users", icon: Users, label: "Пользователи" },
   { href: "/admin/settings", icon: Settings, label: "Настройки" },
 ];

@@ -126,3 +126,24 @@
 - [x] Update route info panel when route is selected
 - [x] Voice announcement of available alternatives
 - [x] Test alternative routes functionality (48 tests passing)
+
+## Gamification System
+- [x] Create database tables: gamification_tasks, user_task_completions, points_transactions, user_preferences
+- [x] Build points system API (earn, balance, history, admin adjustment)
+- [x] Build tasks API (list, complete, admin CRUD, seed defaults)
+- [x] Create points display component in Tasks page
+- [x] Create tasks list UI with progress indicators and completion status
+- [x] Implement one-click Telegram linking with points reward (100 points)
+- [x] Implement one-click Email linking with points reward (50 points)
+- [x] Add admin panel for managing tasks (/admin/tasks)
+- [x] Test gamification functionality (66 tests passing)
+
+## Homepage Customization
+- [x] Create user_preferences table for section settings (homeSections JSON)
+- [x] Build API for saving/loading user preferences (getPreferences, updatePreferences)
+- [x] Create drag-and-drop section reordering UI (framer-motion Reorder)
+- [x] Add section visibility toggles (eye/eye-off icons)
+- [x] Add section size options (compact/normal/large)
+- [x] Save preferences to user profile (upsertUserPreferences)
+- [x] Add HomeSettings link in Settings page
+- [x] Test homepage customization (66 tests passing)

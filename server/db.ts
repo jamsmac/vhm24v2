@@ -10,7 +10,11 @@ import {
   InsertPromoCode, promoCodes, PromoCode,
   InsertNotification, notifications,
   InsertMachineInventory, machineInventory,
-  InsertMaintenanceLog, maintenanceLogs
+  InsertMaintenanceLog, maintenanceLogs,
+  InsertGamificationTask, gamificationTasks, GamificationTask,
+  InsertUserTaskCompletion, userTaskCompletions, UserTaskCompletion,
+  InsertPointsTransaction, pointsTransactions,
+  InsertUserPreferences, userPreferences, UserPreferences
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -119,6 +123,14 @@ export async function updateUserStats(userId: number, orderTotal: number) {
       totalSpent: sql`${users.totalSpent} + ${orderTotal}`,
       totalOrders: sql`${users.totalOrders} + 1`
     })
+    .where(eq(users.id, userId));
+}
+
+export async function updateUserEmail(userId: number, email: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users)
+    .set({ email, updatedAt: new Date() })
     .where(eq(users.id, userId));
 }
 
@@ -706,4 +718,398 @@ export async function addMaintenanceLog(data: InsertMaintenanceLog): Promise<num
   if (!db) return 0;
   const result = await db.insert(maintenanceLogs).values(data);
   return result[0]?.insertId || 0;
+}
+
+
+// ==================== GAMIFICATION - TASKS ====================
+
+export async function getAllTasks(includeInactive = false): Promise<GamificationTask[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const query = db.select().from(gamificationTasks);
+  
+  if (!includeInactive) {
+    return await query
+      .where(eq(gamificationTasks.isActive, true))
+      .orderBy(gamificationTasks.sortOrder);
+  }
+  
+  return await query.orderBy(gamificationTasks.sortOrder);
+}
+
+export async function getTaskById(id: number): Promise<GamificationTask | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(gamificationTasks)
+    .where(eq(gamificationTasks.id, id))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+export async function getTaskBySlug(slug: string): Promise<GamificationTask | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(gamificationTasks)
+    .where(eq(gamificationTasks.slug, slug))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+export async function createTask(data: InsertGamificationTask): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  const result = await db.insert(gamificationTasks).values(data);
+  return result[0]?.insertId || 0;
+}
+
+export async function updateTask(id: number, data: Partial<InsertGamificationTask>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(gamificationTasks)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(gamificationTasks.id, id));
+}
+
+export async function deleteTask(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Delete related completions first
+  await db.delete(userTaskCompletions).where(eq(userTaskCompletions.taskId, id));
+  await db.delete(gamificationTasks).where(eq(gamificationTasks.id, id));
+}
+
+// ==================== GAMIFICATION - USER TASK PROGRESS ====================
+
+export async function getUserTasksWithProgress(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get all active tasks with user's progress
+  const tasks = await db.select({
+    task: gamificationTasks,
+    completion: userTaskCompletions,
+  })
+  .from(gamificationTasks)
+  .leftJoin(
+    userTaskCompletions, 
+    and(
+      eq(userTaskCompletions.taskId, gamificationTasks.id),
+      eq(userTaskCompletions.userId, userId)
+    )
+  )
+  .where(eq(gamificationTasks.isActive, true))
+  .orderBy(gamificationTasks.sortOrder);
+  
+  return tasks.map(({ task, completion }) => ({
+    ...task,
+    currentProgress: completion?.currentProgress || 0,
+    isCompleted: completion?.isCompleted || false,
+    completionCount: completion?.completionCount || 0,
+    pointsAwarded: completion?.pointsAwarded || 0,
+    completedAt: completion?.completedAt,
+  }));
+}
+
+export async function getUserTaskCompletion(userId: number, taskId: number): Promise<UserTaskCompletion | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(userTaskCompletions)
+    .where(and(
+      eq(userTaskCompletions.userId, userId),
+      eq(userTaskCompletions.taskId, taskId)
+    ))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+export async function upsertUserTaskProgress(
+  userId: number, 
+  taskId: number, 
+  progress: number, 
+  isCompleted: boolean = false,
+  pointsAwarded: number = 0
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  const existing = await getUserTaskCompletion(userId, taskId);
+  
+  if (existing) {
+    const updateData: Partial<InsertUserTaskCompletion> = {
+      currentProgress: progress,
+      lastProgressAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    if (isCompleted && !existing.isCompleted) {
+      updateData.isCompleted = true;
+      updateData.completedAt = new Date();
+      updateData.completionCount = existing.completionCount + 1;
+      updateData.pointsAwarded = existing.pointsAwarded + pointsAwarded;
+    }
+    
+    await db.update(userTaskCompletions)
+      .set(updateData)
+      .where(eq(userTaskCompletions.id, existing.id));
+  } else {
+    await db.insert(userTaskCompletions).values({
+      userId,
+      taskId,
+      currentProgress: progress,
+      isCompleted,
+      completionCount: isCompleted ? 1 : 0,
+      pointsAwarded,
+      completedAt: isCompleted ? new Date() : null,
+      lastProgressAt: new Date(),
+    });
+  }
+}
+
+// ==================== GAMIFICATION - POINTS ====================
+
+export async function getUserPointsBalance(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  const result = await db.select({ pointsBalance: users.pointsBalance })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  
+  return result[0]?.pointsBalance || 0;
+}
+
+export async function addPointsTransaction(
+  userId: number,
+  amount: number,
+  type: 'task_completion' | 'order_reward' | 'referral_bonus' | 'admin_adjustment' | 'redemption' | 'expiration',
+  description?: string,
+  referenceType?: string,
+  referenceId?: number
+): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  
+  // Get current balance
+  const currentBalance = await getUserPointsBalance(userId);
+  const newBalance = currentBalance + amount;
+  
+  // Update user's points balance
+  await db.update(users)
+    .set({ pointsBalance: newBalance, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+  
+  // Record the transaction
+  const result = await db.insert(pointsTransactions).values({
+    userId,
+    amount,
+    type,
+    referenceType,
+    referenceId,
+    balanceAfter: newBalance,
+    description,
+  });
+  
+  return result[0]?.insertId || 0;
+}
+
+export async function getUserPointsHistory(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db.select().from(pointsTransactions)
+    .where(eq(pointsTransactions.userId, userId))
+    .orderBy(desc(pointsTransactions.createdAt))
+    .limit(limit);
+}
+
+// ==================== GAMIFICATION - COMPLETE TASK ====================
+
+export async function completeTask(userId: number, taskSlug: string): Promise<{
+  success: boolean;
+  pointsAwarded: number;
+  message: string;
+}> {
+  const db = await getDb();
+  if (!db) return { success: false, pointsAwarded: 0, message: 'Database not available' };
+  
+  // Get the task
+  const task = await getTaskBySlug(taskSlug);
+  if (!task) {
+    return { success: false, pointsAwarded: 0, message: 'Task not found' };
+  }
+  
+  if (!task.isActive) {
+    return { success: false, pointsAwarded: 0, message: 'Task is not active' };
+  }
+  
+  // Check if already completed (for non-repeatable tasks)
+  const existing = await getUserTaskCompletion(userId, task.id);
+  if (existing?.isCompleted && !task.isRepeatable) {
+    return { success: false, pointsAwarded: 0, message: 'Task already completed' };
+  }
+  
+  // Check max completions
+  if (task.maxCompletions && existing && existing.completionCount >= task.maxCompletions) {
+    return { success: false, pointsAwarded: 0, message: 'Maximum completions reached' };
+  }
+  
+  // Check cooldown for repeatable tasks
+  if (task.isRepeatable && task.repeatCooldownHours && existing?.completedAt) {
+    const cooldownMs = task.repeatCooldownHours * 60 * 60 * 1000;
+    const timeSinceCompletion = Date.now() - new Date(existing.completedAt).getTime();
+    if (timeSinceCompletion < cooldownMs) {
+      const hoursRemaining = Math.ceil((cooldownMs - timeSinceCompletion) / (60 * 60 * 1000));
+      return { success: false, pointsAwarded: 0, message: `Please wait ${hoursRemaining} hours before completing again` };
+    }
+  }
+  
+  // Award points
+  const pointsAwarded = task.pointsReward;
+  await addPointsTransaction(
+    userId,
+    pointsAwarded,
+    'task_completion',
+    `Completed task: ${task.titleRu || task.title}`,
+    'task',
+    task.id
+  );
+  
+  // Update task completion
+  await upsertUserTaskProgress(userId, task.id, task.requiredValue || 1, true, pointsAwarded);
+  
+  return { 
+    success: true, 
+    pointsAwarded, 
+    message: `Task completed! +${pointsAwarded} points` 
+  };
+}
+
+// ==================== USER PREFERENCES ====================
+
+export async function getUserPreferences(userId: number): Promise<UserPreferences | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db.select().from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+export async function upsertUserPreferences(userId: number, data: Partial<InsertUserPreferences>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  const existing = await getUserPreferences(userId);
+  
+  if (existing) {
+    await db.update(userPreferences)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userPreferences.userId, userId));
+  } else {
+    await db.insert(userPreferences).values({
+      userId,
+      ...data,
+    });
+  }
+}
+
+// ==================== SEED DEFAULT TASKS ====================
+
+export async function seedDefaultTasks(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  const defaultTasks: InsertGamificationTask[] = [
+    {
+      slug: 'link_telegram',
+      title: 'Link Telegram Account',
+      titleRu: 'Привязать Telegram',
+      description: 'Connect your Telegram account to earn points',
+      descriptionRu: 'Привяжите аккаунт Telegram для получения баллов',
+      taskType: 'link_telegram',
+      pointsReward: 100,
+      requiredValue: 1,
+      isRepeatable: false,
+      iconName: 'MessageCircle',
+      sortOrder: 1,
+      isActive: true,
+    },
+    {
+      slug: 'link_email',
+      title: 'Add Email Address',
+      titleRu: 'Добавить Email',
+      description: 'Add your email address to earn points',
+      descriptionRu: 'Добавьте email для получения баллов',
+      taskType: 'link_email',
+      pointsReward: 50,
+      requiredValue: 1,
+      isRepeatable: false,
+      iconName: 'Mail',
+      sortOrder: 2,
+      isActive: true,
+    },
+    {
+      slug: 'first_order',
+      title: 'First Order',
+      titleRu: 'Первый заказ',
+      description: 'Complete your first order',
+      descriptionRu: 'Сделайте первый заказ',
+      taskType: 'first_order',
+      pointsReward: 200,
+      requiredValue: 1,
+      isRepeatable: false,
+      iconName: 'ShoppingBag',
+      sortOrder: 3,
+      isActive: true,
+    },
+    {
+      slug: 'order_5',
+      title: 'Regular Customer',
+      titleRu: 'Постоянный клиент',
+      description: 'Complete 5 orders',
+      descriptionRu: 'Сделайте 5 заказов',
+      taskType: 'order_count',
+      pointsReward: 300,
+      requiredValue: 5,
+      isRepeatable: false,
+      iconName: 'Award',
+      sortOrder: 4,
+      isActive: true,
+    },
+    {
+      slug: 'daily_login',
+      title: 'Daily Visit',
+      titleRu: 'Ежедневный визит',
+      description: 'Visit the app daily',
+      descriptionRu: 'Заходите в приложение каждый день',
+      taskType: 'daily_login',
+      pointsReward: 10,
+      requiredValue: 1,
+      isRepeatable: true,
+      repeatCooldownHours: 24,
+      iconName: 'Calendar',
+      sortOrder: 5,
+      isActive: true,
+    },
+  ];
+  
+  for (const task of defaultTasks) {
+    const existing = await getTaskBySlug(task.slug);
+    if (!existing) {
+      await createTask(task);
+    }
+  }
 }

@@ -214,3 +214,136 @@ export const maintenanceLogs = mysqlTable("maintenance_logs", {
 
 export type MaintenanceLog = typeof maintenanceLogs.$inferSelect;
 export type InsertMaintenanceLog = typeof maintenanceLogs.$inferInsert;
+
+
+/**
+ * Gamification tasks - defines available tasks users can complete for points
+ */
+export const gamificationTasks = mysqlTable("gamification_tasks", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  title: varchar("title", { length: 128 }).notNull(),
+  titleRu: varchar("titleRu", { length: 128 }),
+  description: text("description"),
+  descriptionRu: text("descriptionRu"),
+  
+  // Task type and action
+  taskType: mysqlEnum("taskType", [
+    "link_telegram",    // Link Telegram account
+    "link_email",       // Add email address
+    "first_order",      // Complete first order
+    "order_count",      // Complete X orders
+    "spend_amount",     // Spend X amount
+    "referral",         // Refer a friend
+    "daily_login",      // Daily app visit
+    "review",           // Leave a review
+    "social_share",     // Share on social media
+    "custom"            // Custom task defined by admin
+  ]).notNull(),
+  
+  // Points reward
+  pointsReward: int("pointsReward").notNull(),
+  
+  // Task requirements
+  requiredValue: int("requiredValue").default(1), // e.g., 5 orders, 100000 UZS spent
+  
+  // Repeatability
+  isRepeatable: boolean("isRepeatable").default(false).notNull(),
+  repeatCooldownHours: int("repeatCooldownHours"), // Hours before task can be repeated
+  maxCompletions: int("maxCompletions"), // Max times a user can complete this task
+  
+  // Display
+  iconName: varchar("iconName", { length: 64 }), // Lucide icon name
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  
+  // Validity period
+  startsAt: timestamp("startsAt"),
+  expiresAt: timestamp("expiresAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GamificationTask = typeof gamificationTasks.$inferSelect;
+export type InsertGamificationTask = typeof gamificationTasks.$inferInsert;
+
+/**
+ * User task completions - tracks which tasks users have completed
+ */
+export const userTaskCompletions = mysqlTable("user_task_completions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  taskId: int("taskId").notNull(),
+  
+  // Progress tracking
+  currentProgress: int("currentProgress").default(0).notNull(), // For progressive tasks
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  completionCount: int("completionCount").default(0).notNull(), // Times completed
+  
+  // Points awarded
+  pointsAwarded: int("pointsAwarded").default(0).notNull(),
+  
+  completedAt: timestamp("completedAt"),
+  lastProgressAt: timestamp("lastProgressAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserTaskCompletion = typeof userTaskCompletions.$inferSelect;
+export type InsertUserTaskCompletion = typeof userTaskCompletions.$inferInsert;
+
+/**
+ * Points transactions - logs all point earnings and spendings
+ */
+export const pointsTransactions = mysqlTable("points_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  
+  // Transaction details
+  amount: int("amount").notNull(), // Positive for earn, negative for spend
+  type: mysqlEnum("type", [
+    "task_completion",  // Points from completing a task
+    "order_reward",     // Points from placing an order
+    "referral_bonus",   // Points from referral
+    "admin_adjustment", // Manual adjustment by admin
+    "redemption",       // Points spent on rewards
+    "expiration"        // Points expired
+  ]).notNull(),
+  
+  // Reference to related entity
+  referenceType: varchar("referenceType", { length: 32 }), // 'task', 'order', 'referral', etc.
+  referenceId: int("referenceId"),
+  
+  // Balance after transaction
+  balanceAfter: int("balanceAfter").notNull(),
+  
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PointsTransaction = typeof pointsTransactions.$inferSelect;
+export type InsertPointsTransaction = typeof pointsTransactions.$inferInsert;
+
+/**
+ * User preferences - stores user's homepage customization settings
+ */
+export const userPreferences = mysqlTable("user_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  
+  // Homepage sections configuration
+  // JSON array of section configs: [{id, visible, size, order}]
+  homeSections: json("homeSections"),
+  
+  // Other preferences
+  language: varchar("language", { length: 8 }).default("ru"),
+  theme: mysqlEnum("theme", ["light", "dark", "system"]).default("system"),
+  notificationsEnabled: boolean("notificationsEnabled").default(true),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type InsertUserPreferences = typeof userPreferences.$inferInsert;

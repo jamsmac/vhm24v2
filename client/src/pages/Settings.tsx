@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw, Monitor, Send, Palette } from "lucide-react";
+import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw, Monitor, Send, Palette, LayoutGrid } from "lucide-react";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -343,11 +343,36 @@ export default function Settings() {
           </Card>
         </motion.div>
 
-        {/* Language Section */}
+        {/* Home Customization Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <h2 className="text-sm font-medium text-muted-foreground mb-2 px-1">Персонализация</h2>
+          <Card className="coffee-card">
+            <Link href="/profile/home-settings">
+              <button className="w-full flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                    <LayoutGrid className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-foreground">Настройка главной</p>
+                    <p className="text-sm text-muted-foreground">Порядок и видимость разделов</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </Link>
+          </Card>
+        </motion.div>
+
+        {/* Language Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
         >
           <h2 className="text-sm font-medium text-muted-foreground mb-2 px-1">Язык и регион</h2>
           <Card className="coffee-card">

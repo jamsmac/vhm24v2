@@ -65,6 +65,12 @@ export default function Profile() {
       color: 'text-caramel'
     },
     { 
+      icon: Star, 
+      label: 'Задания', 
+      href: '/profile/tasks',
+      color: 'text-amber-500'
+    },
+    { 
       icon: Settings, 
       label: 'Настройки', 
       href: '/profile/settings',

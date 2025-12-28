@@ -571,6 +571,185 @@ export const appRouter = router({
       return await db.getAdminStats();
     }),
   }),
+
+  // Gamification API
+  gamification: router({
+    // Get user's tasks with progress
+    tasks: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserTasksWithProgress(ctx.user.id);
+    }),
+    
+    // Get user's points balance
+    points: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserPointsBalance(ctx.user.id);
+    }),
+    
+    // Get points history
+    pointsHistory: protectedProcedure
+      .input(z.object({ limit: z.number().optional().default(50) }))
+      .query(async ({ ctx, input }) => {
+        return await db.getUserPointsHistory(ctx.user.id, input.limit);
+      }),
+    
+    // Complete a task
+    completeTask: protectedProcedure
+      .input(z.object({ taskSlug: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.completeTask(ctx.user.id, input.taskSlug);
+      }),
+    
+    // Link email (complete link_email task)
+    linkEmail: protectedProcedure
+      .input(z.object({ email: z.string().email() }))
+      .mutation(async ({ ctx, input }) => {
+        // Update user's email
+        await db.updateUserEmail(ctx.user.id, input.email);
+        
+        // Complete the task
+        const result = await db.completeTask(ctx.user.id, 'link_email');
+        
+        return {
+          emailUpdated: true,
+          ...result,
+        };
+      }),
+    
+    // Check and complete daily login task
+    dailyLogin: protectedProcedure.mutation(async ({ ctx }) => {
+      return await db.completeTask(ctx.user.id, 'daily_login');
+    }),
+    
+    // Admin: Get all tasks
+    adminTasks: adminProcedure
+      .input(z.object({ includeInactive: z.boolean().optional().default(false) }))
+      .query(async ({ input }) => {
+        return await db.getAllTasks(input.includeInactive);
+      }),
+    
+    // Admin: Create task
+    adminCreateTask: adminProcedure
+      .input(z.object({
+        slug: z.string(),
+        title: z.string(),
+        titleRu: z.string().optional(),
+        description: z.string().optional(),
+        descriptionRu: z.string().optional(),
+        taskType: z.enum([
+          'link_telegram', 'link_email', 'first_order', 'order_count',
+          'spend_amount', 'referral', 'daily_login', 'review', 'social_share', 'custom'
+        ]),
+        pointsReward: z.number(),
+        requiredValue: z.number().optional().default(1),
+        isRepeatable: z.boolean().optional().default(false),
+        repeatCooldownHours: z.number().optional(),
+        maxCompletions: z.number().optional(),
+        iconName: z.string().optional(),
+        sortOrder: z.number().optional().default(0),
+        isActive: z.boolean().optional().default(true),
+        startsAt: z.date().optional(),
+        expiresAt: z.date().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const taskId = await db.createTask(input);
+        return { success: true, taskId };
+      }),
+    
+    // Admin: Update task
+    adminUpdateTask: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        slug: z.string().optional(),
+        title: z.string().optional(),
+        titleRu: z.string().optional(),
+        description: z.string().optional(),
+        descriptionRu: z.string().optional(),
+        pointsReward: z.number().optional(),
+        requiredValue: z.number().optional(),
+        isRepeatable: z.boolean().optional(),
+        repeatCooldownHours: z.number().optional(),
+        maxCompletions: z.number().optional(),
+        iconName: z.string().optional(),
+        sortOrder: z.number().optional(),
+        isActive: z.boolean().optional(),
+        startsAt: z.date().optional(),
+        expiresAt: z.date().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateTask(id, data);
+        return { success: true };
+      }),
+    
+    // Admin: Delete task
+    adminDeleteTask: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteTask(input.id);
+        return { success: true };
+      }),
+    
+    // Admin: Adjust user points
+    adminAdjustPoints: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        amount: z.number(),
+        description: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.addPointsTransaction(
+          input.userId,
+          input.amount,
+          'admin_adjustment',
+          input.description || 'Admin adjustment'
+        );
+        return { success: true };
+      }),
+    
+    // Seed default tasks (admin only)
+    seedTasks: adminProcedure.mutation(async () => {
+      await db.seedDefaultTasks();
+      return { success: true };
+    }),
+    
+    // Get user preferences (for home customization)
+    getPreferences: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserPreferences(ctx.user.id);
+    }),
+    
+    // Update user preferences
+    updatePreferences: protectedProcedure
+      .input(z.object({
+        homeSections: z.any().optional(),
+        language: z.string().optional(),
+        theme: z.enum(['light', 'dark', 'system']).optional(),
+        notificationsEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.upsertUserPreferences(ctx.user.id, input);
+        return { success: true };
+      }),
+  }),
+
+  // User Preferences API
+  preferences: router({
+    // Get user preferences
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserPreferences(ctx.user.id);
+    }),
+    
+    // Update user preferences
+    update: protectedProcedure
+      .input(z.object({
+        homeSections: z.any().optional(),
+        language: z.string().optional(),
+        theme: z.enum(['light', 'dark', 'system']).optional(),
+        notificationsEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await db.upsertUserPreferences(ctx.user.id, input);
+        return { success: true };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
