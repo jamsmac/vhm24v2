@@ -88,3 +88,13 @@
 - [x] Mark completed steps with checkmark icon
 - [x] Dim past steps in directions panel
 - [x] Test location tracking functionality (20 tests passing)
+
+## Estimated Arrival Time (ETA)
+- [x] Calculate ETA from current time + remaining duration
+- [x] Display ETA in route info panel (green/blue pill with clock icon)
+- [x] Update ETA in real-time as user travels
+- [x] Recalculate remaining duration based on completed steps
+- [x] Format time in local timezone (HH:MM) using ru-RU locale
+- [x] Add visual indicator for ETA updates (pulsing clock when tracking)
+- [x] Show updated remaining time with strikethrough original
+- [x] Test ETA functionality (48 tests passing)

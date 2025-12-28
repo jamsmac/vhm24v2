@@ -5,7 +5,7 @@
  * Features route display on embedded map with turn-by-turn directions
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { NavigatorDialog } from "@/components/NavigatorDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -214,6 +214,9 @@ export default function Locations() {
   // User position marker ref
   const userMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const userAccuracyCircleRef = useRef<google.maps.Circle | null>(null);
+  
+  // ETA state - route start time for calculating remaining time
+  const [routeStartTime, setRouteStartTime] = useState<Date | null>(null);
   
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -597,6 +600,54 @@ export default function Locations() {
     }
   }, [locationState.currentStepIndex, routeInfo?.steps]);
 
+  // Calculate ETA based on remaining route duration
+  const etaInfo = useMemo(() => {
+    if (!routeInfo || !showingRoute) return null;
+    
+    // Calculate remaining duration based on completed steps
+    let remainingDurationSeconds = routeInfo.durationValue;
+    
+    if (locationState.isTracking && locationState.currentStepIndex >= 0 && routeInfo.steps.length > 0) {
+      // Sum up duration of remaining steps
+      // Each step's duration is in format like "2 мин" or "30 с"
+      // We'll estimate based on proportion of steps completed
+      const totalSteps = routeInfo.steps.length;
+      const completedSteps = locationState.currentStepIndex;
+      const progressRatio = completedSteps / totalSteps;
+      remainingDurationSeconds = Math.round(routeInfo.durationValue * (1 - progressRatio));
+    }
+    
+    // Calculate ETA
+    const now = new Date();
+    const etaDate = new Date(now.getTime() + remainingDurationSeconds * 1000);
+    
+    // Format ETA time
+    const etaTime = etaDate.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    
+    // Format remaining duration
+    const remainingMinutes = Math.ceil(remainingDurationSeconds / 60);
+    let remainingText: string;
+    if (remainingMinutes < 1) {
+      remainingText = '< 1 мин';
+    } else if (remainingMinutes < 60) {
+      remainingText = `${remainingMinutes} мин`;
+    } else {
+      const hours = Math.floor(remainingMinutes / 60);
+      const mins = remainingMinutes % 60;
+      remainingText = mins > 0 ? `${hours} ч ${mins} мин` : `${hours} ч`;
+    }
+    
+    return {
+      etaTime,
+      remainingText,
+      remainingSeconds: remainingDurationSeconds,
+      isUpdating: locationState.isTracking,
+    };
+  }, [routeInfo, showingRoute, locationState.isTracking, locationState.currentStepIndex]);
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -749,7 +800,16 @@ export default function Locations() {
                             </div>
                             <div>
                               <p className="font-semibold text-foreground">{routeInfo.distance}</p>
-                              <p className="text-xs text-muted-foreground">~{routeInfo.duration}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {etaInfo?.isUpdating && etaInfo.remainingText !== routeInfo.duration ? (
+                                  <span className="flex items-center gap-1">
+                                    <span className="line-through opacity-50">~{routeInfo.duration}</span>
+                                    <span className="text-blue-600 dark:text-blue-400 font-medium">~{etaInfo.remainingText}</span>
+                                  </span>
+                                ) : (
+                                  <>~{routeInfo.duration}</>
+                                )}
+                              </p>
                             </div>
                           </div>
                           
@@ -762,6 +822,22 @@ export default function Locations() {
                             )}
                             <span>{travelMode === 'WALKING' ? 'Пешком' : 'На авто'}</span>
                           </div>
+                          
+                          {/* ETA Display */}
+                          {etaInfo && (
+                            <div className={cn(
+                              "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-all",
+                              etaInfo.isUpdating 
+                                ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300" 
+                                : "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300"
+                            )}>
+                              <Clock className={cn(
+                                "w-3 h-3",
+                                etaInfo.isUpdating && "animate-pulse"
+                              )} />
+                              <span className="font-medium">Прибытие: {etaInfo.etaTime}</span>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex items-center gap-1">
