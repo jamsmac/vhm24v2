@@ -1,6 +1,7 @@
 /**
  * VendHub TWA - Home Page Customization Settings
  * Allows users to customize their homepage sections
+ * Includes live preview of changes
  */
 
 import { Button } from "@/components/ui/button";
@@ -31,10 +32,13 @@ import {
   EyeOff,
   RotateCcw,
   Check,
-  Loader2
+  Loader2,
+  Smartphone,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { motion, Reorder } from "framer-motion";
+import { motion, Reorder, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -138,12 +142,128 @@ const sizeLabels: Record<string, string> = {
   large: 'Большой',
 };
 
+// Preview component for miniature homepage
+function HomePreview({ sections }: { sections: HomeSection[] }) {
+  const visibleSections = sections.filter(s => s.visible);
+  
+  // Section preview components
+  const renderSectionPreview = (section: HomeSection) => {
+    const sizeClass = section.size === 'compact' ? 'h-4' : section.size === 'large' ? 'h-10' : 'h-6';
+    
+    switch (section.id) {
+      case 'quick_actions':
+        return (
+          <div className="flex gap-1">
+            <div className={cn("flex-1 rounded bg-amber-600/30 dark:bg-amber-500/40", sizeClass)} />
+            <div className={cn("flex-1 rounded bg-amber-500/30 dark:bg-amber-400/40", sizeClass)} />
+          </div>
+        );
+      case 'secondary_actions':
+        return (
+          <div className="flex gap-1">
+            <div className={cn("flex-1 rounded bg-blue-500/20 dark:bg-blue-400/30", section.size === 'compact' ? 'h-3' : 'h-4')} />
+            <div className={cn("flex-1 rounded bg-red-500/20 dark:bg-red-400/30", section.size === 'compact' ? 'h-3' : 'h-4')} />
+          </div>
+        );
+      case 'bonus_card':
+        return (
+          <div className={cn("rounded bg-gradient-to-r from-amber-700/40 to-amber-800/40 dark:from-amber-600/50 dark:to-amber-700/50", sizeClass)} />
+        );
+      case 'stats':
+        return (
+          <div className="flex gap-1">
+            <div className={cn("flex-1 rounded bg-muted", section.size === 'compact' ? 'h-3' : 'h-5')} />
+            <div className={cn("flex-1 rounded bg-muted", section.size === 'compact' ? 'h-3' : 'h-5')} />
+            <div className={cn("flex-1 rounded bg-muted", section.size === 'compact' ? 'h-3' : 'h-5')} />
+          </div>
+        );
+      case 'recommendations':
+        return (
+          <div className="space-y-1">
+            <div className="h-1.5 w-12 rounded bg-muted" />
+            <div className="flex gap-1 overflow-hidden">
+              {[...Array(section.size === 'compact' ? 2 : section.size === 'large' ? 4 : 3)].map((_, i) => (
+                <div key={i} className={cn("rounded bg-muted shrink-0", section.size === 'compact' ? 'w-6 h-6' : 'w-8 h-8')} />
+              ))}
+            </div>
+          </div>
+        );
+      case 'promo_banner':
+        return (
+          <div className={cn("rounded bg-gradient-to-r from-amber-500/30 to-amber-400/30 dark:from-amber-500/40 dark:to-amber-400/40", sizeClass)} />
+        );
+      case 'popular':
+        return (
+          <div className="space-y-1">
+            <div className="h-1.5 w-10 rounded bg-muted" />
+            <div className={cn("grid gap-1", section.size === 'large' ? 'grid-cols-3' : 'grid-cols-2')}>
+              {[...Array(section.size === 'compact' ? 2 : section.size === 'large' ? 6 : 4)].map((_, i) => (
+                <div key={i} className={cn("rounded bg-muted", section.size === 'compact' ? 'h-6' : 'h-8')} />
+              ))}
+            </div>
+          </div>
+        );
+      default:
+        return <div className="h-6 rounded bg-muted" />;
+    }
+  };
+
+  return (
+    <div className="bg-background border-2 border-border rounded-2xl overflow-hidden shadow-lg">
+      {/* Phone frame header */}
+      <div className="bg-gradient-to-br from-amber-600/20 via-amber-100/30 dark:via-amber-900/20 to-background px-3 py-2">
+        {/* Status bar */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded bg-amber-600/30" />
+            <div className="h-2 w-10 rounded bg-muted" />
+          </div>
+          <div className="w-4 h-4 rounded-full bg-muted" />
+        </div>
+        {/* Welcome */}
+        <div className="space-y-0.5">
+          <div className="h-1.5 w-12 rounded bg-muted-foreground/30" />
+          <div className="h-2.5 w-20 rounded bg-foreground/30" />
+        </div>
+      </div>
+      
+      {/* Content area */}
+      <div className="px-2 py-2 space-y-2 max-h-64 overflow-y-auto">
+        <AnimatePresence mode="popLayout">
+          {visibleSections.map((section) => (
+            <motion.div
+              key={section.id}
+              layout
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderSectionPreview(section)}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+      
+      {/* Bottom nav placeholder */}
+      <div className="border-t bg-card px-3 py-1.5">
+        <div className="flex justify-around">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="w-5 h-5 rounded bg-muted" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomeSettings() {
   const { haptic } = useTelegram();
   const [, navigate] = useLocation();
   const [sections, setSections] = useState<HomeSection[]>(defaultSections);
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
   
   // Fetch user preferences
   const { data: preferences, isLoading, refetch } = trpc.gamification.getPreferences.useQuery();
@@ -266,6 +386,48 @@ export default function HomeSettings() {
           </div>
         ) : (
           <>
+            {/* Preview Section */}
+            <Card className="mb-4 overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between p-3 hover:bg-secondary/50 transition-colors"
+                onClick={() => {
+                  haptic.selection();
+                  setShowPreview(!showPreview);
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-5 h-5 text-amber-600" />
+                  <span className="font-medium">Предпросмотр</span>
+                </div>
+                {showPreview ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </button>
+              
+              <AnimatePresence>
+                {showPreview && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-4 pt-0 flex justify-center">
+                      <div className="w-48">
+                        <HomePreview sections={sections} />
+                      </div>
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground pb-3">
+                      Так будет выглядеть ваша главная страница
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Card>
+
             {/* Instructions */}
             <Card className="p-3 mb-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">
               <p className="text-sm text-amber-800 dark:text-amber-200">

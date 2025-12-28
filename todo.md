@@ -157,3 +157,11 @@
 - [x] Handle loading state while fetching preferences (Loader2 spinner)
 - [x] Fallback to defaults for new users (defaultSections array)
 - [x] Test preferences application (66 tests passing)
+
+## Homepage Preview in Settings
+- [x] Create miniature preview component showing section layout (HomePreview)
+- [x] Update preview in real-time as user changes settings (AnimatePresence)
+- [x] Show section order, visibility, and size in preview
+- [x] Add toggle to show/hide preview panel (collapsible card)
+- [x] Style preview to match actual homepage appearance (phone frame design)
+- [x] Test preview functionality (66 tests passing)
