@@ -26,6 +26,12 @@ import Favorites from "./pages/Favorites";
 import DrinkDetail from "./pages/DrinkDetail";
 import Promotions from "./pages/Promotions";
 import NotificationSettings from "./pages/NotificationSettings";
+
+// Admin Pages
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminProducts from "./pages/admin/Products";
+import AdminOrders from "./pages/admin/Orders";
+import AdminPromoCodes from "./pages/admin/PromoCodes";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -50,6 +56,12 @@ function Router() {
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />
+      
+      {/* Admin Routes */}
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/products" component={AdminProducts} />
+      <Route path="/admin/orders" component={AdminOrders} />
+      <Route path="/admin/promo" component={AdminPromoCodes} />
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

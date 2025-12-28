@@ -355,11 +355,146 @@ export const appRouter = router({
     }),
   }),
 
-  // Admin: Seed data
+  // Admin API
   admin: router({
     seedData: adminProcedure.mutation(async () => {
       await db.seedInitialData();
       return { success: true };
+    }),
+    
+    // Products CRUD
+    products: router({
+      create: adminProcedure
+        .input(z.object({
+          slug: z.string(),
+          name: z.string(),
+          nameRu: z.string().optional(),
+          nameUz: z.string().optional(),
+          description: z.string().optional(),
+          descriptionRu: z.string().optional(),
+          descriptionUz: z.string().optional(),
+          price: z.number(),
+          category: z.enum(['coffee', 'tea', 'cold_drinks', 'snacks', 'other']).default('coffee'),
+          imageUrl: z.string().optional(),
+          isAvailable: z.boolean().default(true),
+          isPopular: z.boolean().default(false),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createProduct(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          slug: z.string().optional(),
+          name: z.string().optional(),
+          nameRu: z.string().optional(),
+          nameUz: z.string().optional(),
+          description: z.string().optional(),
+          descriptionRu: z.string().optional(),
+          descriptionUz: z.string().optional(),
+          price: z.number().optional(),
+          category: z.enum(['coffee', 'tea', 'cold_drinks', 'snacks', 'other']).optional(),
+          imageUrl: z.string().optional(),
+          isAvailable: z.boolean().optional(),
+          isPopular: z.boolean().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateProduct(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteProduct(input.id);
+          return { success: true };
+        }),
+    }),
+    
+    // Orders management
+    orders: router({
+      list: adminProcedure
+        .input(z.object({
+          limit: z.number().optional().default(50),
+          status: z.enum(['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled']).optional(),
+        }))
+        .query(async ({ input }) => {
+          return await db.getAllOrders(input.limit, input.status);
+        }),
+      
+      updateStatus: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          status: z.enum(['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled']),
+        }))
+        .mutation(async ({ input }) => {
+          await db.updateOrderStatus(input.id, input.status);
+          return { success: true };
+        }),
+    }),
+    
+    // Promo codes CRUD
+    promo: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllPromoCodes();
+      }),
+      
+      create: adminProcedure
+        .input(z.object({
+          code: z.string(),
+          discountPercent: z.number(),
+          minOrderAmount: z.number().optional().default(0),
+          maxUses: z.number().optional(),
+          expiresAt: z.date().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createPromoCode(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          code: z.string().optional(),
+          discountPercent: z.number().optional(),
+          minOrderAmount: z.number().optional(),
+          maxUses: z.number().optional(),
+          expiresAt: z.date().optional(),
+          isActive: z.boolean().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updatePromoCode(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deletePromoCode(input.id);
+          return { success: true };
+        }),
+    }),
+    
+    // Machines management
+    machines: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllMachines();
+      }),
+      
+      updateStatus: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          status: z.enum(['online', 'offline', 'maintenance']),
+        }))
+        .mutation(async ({ input }) => {
+          await db.updateMachineStatus(input.id, input.status);
+          return { success: true };
+        }),
+    }),
+    
+    // Dashboard stats
+    stats: adminProcedure.query(async () => {
+      return await db.getAdminStats();
     }),
   }),
 });

@@ -471,3 +471,112 @@ export async function seedInitialData(): Promise<void> {
   
   console.log('[Database] Initial data seeded successfully');
 }
+
+
+// ==================== ADMIN QUERIES ====================
+
+export async function updateProduct(id: number, data: Partial<InsertProduct>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(products).set({ ...data, updatedAt: new Date() }).where(eq(products.id, id));
+}
+
+export async function deleteProduct(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(products).where(eq(products.id, id));
+}
+
+export async function getAllOrders(limit: number = 50, status?: Order['status']): Promise<Order[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  if (status) {
+    return await db.select().from(orders)
+      .where(eq(orders.status, status))
+      .orderBy(desc(orders.createdAt))
+      .limit(limit);
+  }
+  
+  return await db.select().from(orders)
+    .orderBy(desc(orders.createdAt))
+    .limit(limit);
+}
+
+export async function getAllPromoCodes(): Promise<PromoCode[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+}
+
+export async function updatePromoCode(id: number, data: Partial<InsertPromoCode & { isActive?: boolean }>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  if (data.code) {
+    data.code = data.code.toUpperCase();
+  }
+  await db.update(promoCodes).set(data).where(eq(promoCodes.id, id));
+}
+
+export async function deletePromoCode(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(promoCodes).where(eq(promoCodes.id, id));
+}
+
+export async function updateMachineStatus(id: number, status: Machine['status']): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(machines).set({ status, updatedAt: new Date() }).where(eq(machines.id, id));
+}
+
+export async function getAdminStats() {
+  const db = await getDb();
+  if (!db) return {
+    totalRevenue: 0,
+    totalOrders: 0,
+    totalProducts: 0,
+    totalUsers: 0,
+    pendingOrders: 0,
+    activePromoCodes: 0,
+  };
+  
+  // Get total revenue
+  const revenueResult = await db.select({ 
+    total: sql<number>`COALESCE(SUM(${orders.total}), 0)` 
+  }).from(orders).where(eq(orders.paymentStatus, 'paid'));
+  
+  // Get total orders
+  const ordersResult = await db.select({ 
+    count: sql<number>`COUNT(*)` 
+  }).from(orders);
+  
+  // Get pending orders
+  const pendingResult = await db.select({ 
+    count: sql<number>`COUNT(*)` 
+  }).from(orders).where(eq(orders.status, 'pending'));
+  
+  // Get total products
+  const productsResult = await db.select({ 
+    count: sql<number>`COUNT(*)` 
+  }).from(products);
+  
+  // Get total users
+  const usersResult = await db.select({ 
+    count: sql<number>`COUNT(*)` 
+  }).from(users);
+  
+  // Get active promo codes
+  const promoResult = await db.select({ 
+    count: sql<number>`COUNT(*)` 
+  }).from(promoCodes).where(eq(promoCodes.isActive, true));
+  
+  return {
+    totalRevenue: revenueResult[0]?.total || 0,
+    totalOrders: ordersResult[0]?.count || 0,
+    pendingOrders: pendingResult[0]?.count || 0,
+    totalProducts: productsResult[0]?.count || 0,
+    totalUsers: usersResult[0]?.count || 0,
+    activePromoCodes: promoResult[0]?.count || 0,
+  };
+}
