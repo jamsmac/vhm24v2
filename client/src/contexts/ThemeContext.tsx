@@ -56,11 +56,11 @@ export function ThemeProvider({
     // Change theme
     setTheme(prev => (prev === "light" ? "dark" : "light"));
     
-    // Remove transition class after animation completes
+    // Remove transition class after animation completes (350ms matches CSS duration)
     setTimeout(() => {
       root.classList.remove("theme-transition");
       setIsTransitioning(false);
-    }, 400);
+    }, 350);
   }, [switchable]);
 
   return (
