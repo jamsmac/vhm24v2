@@ -1,7 +1,7 @@
 /**
  * VendHub TWA - Home Page Customization Settings
  * Allows users to customize their homepage sections
- * Includes live preview of changes
+ * Includes live preview and preset templates
  */
 
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { trpc } from "@/lib/trpc";
 import { 
@@ -35,7 +43,11 @@ import {
   Loader2,
   Smartphone,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Layout,
+  Minimize2,
+  Maximize2,
+  Zap
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion, Reorder, AnimatePresence } from "framer-motion";
@@ -54,6 +66,21 @@ interface HomeSection {
   order: number;
   canHide: boolean;
   canResize: boolean;
+}
+
+// Template definition
+interface Template {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ElementType;
+  color: string;
+  sections: Array<{
+    id: string;
+    visible: boolean;
+    size: 'compact' | 'normal' | 'large';
+    order: number;
+  }>;
 }
 
 const defaultSections: HomeSection[] = [
@@ -133,6 +160,74 @@ const defaultSections: HomeSection[] = [
     order: 7,
     canHide: true,
     canResize: true,
+  },
+];
+
+// Preset templates
+const templates: Template[] = [
+  {
+    id: 'minimalist',
+    name: 'Минималист',
+    description: 'Только самое важное',
+    icon: Minimize2,
+    color: 'bg-slate-500',
+    sections: [
+      { id: 'quick_actions', visible: true, size: 'compact', order: 1 },
+      { id: 'secondary_actions', visible: false, size: 'normal', order: 2 },
+      { id: 'bonus_card', visible: true, size: 'compact', order: 3 },
+      { id: 'stats', visible: false, size: 'normal', order: 4 },
+      { id: 'recommendations', visible: false, size: 'normal', order: 5 },
+      { id: 'promo_banner', visible: false, size: 'normal', order: 6 },
+      { id: 'popular', visible: true, size: 'compact', order: 7 },
+    ],
+  },
+  {
+    id: 'standard',
+    name: 'Стандарт',
+    description: 'Сбалансированный вид',
+    icon: Layout,
+    color: 'bg-amber-500',
+    sections: [
+      { id: 'quick_actions', visible: true, size: 'normal', order: 1 },
+      { id: 'secondary_actions', visible: true, size: 'normal', order: 2 },
+      { id: 'bonus_card', visible: true, size: 'normal', order: 3 },
+      { id: 'stats', visible: true, size: 'normal', order: 4 },
+      { id: 'recommendations', visible: true, size: 'normal', order: 5 },
+      { id: 'promo_banner', visible: true, size: 'normal', order: 6 },
+      { id: 'popular', visible: true, size: 'normal', order: 7 },
+    ],
+  },
+  {
+    id: 'expanded',
+    name: 'Расширенный',
+    description: 'Максимум информации',
+    icon: Maximize2,
+    color: 'bg-blue-500',
+    sections: [
+      { id: 'quick_actions', visible: true, size: 'normal', order: 1 },
+      { id: 'bonus_card', visible: true, size: 'large', order: 2 },
+      { id: 'stats', visible: true, size: 'normal', order: 3 },
+      { id: 'recommendations', visible: true, size: 'large', order: 4 },
+      { id: 'secondary_actions', visible: true, size: 'normal', order: 5 },
+      { id: 'promo_banner', visible: true, size: 'normal', order: 6 },
+      { id: 'popular', visible: true, size: 'large', order: 7 },
+    ],
+  },
+  {
+    id: 'quick',
+    name: 'Быстрый заказ',
+    description: 'Фокус на заказах',
+    icon: Zap,
+    color: 'bg-green-500',
+    sections: [
+      { id: 'quick_actions', visible: true, size: 'normal', order: 1 },
+      { id: 'popular', visible: true, size: 'large', order: 2 },
+      { id: 'recommendations', visible: true, size: 'normal', order: 3 },
+      { id: 'promo_banner', visible: true, size: 'normal', order: 4 },
+      { id: 'secondary_actions', visible: true, size: 'normal', order: 5 },
+      { id: 'bonus_card', visible: true, size: 'compact', order: 6 },
+      { id: 'stats', visible: false, size: 'normal', order: 7 },
+    ],
   },
 ];
 
@@ -257,6 +352,21 @@ function HomePreview({ sections }: { sections: HomeSection[] }) {
   );
 }
 
+// Small template preview
+function TemplatePreview({ template }: { template: Template }) {
+  const previewSections = defaultSections.map(defaultSection => {
+    const templateSection = template.sections.find(s => s.id === defaultSection.id);
+    return {
+      ...defaultSection,
+      visible: templateSection?.visible ?? defaultSection.visible,
+      size: templateSection?.size ?? defaultSection.size,
+      order: templateSection?.order ?? defaultSection.order,
+    };
+  }).sort((a, b) => a.order - b.order);
+
+  return <HomePreview sections={previewSections} />;
+}
+
 export default function HomeSettings() {
   const { haptic } = useTelegram();
   const [, navigate] = useLocation();
@@ -264,6 +374,9 @@ export default function HomeSettings() {
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
+  const [showTemplates, setShowTemplates] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   
   // Fetch user preferences
   const { data: preferences, isLoading, refetch } = trpc.gamification.getPreferences.useQuery();
@@ -340,6 +453,33 @@ export default function HomeSettings() {
     toast.info('Настройки сброшены');
   };
 
+  const handleTemplateSelect = (template: Template) => {
+    haptic.selection();
+    setSelectedTemplate(template);
+    setShowConfirmDialog(true);
+  };
+
+  const handleApplyTemplate = () => {
+    if (!selectedTemplate) return;
+    
+    haptic.impact('medium');
+    
+    const newSections = defaultSections.map(defaultSection => {
+      const templateSection = selectedTemplate.sections.find(s => s.id === defaultSection.id);
+      return {
+        ...defaultSection,
+        visible: templateSection?.visible ?? defaultSection.visible,
+        size: templateSection?.size ?? defaultSection.size,
+        order: templateSection?.order ?? defaultSection.order,
+      };
+    }).sort((a, b) => a.order - b.order);
+    
+    setSections(newSections);
+    setHasChanges(true);
+    setShowConfirmDialog(false);
+    toast.success(`Шаблон "${selectedTemplate.name}" применён`);
+  };
+
   const handleSave = () => {
     haptic.impact('medium');
     setIsSaving(true);
@@ -386,6 +526,68 @@ export default function HomeSettings() {
           </div>
         ) : (
           <>
+            {/* Templates Section */}
+            <Card className="mb-4 overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between p-3 hover:bg-secondary/50 transition-colors"
+                onClick={() => {
+                  haptic.selection();
+                  setShowTemplates(!showTemplates);
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <Layout className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium">Готовые шаблоны</span>
+                </div>
+                {showTemplates ? (
+                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                )}
+              </button>
+              
+              <AnimatePresence>
+                {showTemplates && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-3 pt-0 grid grid-cols-2 gap-2">
+                      {templates.map((template) => {
+                        const Icon = template.icon;
+                        return (
+                          <Card
+                            key={template.id}
+                            className={cn(
+                              "p-3 cursor-pointer border-2 transition-all hover:shadow-md active:scale-[0.98]",
+                              "hover:border-amber-500/50"
+                            )}
+                            onClick={() => handleTemplateSelect(template)}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center text-white", template.color)}>
+                                <Icon className="w-4 h-4" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-sm truncate">{template.name}</h4>
+                                <p className="text-xs text-muted-foreground truncate">{template.description}</p>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-center text-muted-foreground pb-3">
+                      Выберите шаблон для быстрой настройки
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Card>
+
             {/* Preview Section */}
             <Card className="mb-4 overflow-hidden">
               <button
@@ -563,6 +765,42 @@ export default function HomeSettings() {
           </Button>
         </motion.div>
       )}
+
+      {/* Template Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Применить шаблон?</DialogTitle>
+            <DialogDescription>
+              Текущие настройки будут заменены на шаблон "{selectedTemplate?.name}". 
+              Вы сможете сохранить изменения или отменить их.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedTemplate && (
+            <div className="flex justify-center py-4">
+              <div className="w-40">
+                <TemplatePreview template={selectedTemplate} />
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700"
+              onClick={handleApplyTemplate}
+            >
+              Применить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

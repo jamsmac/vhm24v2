@@ -165,3 +165,11 @@
 - [x] Add toggle to show/hide preview panel (collapsible card)
 - [x] Style preview to match actual homepage appearance (phone frame design)
 - [x] Test preview functionality (66 tests passing)
+
+## Preset Homepage Templates
+- [x] Create template definitions (minimalist, standard, expanded, quick order)
+- [x] Add template selection UI with visual previews (2x2 grid)
+- [x] Apply template settings when selected
+- [x] Show confirmation dialog before applying template with preview
+- [x] Update preview when template is selected
+- [x] Test preset templates functionality (66 tests passing)
