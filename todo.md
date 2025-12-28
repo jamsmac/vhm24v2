@@ -27,3 +27,12 @@
 - [x] Add inventory level tracking per machine
 - [x] Add API endpoints for machines CRUD and inventory
 - [x] Test machines management functionality
+
+## Interactive Machines Map
+- [x] Create MachinesMap component with Google Maps integration
+- [x] Add custom markers for different machine statuses (online/offline/maintenance)
+- [x] Implement status filtering controls
+- [x] Add machine info popup on marker click
+- [x] Integrate map into admin panel (/admin/machines/map)
+- [x] Add list/map view toggle
+- [x] Test map functionality

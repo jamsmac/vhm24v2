@@ -33,6 +33,7 @@ import AdminProducts from "./pages/admin/Products";
 import AdminOrders from "./pages/admin/Orders";
 import AdminPromoCodes from "./pages/admin/PromoCodes";
 import AdminMachines from "./pages/admin/Machines";
+import AdminMachinesMap from "./pages/admin/MachinesMap";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -64,6 +65,7 @@ function Router() {
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/promo" component={AdminPromoCodes} />
       <Route path="/admin/machines" component={AdminMachines} />
+      <Route path="/admin/machines/map" component={AdminMachinesMap} />
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />
