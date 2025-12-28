@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef } from "react";
+import { NavigatorDialog } from "@/components/NavigatorDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -97,6 +98,13 @@ export default function Locations() {
   const { pendingDrink, clearPendingDrink } = usePendingOrderStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [navigatorDialogOpen, setNavigatorDialogOpen] = useState(false);
+  const [navigationDestination, setNavigationDestination] = useState<{
+    lat: number;
+    lng: number;
+    name: string;
+    address: string;
+  } | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -390,9 +398,13 @@ export default function Locations() {
                         className="flex-1 h-12 rounded-xl font-semibold border-2 border-caramel text-caramel hover:bg-caramel/10"
                         onClick={() => {
                           haptic.impact('light');
-                          // Open navigation in Google Maps or Yandex Maps
-                          const url = `https://www.google.com/maps/dir/?api=1&destination=${selectedLocation.lat},${selectedLocation.lng}&travelmode=walking`;
-                          window.open(url, '_blank');
+                          setNavigationDestination({
+                            lat: selectedLocation.lat,
+                            lng: selectedLocation.lng,
+                            name: selectedLocation.name,
+                            address: selectedLocation.address || ''
+                          });
+                          setNavigatorDialogOpen(true);
                         }}
                       >
                         <Navigation className="w-5 h-5 mr-2" />
@@ -535,8 +547,13 @@ export default function Locations() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   haptic.impact('light');
-                                  const url = `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.lng}&travelmode=walking`;
-                                  window.open(url, '_blank');
+                                  setNavigationDestination({
+                                    lat: location.lat,
+                                    lng: location.lng,
+                                    name: location.name,
+                                    address: location.address || ''
+                                  });
+                                  setNavigatorDialogOpen(true);
                                 }}
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -563,6 +580,13 @@ export default function Locations() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Navigator Selection Dialog */}
+      <NavigatorDialog
+        open={navigatorDialogOpen}
+        onOpenChange={setNavigatorDialogOpen}
+        destination={navigationDestination}
+      />
     </div>
   );
 }
