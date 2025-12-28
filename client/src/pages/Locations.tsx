@@ -19,7 +19,7 @@ import {
   ShoppingBag, Map, List, ExternalLink, Filter, Clock, 
   Footprints, Car, X, Loader2, Route, ChevronDown, ChevronUp,
   ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Flag,
-  Volume2, VolumeX, Play, Square
+  Volume2, VolumeX, Play, Square, Locate, LocateFixed, LocateOff
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link, useLocation, useSearch } from "wouter";
@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useVoiceNavigation } from "@/hooks/useVoiceNavigation";
+import { useLocationTracking, RouteStepLocation } from "@/hooks/useLocationTracking";
 
 // Calculate walking time from distance (average walking speed: 5 km/h)
 const calculateWalkingTime = (distanceKm: number): string => {
@@ -191,6 +192,28 @@ export default function Locations() {
   
   // Voice navigation
   const [voiceState, voiceActions] = useVoiceNavigation({ language: 'ru-RU', rate: 0.9 });
+  
+  // Location tracking
+  const [locationState, locationActions] = useLocationTracking({
+    stepProximityThreshold: 30,
+    highAccuracy: true,
+    onStepChange: (stepIndex, step) => {
+      if (step && voiceState.isEnabled) {
+        // Auto-announce the step when reached
+        voiceActions.speakStep(`${step.instruction}`, stepIndex);
+      }
+    },
+    onApproachingStep: (stepIndex, distance) => {
+      if (voiceState.isEnabled && routeInfo?.steps[stepIndex]) {
+        const step = routeInfo.steps[stepIndex];
+        voiceActions.speakStep(`Через ${Math.round(distance)} метров: ${step.instruction}`, stepIndex);
+      }
+    },
+  });
+  
+  // User position marker ref
+  const userMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const userAccuracyCircleRef = useRef<google.maps.Circle | null>(null);
   
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -369,6 +392,14 @@ export default function Locations() {
         voiceActions.announceRouteStart(leg.distance.text, leg.duration.text);
       }
       
+      // Set route steps for location tracking
+      const trackingSteps: RouteStepLocation[] = leg.steps?.map(step => ({
+        lat: step.end_location?.lat() || 0,
+        lng: step.end_location?.lng() || 0,
+        instruction: stripHtml(step.instructions || ''),
+      })) || [];
+      locationActions.setRouteSteps(trackingSteps);
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка построения маршрута';
       setRouteError(errorMessage);
@@ -390,7 +421,19 @@ export default function Locations() {
     setRouteError(null);
     setDirectionsExpanded(false);
     voiceActions.stop();
-  }, [voiceActions]);
+    locationActions.clearRoute();
+    locationActions.stopTracking();
+    
+    // Remove user marker
+    if (userMarkerRef.current) {
+      userMarkerRef.current.map = null;
+      userMarkerRef.current = null;
+    }
+    if (userAccuracyCircleRef.current) {
+      userAccuracyCircleRef.current.setMap(null);
+      userAccuracyCircleRef.current = null;
+    }
+  }, [voiceActions, locationActions]);
 
   // Open in external maps app
   const openInExternalMaps = useCallback((destination: { lat: number; lng: number }, name: string, app: 'google' | 'yandex' = 'google') => {
@@ -483,6 +526,76 @@ export default function Locations() {
   };
 
   const selectedLocation = mockLocations.find(l => l.id === selectedLocationId);
+
+  // Update user position marker on map when location changes
+  useEffect(() => {
+    if (!mapRef.current || !locationState.currentLocation || !locationState.isTracking) return;
+    
+    const { lat, lng, accuracy } = locationState.currentLocation;
+    
+    // Create or update user marker
+    if (!userMarkerRef.current) {
+      // Create user position marker
+      const markerContent = document.createElement('div');
+      markerContent.innerHTML = `
+        <div style="
+          width: 20px;
+          height: 20px;
+          background: #3B82F6;
+          border: 3px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+          position: relative;
+        ">
+          <div style="
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+          "></div>
+        </div>
+      `;
+      
+      userMarkerRef.current = new google.maps.marker.AdvancedMarkerElement({
+        map: mapRef.current,
+        position: { lat, lng },
+        content: markerContent,
+        zIndex: 1000,
+      });
+    } else {
+      // Update position
+      userMarkerRef.current.position = { lat, lng };
+    }
+    
+    // Create or update accuracy circle
+    if (!userAccuracyCircleRef.current) {
+      userAccuracyCircleRef.current = new google.maps.Circle({
+        map: mapRef.current,
+        center: { lat, lng },
+        radius: accuracy,
+        fillColor: '#3B82F6',
+        fillOpacity: 0.1,
+        strokeColor: '#3B82F6',
+        strokeOpacity: 0.3,
+        strokeWeight: 1,
+      });
+    } else {
+      userAccuracyCircleRef.current.setCenter({ lat, lng });
+      userAccuracyCircleRef.current.setRadius(accuracy);
+    }
+  }, [locationState.currentLocation, locationState.isTracking]);
+
+  // Sync location tracking step index with voice navigation
+  useEffect(() => {
+    if (locationState.currentStepIndex >= 0 && routeInfo?.steps) {
+      // The step highlighting is now handled by location tracking
+      // Voice announcements are triggered via onStepChange callback
+    }
+  }, [locationState.currentStepIndex, routeInfo?.steps]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -652,6 +765,34 @@ export default function Locations() {
                         </div>
                         
                         <div className="flex items-center gap-1">
+                          {/* Location Tracking Toggle */}
+                          {locationState.isSupported && (
+                            <Button
+                              variant={locationState.isTracking ? 'default' : 'ghost'}
+                              size="sm"
+                              className={cn(
+                                "h-8 px-2 text-xs",
+                                locationState.isTracking && "bg-blue-600 hover:bg-blue-700 text-white"
+                              )}
+                              onClick={() => {
+                                haptic.selection();
+                                if (locationState.isTracking) {
+                                  locationActions.stopTracking();
+                                  toast.info('Отслеживание выключено');
+                                } else {
+                                  locationActions.startTracking();
+                                  toast.success('Отслеживание включено');
+                                }
+                              }}
+                            >
+                              {locationState.isTracking ? (
+                                <LocateFixed className="w-4 h-4" />
+                              ) : (
+                                <Locate className="w-4 h-4" />
+                              )}
+                            </Button>
+                          )}
+                          
                           {/* Voice Navigation Controls */}
                           {voiceState.isSupported && routeInfo.steps.length > 0 && (
                             <div className="flex items-center gap-1">
@@ -767,28 +908,45 @@ export default function Locations() {
                           className="overflow-hidden"
                         >
                           <div className="border-t max-h-48 overflow-y-auto">
-                            {routeInfo.steps.map((step, index) => (
+                            {routeInfo.steps.map((step, index) => {
+                              // Determine if this step is currently active (either by location or voice)
+                              const isLocationActive = locationState.isTracking && locationState.currentStepIndex === index;
+                              const isVoiceActive = voiceState.currentStepIndex === index;
+                              const isCurrentStep = isLocationActive || isVoiceActive;
+                              const isPastStep = locationState.isTracking && locationState.currentStepIndex > index;
+                              
+                              return (
                               <div
                                 key={index}
                                 className={cn(
                                   "flex items-start gap-3 p-3 text-sm transition-colors",
                                   index !== routeInfo.steps.length - 1 && "border-b border-border/50",
-                                  voiceState.currentStepIndex === index && "bg-amber-50 dark:bg-amber-900/20"
+                                  isCurrentStep && "bg-amber-50 dark:bg-amber-900/20",
+                                  isLocationActive && "bg-blue-50 dark:bg-blue-900/20",
+                                  isPastStep && "opacity-50"
                                 )}
                               >
                                 {/* Step Number & Icon */}
                                 <div className="flex-shrink-0 flex flex-col items-center">
                                   <div className={cn(
                                     "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all",
-                                    voiceState.currentStepIndex === index
-                                      ? "bg-amber-500 text-white ring-2 ring-amber-300 ring-offset-1"
-                                      : index === 0 
-                                        ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
-                                        : index === routeInfo.steps.length - 1
-                                          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
-                                          : "bg-secondary text-muted-foreground"
+                                    isLocationActive
+                                      ? "bg-blue-500 text-white ring-2 ring-blue-300 ring-offset-1"
+                                      : isVoiceActive
+                                        ? "bg-amber-500 text-white ring-2 ring-amber-300 ring-offset-1"
+                                        : isPastStep
+                                          ? "bg-green-500 text-white"
+                                          : index === 0 
+                                            ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
+                                            : index === routeInfo.steps.length - 1
+                                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                                              : "bg-secondary text-muted-foreground"
                                   )}>
-                                    {getManeuverIcon(step.maneuver)}
+                                    {isPastStep ? (
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    ) : getManeuverIcon(step.maneuver)}
                                   </div>
                                 </div>
                                 
@@ -796,7 +954,7 @@ export default function Locations() {
                                 <div className="flex-1 min-w-0">
                                   <p className={cn(
                                     "leading-snug",
-                                    voiceState.currentStepIndex === index 
+                                    isCurrentStep 
                                       ? "text-amber-700 dark:text-amber-400 font-medium" 
                                       : "text-foreground"
                                   )}>
@@ -834,7 +992,8 @@ export default function Locations() {
                                   </Button>
                                 )}
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </motion.div>
                       )}

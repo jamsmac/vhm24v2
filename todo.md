@@ -76,3 +76,15 @@
 - [x] Announce route start with distance and duration
 - [x] Highlight currently speaking step in directions panel
 - [x] Test voice navigation functionality (18 tests passing)
+
+## Real-Time Location Tracking
+- [x] Create useLocationTracking hook with Geolocation API
+- [x] Add user position marker on the map (blue dot with accuracy circle)
+- [x] Calculate distance to each route step using Haversine formula
+- [x] Auto-highlight current step based on proximity (30m threshold)
+- [x] Auto-announce next step via voice when approaching (100m)
+- [x] Add tracking toggle button (blue locate icon in route panel)
+- [x] Handle location permission errors gracefully (Russian messages)
+- [x] Mark completed steps with checkmark icon
+- [x] Dim past steps in directions panel
+- [x] Test location tracking functionality (20 tests passing)
