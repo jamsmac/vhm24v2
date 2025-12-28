@@ -13,11 +13,26 @@ import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore, Machine } from "@/stores/cartStore";
 import { usePendingOrderStore } from "@/stores/pendingOrderStore";
 import { MapView } from "@/components/Map";
-import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag, Map, List, ExternalLink, Filter } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag, Map, List, ExternalLink, Filter, Clock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+
+// Calculate walking time from distance (average walking speed: 5 km/h)
+const calculateWalkingTime = (distanceKm: number): string => {
+  const walkingSpeedKmH = 5; // Average walking speed
+  const timeInMinutes = Math.round((distanceKm / walkingSpeedKmH) * 60);
+  
+  if (timeInMinutes < 1) return '< 1 мин';
+  if (timeInMinutes === 1) return '1 мин';
+  if (timeInMinutes < 60) return `${timeInMinutes} мин`;
+  
+  const hours = Math.floor(timeInMinutes / 60);
+  const mins = timeInMinutes % 60;
+  if (mins === 0) return `${hours} ч`;
+  return `${hours} ч ${mins} мин`;
+};
 
 // Mock locations data with coordinates - sorted by distance
 const mockLocations: Array<Machine & { 
@@ -417,9 +432,15 @@ export default function Locations() {
                           <MapPin className="w-4 h-4" />
                           <span>{selectedLocation.address}</span>
                         </div>
-                        <div className="flex items-center gap-1 mt-1 text-sm text-caramel font-medium">
-                          <Navigation className="w-4 h-4" />
-                          <span>{selectedLocation.distance} км от вас</span>
+                        <div className="flex items-center gap-3 mt-1">
+                          <div className="flex items-center gap-1 text-sm text-caramel font-medium">
+                            <Navigation className="w-4 h-4" />
+                            <span>{selectedLocation.distance} км</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-sm text-espresso font-medium">
+                            <Clock className="w-4 h-4" />
+                            <span>~{calculateWalkingTime(selectedLocation.distance || 0)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -568,13 +589,19 @@ export default function Locations() {
                           </div>
                           
                           <div className="flex items-center justify-between mt-3">
-                            {/* Distance & Navigate */}
+                            {/* Distance, Walking Time & Navigate */}
                             <div className="flex items-center gap-3">
                               {location.distance && (
-                                <div className="flex items-center gap-1 text-sm text-caramel font-medium">
-                                  <Navigation className="w-4 h-4" />
-                                  <span>{location.distance} км</span>
-                                </div>
+                                <>
+                                  <div className="flex items-center gap-1 text-sm text-caramel font-medium">
+                                    <Navigation className="w-4 h-4" />
+                                    <span>{location.distance} км</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-sm text-espresso font-medium">
+                                    <Clock className="w-4 h-4" />
+                                    <span>~{calculateWalkingTime(location.distance)}</span>
+                                  </div>
+                                </>
                               )}
                               <button
                                 className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
