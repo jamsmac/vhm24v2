@@ -98,3 +98,14 @@
 - [x] Add visual indicator for ETA updates (pulsing clock when tracking)
 - [x] Show updated remaining time with strikethrough original
 - [x] Test ETA functionality (48 tests passing)
+
+## Route Recalculation
+- [x] Detect deviation from route path (50m threshold)
+- [x] Calculate distance from user to nearest point on route path
+- [x] Trigger automatic recalculation when deviation exceeds threshold
+- [x] Add cooldown to prevent excessive recalculations (10s)
+- [x] Show recalculation indicator (orange banner + toast)
+- [x] Preserve travel mode during recalculation
+- [x] Update route steps and ETA after recalculation
+- [x] Voice announcement of new route when enabled
+- [x] Test route recalculation functionality (48 tests passing)

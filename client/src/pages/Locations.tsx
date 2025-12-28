@@ -27,7 +27,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useVoiceNavigation } from "@/hooks/useVoiceNavigation";
-import { useLocationTracking, RouteStepLocation } from "@/hooks/useLocationTracking";
+import { useLocationTracking, RouteStepLocation, calculateDistance } from "@/hooks/useLocationTracking";
 
 // Calculate walking time from distance (average walking speed: 5 km/h)
 const calculateWalkingTime = (distanceKm: number): string => {
@@ -218,6 +218,14 @@ export default function Locations() {
   // ETA state - route start time for calculating remaining time
   const [routeStartTime, setRouteStartTime] = useState<Date | null>(null);
   
+  // Route recalculation state
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const lastRecalculationTimeRef = useRef<number>(0);
+  const routePathRef = useRef<google.maps.LatLng[]>([]);
+  const destinationRef = useRef<{ lat: number; lng: number } | null>(null);
+  const DEVIATION_THRESHOLD = 50; // meters - trigger recalculation if user deviates more than this
+  const RECALCULATION_COOLDOWN = 10000; // ms - minimum time between recalculations
+  
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
@@ -403,6 +411,10 @@ export default function Locations() {
       })) || [];
       locationActions.setRouteSteps(trackingSteps);
       
+      // Store route path for deviation detection
+      routePathRef.current = route.overview_path || [];
+      destinationRef.current = destination;
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка построения маршрута';
       setRouteError(errorMessage);
@@ -436,6 +448,10 @@ export default function Locations() {
       userAccuracyCircleRef.current.setMap(null);
       userAccuracyCircleRef.current = null;
     }
+    
+    // Clear route path for deviation detection
+    routePathRef.current = [];
+    destinationRef.current = null;
   }, [voiceActions, locationActions]);
 
   // Open in external maps app
@@ -599,6 +615,134 @@ export default function Locations() {
       // Voice announcements are triggered via onStepChange callback
     }
   }, [locationState.currentStepIndex, routeInfo?.steps]);
+
+  // Calculate minimum distance from user to route path
+  const calculateDistanceToRoute = useCallback((userLat: number, userLng: number): number => {
+    if (routePathRef.current.length === 0) return 0;
+    
+    let minDistance = Infinity;
+    
+    for (const point of routePathRef.current) {
+      const distance = calculateDistance(userLat, userLng, point.lat(), point.lng());
+      if (distance < minDistance) {
+        minDistance = distance;
+      }
+    }
+    
+    return minDistance;
+  }, []);
+
+  // Recalculate route from current position
+  const recalculateRoute = useCallback(async () => {
+    if (!locationState.currentLocation || !destinationRef.current || isRecalculating) return;
+    
+    const now = Date.now();
+    if (now - lastRecalculationTimeRef.current < RECALCULATION_COOLDOWN) {
+      return; // Still in cooldown
+    }
+    
+    setIsRecalculating(true);
+    lastRecalculationTimeRef.current = now;
+    
+    try {
+      const { lat, lng } = locationState.currentLocation;
+      const destination = destinationRef.current;
+      
+      // Show recalculating toast
+      toast.loading('Перестроение маршрута...', { id: 'recalculating' });
+      
+      // Initialize directions service if needed
+      const { service, renderer } = await initDirections();
+      
+      const request: google.maps.DirectionsRequest = {
+        origin: { lat, lng },
+        destination,
+        travelMode: travelMode === 'WALKING' 
+          ? google.maps.TravelMode.WALKING 
+          : google.maps.TravelMode.DRIVING,
+        unitSystem: google.maps.UnitSystem.METRIC,
+        language: 'ru',
+      };
+      
+      if (!service) {
+        throw new Error('Сервис маршрутов недоступен');
+      }
+      
+      const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+        service.route(request, (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            resolve(result);
+          } else {
+            reject(new Error('Ошибка перестроения маршрута'));
+          }
+        });
+      });
+      
+      // Update route on map
+      if (renderer && mapRef.current) {
+        renderer.setMap(mapRef.current);
+        renderer.setDirections(result);
+      }
+      
+      // Extract route info
+      const route = result.routes[0];
+      const leg = route.legs[0];
+      
+      const steps: RouteStep[] = leg.steps?.map(step => ({
+        instruction: stripHtml(step.instructions || ''),
+        distance: step.distance?.text || '',
+        duration: step.duration?.text || '',
+        maneuver: step.maneuver,
+      })) || [];
+      
+      setRouteInfo({
+        distance: leg.distance?.text || '',
+        duration: leg.duration?.text || '',
+        distanceValue: leg.distance?.value || 0,
+        durationValue: leg.duration?.value || 0,
+        steps,
+      });
+      
+      // Update tracking steps
+      const trackingSteps: RouteStepLocation[] = leg.steps?.map(step => ({
+        lat: step.end_location?.lat() || 0,
+        lng: step.end_location?.lng() || 0,
+        instruction: stripHtml(step.instructions || ''),
+      })) || [];
+      locationActions.setRouteSteps(trackingSteps);
+      
+      // Update route path
+      routePathRef.current = route.overview_path || [];
+      
+      toast.success('Маршрут перестроен', { id: 'recalculating' });
+      haptic.notification('success');
+      
+      // Announce new route if voice enabled
+      if (voiceState.isEnabled && leg.distance?.text && leg.duration?.text) {
+        voiceActions.speakStep(`Маршрут перестроен. ${leg.distance.text}, ${leg.duration.text}`, -1);
+      }
+      
+    } catch (err) {
+      toast.error('Не удалось перестроить маршрут', { id: 'recalculating' });
+    } finally {
+      setIsRecalculating(false);
+    }
+  }, [locationState.currentLocation, travelMode, initDirections, haptic, voiceState.isEnabled, voiceActions, locationActions]);
+
+  // Detect route deviation and trigger recalculation
+  useEffect(() => {
+    if (!locationState.isTracking || !locationState.currentLocation || !showingRoute) return;
+    if (routePathRef.current.length === 0 || !destinationRef.current) return;
+    if (isRecalculating) return;
+    
+    const { lat, lng } = locationState.currentLocation;
+    const distanceToRoute = calculateDistanceToRoute(lat, lng);
+    
+    if (distanceToRoute > DEVIATION_THRESHOLD) {
+      // User has deviated from route
+      recalculateRoute();
+    }
+  }, [locationState.currentLocation, locationState.isTracking, showingRoute, isRecalculating, calculateDistanceToRoute, recalculateRoute]);
 
   // Calculate ETA based on remaining route duration
   const etaInfo = useMemo(() => {
@@ -789,7 +933,22 @@ export default function Locations() {
                   exit={{ opacity: 0, y: -20 }}
                   className="absolute top-16 left-4 right-4 z-10"
                 >
-                  <Card className="rounded-xl shadow-lg bg-background/95 backdrop-blur border-amber-500/30 overflow-hidden">
+                  <Card className={cn(
+                    "rounded-xl shadow-lg bg-background/95 backdrop-blur overflow-hidden transition-all",
+                    isRecalculating 
+                      ? "border-orange-500/50 ring-2 ring-orange-500/20" 
+                      : "border-amber-500/30"
+                  )}>
+                    {/* Recalculating Indicator */}
+                    {isRecalculating && (
+                      <div className="bg-orange-500/10 border-b border-orange-500/20 px-3 py-2 flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 text-orange-600 animate-spin" />
+                        <span className="text-xs text-orange-700 dark:text-orange-400 font-medium">
+                          Перестроение маршрута...
+                        </span>
+                      </div>
+                    )}
+                    
                     {/* Route Summary Header */}
                     <div className="p-3">
                       <div className="flex items-center justify-between">
