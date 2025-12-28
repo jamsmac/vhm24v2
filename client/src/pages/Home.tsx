@@ -29,7 +29,7 @@ const mockUser = {
 };
 
 export default function Home() {
-  const { user, haptic } = useTelegram();
+  const { user: telegramUser, haptic } = useTelegram();
   const { profile, loyalty } = useUserStore();
   const { favorites } = useFavoritesStore();
   const { items: cartItems } = useCartStore();
@@ -38,7 +38,7 @@ export default function Home() {
   const [, navigate] = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   
-  const displayName = user?.first_name || profile?.firstName || mockUser.firstName;
+  const displayName = telegramUser?.first_name || profile?.firstName || mockUser.firstName;
   const points = loyalty?.pointsBalance || mockUser.pointsBalance;
   const orderStats = getOrderStats();
   const hasOrderHistory = getCompletedOrders().length > 0;

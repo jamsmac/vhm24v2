@@ -26,8 +26,8 @@ import Favorites from "./pages/Favorites";
 import DrinkDetail from "./pages/DrinkDetail";
 import Promotions from "./pages/Promotions";
 import NotificationSettings from "./pages/NotificationSettings";
-
 function Router() {
+  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       {/* Main Routes */}
