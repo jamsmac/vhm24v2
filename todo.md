@@ -232,3 +232,11 @@
 - [x] Create notification templates for debits (redemption, payment)
 - [x] Include amount and new balance in notification message
 - [x] Test points notifications (137 tests passing)
+
+## Points Notification Settings
+- [x] Add pointsNotifications preferences to user_preferences schema
+- [x] Create API endpoint for getting/updating points notification settings
+- [x] Update addPointsTransaction to check user preferences before sending
+- [x] Create PointsNotificationSettings page UI
+- [x] Add link to settings from NotificationSettings page
+- [x] Test points notification settings (137 tests passing)

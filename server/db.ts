@@ -22,6 +22,26 @@ import {
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
+// Points notification preferences type
+export interface PointsNotificationPreferences {
+  taskCompletion: boolean;
+  orderReward: boolean;
+  referralBonus: boolean;
+  adminAdjustment: boolean;
+  redemption: boolean;
+  expiration: boolean;
+}
+
+// Default points notification preferences (all enabled)
+export const defaultPointsNotificationPrefs: PointsNotificationPreferences = {
+  taskCompletion: true,
+  orderReward: true,
+  referralBonus: true,
+  adminAdjustment: true,
+  redemption: true,
+  expiration: true,
+};
+
 let _db: ReturnType<typeof drizzle> | null = null;
 
 export async function getDb() {
@@ -930,20 +950,39 @@ export async function addPointsTransaction(
   
   // Create notification for points change (unless skipped)
   if (!skipNotification) {
-    const notification = getPointsNotification(type, amount, newBalance, description);
-    await createNotification({
-      userId,
-      type: 'bonus',
-      title: notification.title,
-      message: notification.message,
-      data: { 
-        transactionType: type,
-        amount,
-        newBalance,
-        referenceType,
-        referenceId,
-      },
-    });
+    // Check user's notification preferences
+    const userPrefs = await getUserPreferences(userId);
+    const pointsNotifPrefs = (userPrefs?.pointsNotifications as PointsNotificationPreferences | null) || defaultPointsNotificationPrefs;
+    
+    // Map transaction type to preference key
+    const prefKeyMap: Record<string, keyof PointsNotificationPreferences> = {
+      task_completion: 'taskCompletion',
+      order_reward: 'orderReward',
+      referral_bonus: 'referralBonus',
+      admin_adjustment: 'adminAdjustment',
+      redemption: 'redemption',
+      expiration: 'expiration',
+    };
+    
+    const prefKey = prefKeyMap[type];
+    const shouldNotify = prefKey ? pointsNotifPrefs[prefKey] : true;
+    
+    if (shouldNotify) {
+      const notification = getPointsNotification(type, amount, newBalance, description);
+      await createNotification({
+        userId,
+        type: 'bonus',
+        title: notification.title,
+        message: notification.message,
+        data: { 
+          transactionType: type,
+          amount,
+          newBalance,
+          referenceType,
+          referenceId,
+        },
+      });
+    }
   }
   
   return result[0]?.insertId || 0;

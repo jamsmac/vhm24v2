@@ -337,6 +337,10 @@ export const userPreferences = mysqlTable("user_preferences", {
   // JSON array of section configs: [{id, visible, size, order}]
   homeSections: json("homeSections"),
   
+  // Points notification preferences
+  // JSON object: {taskCompletion, orderReward, referralBonus, adminAdjustment, redemption, expiration}
+  pointsNotifications: json("pointsNotifications"),
+  
   // Other preferences
   language: varchar("language", { length: 8 }).default("ru"),
   theme: mysqlEnum("theme", ["light", "dark", "system"]).default("system"),

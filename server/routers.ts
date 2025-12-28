@@ -737,6 +737,14 @@ export const appRouter = router({
         language: z.string().optional(),
         theme: z.enum(['light', 'dark', 'system']).optional(),
         notificationsEnabled: z.boolean().optional(),
+        pointsNotifications: z.object({
+          taskCompletion: z.boolean(),
+          orderReward: z.boolean(),
+          referralBonus: z.boolean(),
+          adminAdjustment: z.boolean(),
+          redemption: z.boolean(),
+          expiration: z.boolean(),
+        }).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         await db.upsertUserPreferences(ctx.user.id, input);

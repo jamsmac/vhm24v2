@@ -32,6 +32,7 @@ import HomeSettings from "./pages/HomeSettings";
 import Referral from "./pages/Referral";
 import RewardsStore from "./pages/RewardsStore";
 import PointsHistory from "./pages/PointsHistory";
+import PointsNotificationSettings from "./pages/PointsNotificationSettings";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/profile/referral" component={Referral} />
       <Route path="/profile/rewards" component={RewardsStore} />
       <Route path="/profile/points-history" component={PointsHistory} />
+      <Route path="/profile/points-notifications" component={PointsNotificationSettings} />
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />
