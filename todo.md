@@ -147,3 +147,13 @@
 - [x] Save preferences to user profile (upsertUserPreferences)
 - [x] Add HomeSettings link in Settings page
 - [x] Test homepage customization (66 tests passing)
+
+## Apply Preferences to Home Page
+- [x] Fetch user preferences on Home page load (trpc.gamification.getPreferences)
+- [x] Create section components map for dynamic rendering
+- [x] Apply section order from preferences (sorted by order)
+- [x] Apply section visibility from preferences (filter visible)
+- [x] Apply section size variants from preferences (compact/normal/large)
+- [x] Handle loading state while fetching preferences (Loader2 spinner)
+- [x] Fallback to defaults for new users (defaultSections array)
+- [x] Test preferences application (66 tests passing)
