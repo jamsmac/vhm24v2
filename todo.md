@@ -116,3 +116,13 @@
 - [x] Show loading state on button during recalculation (spinning icon)
 - [x] Error handling for missing location/route
 - [x] Test manual recalculation functionality (48 tests passing)
+
+## Alternative Routes
+- [x] Request multiple routes from Directions API (provideRouteAlternatives: true)
+- [x] Store and display alternative route options (AlternativeRoute interface)
+- [x] Create route selection UI with distance/duration comparison
+- [x] Allow user to switch between routes (selectRoute function)
+- [x] Highlight selected route on map (setRouteIndex)
+- [x] Update route info panel when route is selected
+- [x] Voice announcement of available alternatives
+- [x] Test alternative routes functionality (48 tests passing)

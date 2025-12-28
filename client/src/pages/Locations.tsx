@@ -61,6 +61,18 @@ interface RouteInfo {
   steps: RouteStep[];
 }
 
+// Alternative route interface
+interface AlternativeRoute {
+  index: number;
+  distance: string;
+  duration: string;
+  distanceValue: number;
+  durationValue: number;
+  summary: string;
+  steps: RouteStep[];
+  route: google.maps.DirectionsRoute;
+}
+
 type TravelMode = 'WALKING' | 'DRIVING';
 
 // Get icon for maneuver type
@@ -189,6 +201,12 @@ export default function Locations() {
   const [travelMode, setTravelMode] = useState<TravelMode>('WALKING');
   const [routeError, setRouteError] = useState<string | null>(null);
   const [directionsExpanded, setDirectionsExpanded] = useState(false);
+  
+  // Alternative routes state
+  const [alternativeRoutes, setAlternativeRoutes] = useState<AlternativeRoute[]>([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
+  const [showAlternatives, setShowAlternatives] = useState(false);
+  const directionsResultRef = useRef<google.maps.DirectionsResult | null>(null);
   
   // Voice navigation
   const [voiceState, voiceActions] = useVoiceNavigation({ language: 'ru-RU', rate: 0.9 });
@@ -350,6 +368,7 @@ export default function Locations() {
         travelMode: google.maps.TravelMode[mode],
         unitSystem: google.maps.UnitSystem.METRIC,
         language: 'ru',
+        provideRouteAlternatives: true, // Request alternative routes
       };
 
       const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
@@ -368,13 +387,43 @@ export default function Locations() {
         });
       });
 
+      // Store the full directions result for alternative routes
+      directionsResultRef.current = result;
+      
       // Display route on map
       if (renderer && mapRef.current) {
         renderer.setMap(mapRef.current);
         renderer.setDirections(result);
+        renderer.setRouteIndex(0); // Show first route by default
       }
 
-      // Extract route info including turn-by-turn steps
+      // Process all available routes
+      const allRoutes: AlternativeRoute[] = result.routes.map((route, index) => {
+        const leg = route.legs[0];
+        const steps: RouteStep[] = leg.steps?.map(step => ({
+          instruction: stripHtml(step.instructions || ''),
+          distance: step.distance?.text || '',
+          duration: step.duration?.text || '',
+          maneuver: step.maneuver,
+        })) || [];
+        
+        return {
+          index,
+          distance: leg.distance?.text || '',
+          duration: leg.duration?.text || '',
+          distanceValue: leg.distance?.value || 0,
+          durationValue: leg.duration?.value || 0,
+          summary: route.summary || `Маршрут ${index + 1}`,
+          steps,
+          route,
+        };
+      });
+      
+      setAlternativeRoutes(allRoutes);
+      setSelectedRouteIndex(0);
+      setShowAlternatives(allRoutes.length > 1); // Auto-show if alternatives exist
+
+      // Extract route info for the first (selected) route
       const route = result.routes[0];
       const leg = route.legs[0];
       
@@ -400,7 +449,8 @@ export default function Locations() {
       
       // Announce route via voice if enabled
       if (voiceState.isEnabled && leg.distance?.text && leg.duration?.text) {
-        voiceActions.announceRouteStart(leg.distance.text, leg.duration.text);
+        const altText = allRoutes.length > 1 ? ` Доступно ${allRoutes.length} маршрутов.` : '';
+        voiceActions.announceRouteStart(leg.distance.text, leg.duration.text + altText);
       }
       
       // Set route steps for location tracking
@@ -435,6 +485,10 @@ export default function Locations() {
     setShowingRoute(false);
     setRouteError(null);
     setDirectionsExpanded(false);
+    setAlternativeRoutes([]);
+    setSelectedRouteIndex(0);
+    setShowAlternatives(false);
+    directionsResultRef.current = null;
     voiceActions.stop();
     locationActions.clearRoute();
     locationActions.stopTracking();
@@ -742,6 +796,46 @@ export default function Locations() {
     haptic.selection();
     recalculateRoute(true); // Bypass cooldown for manual recalculation
   }, [locationState.currentLocation, recalculateRoute, haptic]);
+
+  // Select an alternative route
+  const selectRoute = useCallback((routeIndex: number) => {
+    if (!directionsResultRef.current || !directionsRendererRef.current) return;
+    if (routeIndex < 0 || routeIndex >= alternativeRoutes.length) return;
+    
+    haptic.selection();
+    setSelectedRouteIndex(routeIndex);
+    
+    // Update the displayed route on the map
+    directionsRendererRef.current.setRouteIndex(routeIndex);
+    
+    // Update route info with selected route data
+    const selectedRoute = alternativeRoutes[routeIndex];
+    setRouteInfo({
+      distance: selectedRoute.distance,
+      duration: selectedRoute.duration,
+      distanceValue: selectedRoute.distanceValue,
+      durationValue: selectedRoute.durationValue,
+      steps: selectedRoute.steps,
+    });
+    
+    // Update route path for deviation detection
+    routePathRef.current = selectedRoute.route.overview_path || [];
+    
+    // Update tracking steps
+    const trackingSteps: RouteStepLocation[] = selectedRoute.route.legs[0].steps?.map(step => ({
+      lat: step.end_location?.lat() || 0,
+      lng: step.end_location?.lng() || 0,
+      instruction: stripHtml(step.instructions || ''),
+    })) || [];
+    locationActions.setRouteSteps(trackingSteps);
+    
+    // Announce selected route if voice enabled
+    if (voiceState.isEnabled) {
+      voiceActions.speakStep(`Выбран маршрут ${routeIndex + 1}: ${selectedRoute.distance}, ${selectedRoute.duration}`, -1);
+    }
+    
+    toast.success(`Маршрут ${routeIndex + 1} выбран`);
+  }, [alternativeRoutes, haptic, voiceState.isEnabled, voiceActions, locationActions]);
 
   // Detect route deviation and trigger recalculation
   useEffect(() => {
@@ -1163,6 +1257,101 @@ export default function Locations() {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Alternative Routes Selector */}
+                    <AnimatePresence>
+                      {alternativeRoutes.length > 1 && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="border-t px-3 py-2 bg-secondary/30">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Доступно {alternativeRoutes.length} маршрутов
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => {
+                                  haptic.selection();
+                                  setShowAlternatives(!showAlternatives);
+                                }}
+                              >
+                                {showAlternatives ? (
+                                  <>
+                                    <ChevronUp className="w-3 h-3 mr-1" />
+                                    Скрыть
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="w-3 h-3 mr-1" />
+                                    Показать
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                            
+                            <AnimatePresence>
+                              {showAlternatives && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="space-y-2"
+                                >
+                                  {alternativeRoutes.map((altRoute) => (
+                                    <button
+                                      key={altRoute.index}
+                                      onClick={() => selectRoute(altRoute.index)}
+                                      className={cn(
+                                        "w-full p-2 rounded-lg text-left transition-all",
+                                        "flex items-center justify-between gap-3",
+                                        selectedRouteIndex === altRoute.index
+                                          ? "bg-amber-100 dark:bg-amber-900/50 border-2 border-amber-500"
+                                          : "bg-background hover:bg-secondary border border-border"
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                          "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold",
+                                          selectedRouteIndex === altRoute.index
+                                            ? "bg-amber-500 text-white"
+                                            : "bg-secondary text-muted-foreground"
+                                        )}>
+                                          {altRoute.index + 1}
+                                        </div>
+                                        <div>
+                                          <p className="text-sm font-medium">{altRoute.summary}</p>
+                                          <p className="text-xs text-muted-foreground">
+                                            {altRoute.steps.length} шагов
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className={cn(
+                                          "text-sm font-semibold",
+                                          selectedRouteIndex === altRoute.index && "text-amber-700 dark:text-amber-300"
+                                        )}>
+                                          {altRoute.distance}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          ~{altRoute.duration}
+                                        </p>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     
                     {/* Turn-by-Turn Directions Panel */}
                     <AnimatePresence>
