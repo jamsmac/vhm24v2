@@ -54,23 +54,21 @@ import {
 
 // Reward types
 const rewardTypes = [
+  { value: "bonus_points", label: "Бонусные баллы", icon: Star },
+  { value: "promo_code", label: "Промокод", icon: Ticket },
   { value: "free_drink", label: "Бесплатный напиток", icon: Coffee },
   { value: "discount_percent", label: "Скидка %", icon: Percent },
   { value: "discount_fixed", label: "Фиксированная скидка", icon: Ticket },
-  { value: "free_upgrade", label: "Бесплатный апгрейд", icon: ArrowUpCircle },
-  { value: "bonus_points", label: "Бонусные баллы", icon: Star },
-  { value: "exclusive_item", label: "Эксклюзив", icon: Crown },
   { value: "custom", label: "Другое", icon: Gift },
 ];
 
 // Type colors
 const typeColors: Record<string, string> = {
+  bonus_points: "bg-yellow-500",
+  promo_code: "bg-blue-500",
   free_drink: "bg-amber-500",
   discount_percent: "bg-green-500",
-  discount_fixed: "bg-blue-500",
-  free_upgrade: "bg-purple-500",
-  bonus_points: "bg-yellow-500",
-  exclusive_item: "bg-pink-500",
+  discount_fixed: "bg-purple-500",
   custom: "bg-gray-500",
 };
 
@@ -91,10 +89,10 @@ export default function AdminRewards() {
     nameRu: "",
     description: "",
     descriptionRu: "",
-    rewardType: "free_drink",
-    pointsCost: 500,
-    rewardValue: "",
-    validityDays: 30,
+    rewardType: "bonus_points",
+    pointsCost: 0,
+    pointsAwarded: 0,
+    promoCode: "",
     stockLimit: null as number | null,
     isActive: true,
     isFeatured: false,
@@ -146,10 +144,10 @@ export default function AdminRewards() {
       nameRu: "",
       description: "",
       descriptionRu: "",
-      rewardType: "free_drink",
-      pointsCost: 500,
-      rewardValue: "",
-      validityDays: 30,
+      rewardType: "bonus_points",
+      pointsCost: 0,
+      pointsAwarded: 0,
+      promoCode: "",
       stockLimit: null,
       isActive: true,
       isFeatured: false,
@@ -171,8 +169,8 @@ export default function AdminRewards() {
       descriptionRu: reward.descriptionRu || "",
       rewardType: reward.rewardType,
       pointsCost: reward.pointsCost,
-      rewardValue: reward.rewardValue || "",
-      validityDays: reward.validityDays,
+      pointsAwarded: reward.pointsAwarded || 0,
+      promoCode: reward.promoCode || "",
       stockLimit: reward.stockLimit,
       isActive: reward.isActive,
       isFeatured: reward.isFeatured,
@@ -200,8 +198,9 @@ export default function AdminRewards() {
           description: formData.description,
           descriptionRu: formData.descriptionRu,
           pointsCost: formData.pointsCost,
+          pointsAwarded: formData.pointsAwarded || undefined,
+          promoCode: formData.promoCode || undefined,
           stockLimit: formData.stockLimit || undefined,
-          validityDays: formData.validityDays,
           isActive: formData.isActive,
           isFeatured: formData.isFeatured,
         }
@@ -214,10 +213,11 @@ export default function AdminRewards() {
         nameRu: formData.nameRu,
         description: formData.description,
         descriptionRu: formData.descriptionRu,
-        rewardType: formData.rewardType as 'free_drink' | 'discount_percent' | 'discount_fixed' | 'free_upgrade' | 'bonus_points' | 'exclusive_item' | 'custom',
+        rewardType: formData.rewardType as 'bonus_points' | 'promo_code' | 'free_drink' | 'discount_percent' | 'discount_fixed' | 'custom',
         pointsCost: formData.pointsCost,
+        pointsAwarded: formData.pointsAwarded || undefined,
+        promoCode: formData.promoCode || undefined,
         stockLimit: formData.stockLimit || undefined,
-        validityDays: formData.validityDays,
         isActive: formData.isActive,
         isFeatured: formData.isFeatured,
       });
@@ -315,7 +315,14 @@ export default function AdminRewards() {
                         {formatPoints(reward.pointsCost)}
                       </div>
                     </TableCell>
-                    <TableCell>{reward.validityDays} дней</TableCell>
+                    <TableCell>
+                      {reward.pointsAwarded && reward.pointsAwarded > 0 && (
+                        <span className="text-green-600">+{formatPoints(reward.pointsAwarded)}</span>
+                      )}
+                      {reward.promoCode && (
+                        <code className="text-xs bg-muted px-1 rounded">{reward.promoCode}</code>
+                      )}
+                    </TableCell>
                     <TableCell>
                       {reward.stockLimit ? (
                         <span>
@@ -437,48 +444,51 @@ export default function AdminRewards() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="rewardValue">Значение награды</Label>
-                <Input
-                  id="rewardValue"
-                  value={formData.rewardValue}
-                  onChange={(e) => setFormData({ ...formData, rewardValue: e.target.value })}
-                  placeholder="10% / 5000 / любой напиток"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pointsCost">Стоимость (баллы) *</Label>
+                <Label htmlFor="pointsCost">Стоимость (баллы)</Label>
                 <Input
                   id="pointsCost"
                   type="number"
                   value={formData.pointsCost}
                   onChange={(e) => setFormData({ ...formData, pointsCost: parseInt(e.target.value) || 0 })}
-                  min={1}
+                  min={0}
+                  placeholder="0 = бесплатно"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="pointsAwarded">Начисляемые баллы (1 балл = 1 сум)</Label>
+                <Input
+                  id="pointsAwarded"
+                  type="number"
+                  value={formData.pointsAwarded}
+                  onChange={(e) => setFormData({ ...formData, pointsAwarded: parseInt(e.target.value) || 0 })}
+                  min={0}
+                  placeholder="Количество баллов"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="validityDays">Срок действия (дни)</Label>
+                <Label htmlFor="promoCode">Промокод (для ввода на автомате)</Label>
                 <Input
-                  id="validityDays"
-                  type="number"
-                  value={formData.validityDays}
-                  onChange={(e) => setFormData({ ...formData, validityDays: parseInt(e.target.value) || 30 })}
-                  min={1}
+                  id="promoCode"
+                  value={formData.promoCode}
+                  onChange={(e) => setFormData({ ...formData, promoCode: e.target.value.toUpperCase() })}
+                  placeholder="COFFEE2024"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="stockLimit">Лимит (пусто = ∞)</Label>
-                <Input
-                  id="stockLimit"
-                  type="number"
-                  value={formData.stockLimit || ""}
-                  onChange={(e) => setFormData({ ...formData, stockLimit: e.target.value ? parseInt(e.target.value) : null })}
-                  min={1}
-                  placeholder="∞"
-                />
-              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="stockLimit">Лимит (пусто = ∞)</Label>
+              <Input
+                id="stockLimit"
+                type="number"
+                value={formData.stockLimit || ""}
+                onChange={(e) => setFormData({ ...formData, stockLimit: e.target.value ? parseInt(e.target.value) : null })}
+                min={1}
+                placeholder="∞"
+              />
             </div>
             
             <div className="flex items-center gap-6">

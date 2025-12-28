@@ -1574,11 +1574,12 @@ export async function getAllRewards(): Promise<Reward[]> {
     .orderBy(asc(rewards.sortOrder));
 }
 
-// Purchase a reward
+// Claim a reward - points are awarded immediately (1 point = 1 sum)
 export async function purchaseReward(userId: number, rewardId: number): Promise<{
   success: boolean;
   error?: string;
   userReward?: UserReward;
+  pointsAwarded?: number;
 }> {
   const db = await getDb();
   if (!db) return { success: false, error: 'Database not available' };
@@ -1636,27 +1637,12 @@ export async function purchaseReward(userId: number, rewardId: number): Promise<
     return { success: false, error: 'Insufficient points' };
   }
   
-  // Calculate expiration date
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + (reward.validityDays || 30));
+  // Calculate new balance: deduct cost, add awarded points
+  const pointsAwarded = reward.pointsAwarded || 0;
+  const netChange = pointsAwarded - reward.pointsCost;
+  const newBalance = user[0].pointsBalance + netChange;
   
-  // Generate unique redemption code
-  let redemptionCode = generateRedemptionCode();
-  let attempts = 0;
-  while (attempts < 10) {
-    const existing = await db
-      .select()
-      .from(userRewards)
-      .where(eq(userRewards.redemptionCode, redemptionCode))
-      .limit(1);
-    
-    if (existing.length === 0) break;
-    redemptionCode = generateRedemptionCode();
-    attempts++;
-  }
-  
-  // Deduct points from user
-  const newBalance = user[0].pointsBalance - reward.pointsCost;
+  // Update user's points balance
   await db
     .update(users)
     .set({ 
@@ -1665,24 +1651,39 @@ export async function purchaseReward(userId: number, rewardId: number): Promise<
     })
     .where(eq(users.id, userId));
   
-  // Record points transaction
-  await db.insert(pointsTransactions).values({
-    userId,
-    amount: -reward.pointsCost,
-    type: 'redemption',
-    referenceType: 'reward',
-    referenceId: rewardId,
-    balanceAfter: newBalance,
-    description: `Покупка награды: ${reward.nameRu || reward.name}`,
-  });
+  // Record points transaction for spending
+  if (reward.pointsCost > 0) {
+    await db.insert(pointsTransactions).values({
+      userId,
+      amount: -reward.pointsCost,
+      type: 'redemption',
+      referenceType: 'reward',
+      referenceId: rewardId,
+      balanceAfter: user[0].pointsBalance - reward.pointsCost,
+      description: `Обмен на награду: ${reward.nameRu || reward.name}`,
+    });
+  }
   
-  // Create user reward
-  await db.insert(userRewards).values({
+  // Record points transaction for earning (if reward gives points)
+  if (pointsAwarded > 0) {
+    await db.insert(pointsTransactions).values({
+      userId,
+      amount: pointsAwarded,
+      type: 'reward_claim',
+      referenceType: 'reward',
+      referenceId: rewardId,
+      balanceAfter: newBalance,
+      description: `Получено баллов: ${reward.nameRu || reward.name} (${pointsAwarded} сум)`,
+    });
+  }
+  
+  // Create user reward record
+  const result = await db.insert(userRewards).values({
     userId,
     rewardId,
     pointsSpent: reward.pointsCost,
-    expiresAt,
-    redemptionCode,
+    pointsAwarded: pointsAwarded,
+    promoCode: reward.promoCode || null, // Copy promo code if it's a promo_code type reward
   });
   
   // Update stock if limited
@@ -1700,207 +1701,103 @@ export async function purchaseReward(userId: number, rewardId: number): Promise<
   const created = await db
     .select()
     .from(userRewards)
-    .where(eq(userRewards.redemptionCode, redemptionCode))
+    .where(eq(userRewards.id, Number(result[0].insertId)))
     .limit(1);
   
-  return { success: true, userReward: created[0] };
+  return { success: true, userReward: created[0], pointsAwarded };
 }
 
-// Get user's rewards
-export async function getUserRewards(userId: number, status?: 'active' | 'redeemed' | 'expired'): Promise<Array<UserReward & { reward: Reward }>> {
+// Get user's claimed rewards
+export async function getUserRewards(userId: number): Promise<Array<UserReward & { reward: Reward }>> {
   const db = await getDb();
   if (!db) return [];
   
-  let query = db
+  const results = await db
     .select({
       userReward: userRewards,
       reward: rewards,
     })
     .from(userRewards)
     .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
-    .where(eq(userRewards.userId, userId));
+    .where(eq(userRewards.userId, userId))
+    .orderBy(desc(userRewards.claimedAt));
   
-  const results = await query.orderBy(desc(userRewards.purchasedAt));
-  
-  // Filter by status if provided
-  let filtered = results;
-  if (status) {
-    filtered = results.filter(r => r.userReward.status === status);
-  }
-  
-  // Check for expired rewards and update status
-  const now = new Date();
-  for (const result of filtered) {
-    if (result.userReward.status === 'active' && result.userReward.expiresAt < now) {
-      await db
-        .update(userRewards)
-        .set({ status: 'expired', updatedAt: new Date() })
-        .where(eq(userRewards.id, result.userReward.id));
-      result.userReward.status = 'expired';
-    }
-  }
-  
-  return filtered.map(r => ({
+  return results.map(r => ({
     ...r.userReward,
     reward: r.reward,
   }));
 }
 
-// Redeem a reward
-export async function redeemReward(userId: number, userRewardId: number, orderId?: number): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const db = await getDb();
-  if (!db) return { success: false, error: 'Database not available' };
-  
-  // Get the user reward
-  const userReward = await db
-    .select()
-    .from(userRewards)
-    .where(
-      and(
-        eq(userRewards.id, userRewardId),
-        eq(userRewards.userId, userId)
-      )
-    )
-    .limit(1);
-  
-  if (!userReward[0]) {
-    return { success: false, error: 'Reward not found' };
-  }
-  
-  if (userReward[0].status !== 'active') {
-    return { success: false, error: 'Reward is not active' };
-  }
-  
-  // Check expiration
-  if (userReward[0].expiresAt < new Date()) {
-    await db
-      .update(userRewards)
-      .set({ status: 'expired', updatedAt: new Date() })
-      .where(eq(userRewards.id, userRewardId));
-    return { success: false, error: 'Reward has expired' };
-  }
-  
-  // Mark as redeemed
-  await db
-    .update(userRewards)
-    .set({
-      status: 'redeemed',
-      redeemedAt: new Date(),
-      redeemedOrderId: orderId || null,
-      updatedAt: new Date(),
-    })
-    .where(eq(userRewards.id, userRewardId));
-  
-  return { success: true };
-}
 
-// Get user reward by redemption code
-export async function getUserRewardByCode(code: string): Promise<(UserReward & { reward: Reward }) | null> {
-  const db = await getDb();
-  if (!db) return null;
-  
-  const result = await db
-    .select({
-      userReward: userRewards,
-      reward: rewards,
-    })
-    .from(userRewards)
-    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
-    .where(eq(userRewards.redemptionCode, code.toUpperCase()))
-    .limit(1);
-  
-  if (!result[0]) return null;
-  
-  return {
-    ...result[0].userReward,
-    reward: result[0].reward,
-  };
-}
 
-// Seed default rewards
+// Seed default rewards (1 point = 1 sum)
 export async function seedDefaultRewards(): Promise<void> {
   const db = await getDb();
   if (!db) return;
   
   const defaultRewards: InsertReward[] = [
     {
-      slug: 'free_americano',
-      name: 'Free Americano',
-      nameRu: 'Бесплатный Американо',
-      description: 'Get a free Americano coffee',
-      descriptionRu: 'Получите бесплатный кофе Американо',
-      rewardType: 'free_drink',
-      pointsCost: 500,
-      validityDays: 30,
+      slug: 'bonus_5000',
+      name: '5000 Bonus Points',
+      nameRu: '5000 бонусных баллов',
+      description: 'Get 5000 bonus points (5000 sum)',
+      descriptionRu: 'Получите 5000 бонусных баллов (5000 сум)',
+      rewardType: 'bonus_points',
+      pointsCost: 0, // Free reward for tasks
+      pointsAwarded: 5000,
       sortOrder: 1,
       isActive: true,
       isFeatured: true,
     },
     {
-      slug: 'free_cappuccino',
-      name: 'Free Cappuccino',
-      nameRu: 'Бесплатный Капучино',
-      description: 'Get a free Cappuccino',
-      descriptionRu: 'Получите бесплатный Капучино',
-      rewardType: 'free_drink',
-      pointsCost: 600,
-      validityDays: 30,
+      slug: 'bonus_10000',
+      name: '10000 Bonus Points',
+      nameRu: '10000 бонусных баллов',
+      description: 'Get 10000 bonus points (10000 sum)',
+      descriptionRu: 'Получите 10000 бонусных баллов (10000 сум)',
+      rewardType: 'bonus_points',
+      pointsCost: 0, // Free reward for tasks
+      pointsAwarded: 10000,
       sortOrder: 2,
       isActive: true,
       isFeatured: true,
     },
     {
-      slug: 'discount_10',
-      name: '10% Discount',
-      nameRu: 'Скидка 10%',
-      description: 'Get 10% off your next order',
-      descriptionRu: 'Получите скидку 10% на следующий заказ',
-      rewardType: 'discount_percent',
-      pointsCost: 300,
-      discountValue: 10,
-      validityDays: 14,
+      slug: 'bonus_15000',
+      name: '15000 Bonus Points',
+      nameRu: '15000 бонусных баллов',
+      description: 'Get 15000 bonus points (15000 sum) - enough for a free coffee!',
+      descriptionRu: 'Получите 15000 бонусных баллов (15000 сум) - хватит на бесплатный кофе!',
+      rewardType: 'bonus_points',
+      pointsCost: 0, // Free reward for tasks
+      pointsAwarded: 15000,
       sortOrder: 3,
       isActive: true,
+      isFeatured: true,
     },
     {
-      slug: 'discount_20',
-      name: '20% Discount',
-      nameRu: 'Скидка 20%',
-      description: 'Get 20% off your next order',
-      descriptionRu: 'Получите скидку 20% на следующий заказ',
-      rewardType: 'discount_percent',
+      slug: 'exchange_5000',
+      name: 'Exchange 500 points for 5000',
+      nameRu: 'Обмен 500 баллов на 5000',
+      description: 'Exchange 500 task points for 5000 bonus points',
+      descriptionRu: 'Обменяйте 500 баллов за задания на 5000 бонусных баллов',
+      rewardType: 'bonus_points',
       pointsCost: 500,
-      discountValue: 20,
-      validityDays: 14,
+      pointsAwarded: 5000,
       sortOrder: 4,
       isActive: true,
     },
     {
-      slug: 'discount_5000',
-      name: '5000 UZS Off',
-      nameRu: 'Скидка 5000 сум',
-      description: 'Get 5000 UZS off your next order',
-      descriptionRu: 'Получите скидку 5000 сум на следующий заказ',
-      rewardType: 'discount_fixed',
-      pointsCost: 200,
-      discountValue: 5000,
-      validityDays: 14,
+      slug: 'promo_coffee10',
+      name: 'Promo Code: COFFEE10',
+      nameRu: 'Промокод: COFFEE10',
+      description: 'Get promo code COFFEE10 for 10% off at machine',
+      descriptionRu: 'Получите промокод COFFEE10 для скидки 10% на автомате',
+      rewardType: 'promo_code',
+      pointsCost: 300,
+      pointsAwarded: 0,
+      promoCode: 'COFFEE10',
       sortOrder: 5,
-      isActive: true,
-    },
-    {
-      slug: 'free_upgrade',
-      name: 'Free Size Upgrade',
-      nameRu: 'Бесплатное увеличение',
-      description: 'Upgrade your drink size for free',
-      descriptionRu: 'Увеличьте размер напитка бесплатно',
-      rewardType: 'free_upgrade',
-      pointsCost: 150,
-      validityDays: 7,
-      sortOrder: 6,
       isActive: true,
     },
   ];

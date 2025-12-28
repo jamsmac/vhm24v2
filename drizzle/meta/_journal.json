@@ -43,6 +43,20 @@
       "when": 1766962064918,
       "tag": "0005_fat_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1766963079019,
+      "tag": "0006_unique_nightcrawler",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1766963405237,
+      "tag": "0007_true_stick",
+      "breakpoints": true
     }
   ]
 }

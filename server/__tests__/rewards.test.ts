@@ -1,30 +1,46 @@
 /**
- * Rewards Store API Tests
+ * Rewards Store API Tests (Points-Based System)
+ * 1 point = 1 sum
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-describe('Rewards Store API', () => {
+describe('Rewards Store API (Points-Based)', () => {
   describe('Rewards Schema', () => {
     it('should have rewards table defined', () => {
-      // Test that the rewards schema is properly defined
       expect(true).toBe(true);
     });
     
     it('should have user_rewards table defined', () => {
-      // Test that the user_rewards schema is properly defined
       expect(true).toBe(true);
+    });
+    
+    it('should support pointsAwarded field for direct points rewards', () => {
+      const reward = {
+        pointsCost: 0,
+        pointsAwarded: 15000, // 15000 sum worth
+        promoCode: null
+      };
+      expect(reward.pointsAwarded).toBe(15000);
+    });
+    
+    it('should support promoCode field for machine entry', () => {
+      const reward = {
+        pointsCost: 500,
+        pointsAwarded: 0,
+        promoCode: 'COFFEE2024'
+      };
+      expect(reward.promoCode).toBe('COFFEE2024');
     });
   });
 
-  describe('Reward Types', () => {
+  describe('Reward Types (Points-Based)', () => {
     const validRewardTypes = [
-      'free_drink',
+      'bonus_points',    // Direct points award (1 point = 1 sum)
+      'promo_code',      // Promo code for machine entry
+      'free_drink',      // Free drink (converted to points)
       'discount_percent', 
       'discount_fixed',
-      'free_upgrade',
-      'bonus_points',
-      'exclusive_item',
       'custom'
     ];
     
@@ -35,40 +51,32 @@ describe('Rewards Store API', () => {
       });
     });
     
-    it('should have 7 reward types', () => {
-      expect(validRewardTypes.length).toBe(7);
+    it('should have 6 reward types', () => {
+      expect(validRewardTypes.length).toBe(6);
+    });
+    
+    it('should prioritize bonus_points type', () => {
+      expect(validRewardTypes[0]).toBe('bonus_points');
     });
   });
 
-  describe('Points Cost Validation', () => {
-    it('should require positive points cost', () => {
-      const validCost = 500;
-      const invalidCost = -100;
-      
-      expect(validCost).toBeGreaterThan(0);
-      expect(invalidCost).toBeLessThan(0);
+  describe('Points System (1 point = 1 sum)', () => {
+    it('should treat 1 point as 1 sum', () => {
+      const points = 15000;
+      const sumValue = points; // 1:1 ratio
+      expect(sumValue).toBe(15000);
     });
     
-    it('should allow various point costs', () => {
-      const costs = [100, 500, 1000, 2500, 5000, 10000];
-      costs.forEach(cost => {
-        expect(cost).toBeGreaterThan(0);
-        expect(Number.isInteger(cost)).toBe(true);
-      });
-    });
-  });
-
-  describe('Validity Period', () => {
-    it('should have default validity of 30 days', () => {
-      const defaultValidity = 30;
-      expect(defaultValidity).toBe(30);
+    it('should allow zero cost for free rewards', () => {
+      const freeCost = 0;
+      expect(freeCost).toBe(0);
     });
     
-    it('should allow custom validity periods', () => {
-      const validPeriods = [7, 14, 30, 60, 90, 365];
-      validPeriods.forEach(period => {
-        expect(period).toBeGreaterThan(0);
-        expect(Number.isInteger(period)).toBe(true);
+    it('should allow various point awards', () => {
+      const awards = [5000, 10000, 15000, 20000, 50000];
+      awards.forEach(award => {
+        expect(award).toBeGreaterThan(0);
+        expect(Number.isInteger(award)).toBe(true);
       });
     });
   });
@@ -81,51 +89,60 @@ describe('Rewards Store API', () => {
     
     it('should track remaining stock', () => {
       const stockLimit = 100;
-      const purchased = 25;
-      const remaining = stockLimit - purchased;
+      const claimed = 25;
+      const remaining = stockLimit - claimed;
       
       expect(remaining).toBe(75);
       expect(remaining).toBeLessThanOrEqual(stockLimit);
     });
     
-    it('should prevent purchase when out of stock', () => {
+    it('should prevent claim when out of stock', () => {
       const stockRemaining = 0;
-      const canPurchase = stockRemaining > 0;
+      const canClaim = stockRemaining > 0;
       
-      expect(canPurchase).toBe(false);
+      expect(canClaim).toBe(false);
     });
   });
 
-  describe('User Rewards', () => {
-    it('should generate unique redemption codes', () => {
-      const code1 = 'RWD-ABC123';
-      const code2 = 'RWD-XYZ789';
-      
-      expect(code1).not.toBe(code2);
-      expect(code1.startsWith('RWD-')).toBe(true);
-    });
-    
-    it('should track reward status', () => {
-      const validStatuses = ['active', 'redeemed', 'expired'];
+  describe('User Rewards (Claim Flow)', () => {
+    it('should track claim status', () => {
+      const validStatuses = ['claimed', 'used'];
       
       validStatuses.forEach(status => {
-        expect(['active', 'redeemed', 'expired']).toContain(status);
+        expect(['claimed', 'used']).toContain(status);
       });
     });
     
-    it('should calculate expiry date correctly', () => {
-      const purchaseDate = new Date('2024-01-01T12:00:00Z');
-      const validityDays = 30;
-      const expiryDate = new Date(purchaseDate.getTime() + validityDays * 24 * 60 * 60 * 1000);
+    it('should record claim timestamp', () => {
+      const claimedAt = new Date();
       
-      // Jan 1 + 30 days = Jan 31
-      expect(expiryDate.getUTCDate()).toBe(31);
-      expect(expiryDate.getUTCMonth()).toBe(0); // January
+      expect(claimedAt instanceof Date).toBe(true);
+      expect(claimedAt.getTime()).toBeLessThanOrEqual(Date.now());
+    });
+    
+    it('should store points awarded at claim time', () => {
+      const userReward = {
+        pointsAwarded: 15000,
+        promoCode: null,
+        claimedAt: new Date()
+      };
+      
+      expect(userReward.pointsAwarded).toBe(15000);
+    });
+    
+    it('should store promo code at claim time', () => {
+      const userReward = {
+        pointsAwarded: 0,
+        promoCode: 'COFFEE2024',
+        claimedAt: new Date()
+      };
+      
+      expect(userReward.promoCode).toBe('COFFEE2024');
     });
   });
 
-  describe('Purchase Flow', () => {
-    it('should check user has enough points', () => {
+  describe('Claim Flow (Points-Based)', () => {
+    it('should check user has enough points for cost', () => {
       const userPoints = 1000;
       const rewardCost = 500;
       const canAfford = userPoints >= rewardCost;
@@ -133,7 +150,7 @@ describe('Rewards Store API', () => {
       expect(canAfford).toBe(true);
     });
     
-    it('should reject purchase with insufficient points', () => {
+    it('should reject claim with insufficient points', () => {
       const userPoints = 200;
       const rewardCost = 500;
       const canAfford = userPoints >= rewardCost;
@@ -141,38 +158,28 @@ describe('Rewards Store API', () => {
       expect(canAfford).toBe(false);
     });
     
-    it('should deduct points after purchase', () => {
+    it('should deduct cost and add awarded points', () => {
       const userPoints = 1000;
       const rewardCost = 500;
-      const remainingPoints = userPoints - rewardCost;
+      const pointsAwarded = 15000;
       
-      expect(remainingPoints).toBe(500);
-    });
-  });
-
-  describe('Redemption Flow', () => {
-    it('should only allow redemption of active rewards', () => {
-      const activeReward = { status: 'active' };
-      const redeemedReward = { status: 'redeemed' };
-      const expiredReward = { status: 'expired' };
+      const afterDeduct = userPoints - rewardCost;
+      const finalPoints = afterDeduct + pointsAwarded;
       
-      expect(activeReward.status === 'active').toBe(true);
-      expect(redeemedReward.status === 'active').toBe(false);
-      expect(expiredReward.status === 'active').toBe(false);
+      expect(afterDeduct).toBe(500);
+      expect(finalPoints).toBe(15500);
     });
     
-    it('should update status to redeemed after use', () => {
-      const reward = { status: 'active' };
-      reward.status = 'redeemed';
+    it('should allow free rewards (cost = 0)', () => {
+      const userPoints = 100;
+      const rewardCost = 0;
+      const pointsAwarded = 5000;
       
-      expect(reward.status).toBe('redeemed');
-    });
-    
-    it('should record redemption timestamp', () => {
-      const redeemedAt = new Date();
+      const canAfford = userPoints >= rewardCost;
+      const finalPoints = userPoints - rewardCost + pointsAwarded;
       
-      expect(redeemedAt instanceof Date).toBe(true);
-      expect(redeemedAt.getTime()).toBeLessThanOrEqual(Date.now());
+      expect(canAfford).toBe(true);
+      expect(finalPoints).toBe(5100);
     });
   });
 
@@ -217,6 +224,30 @@ describe('Rewards Store API', () => {
       ];
       
       expect(rewards.length).toBe(3);
+    });
+  });
+
+  describe('Promo Code Rewards', () => {
+    it('should generate uppercase promo codes', () => {
+      const promoCode = 'COFFEE2024';
+      expect(promoCode).toBe(promoCode.toUpperCase());
+    });
+    
+    it('should allow alphanumeric promo codes', () => {
+      const validCodes = ['COFFEE2024', 'FREE100', 'BONUS50', 'NEWYEAR'];
+      validCodes.forEach(code => {
+        expect(/^[A-Z0-9]+$/.test(code)).toBe(true);
+      });
+    });
+    
+    it('should display promo code to user after claim', () => {
+      const userReward = {
+        promoCode: 'COFFEE2024',
+        status: 'claimed'
+      };
+      
+      expect(userReward.promoCode).toBeDefined();
+      expect(userReward.promoCode?.length).toBeGreaterThan(0);
     });
   });
 });

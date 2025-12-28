@@ -308,7 +308,8 @@ export const pointsTransactions = mysqlTable("points_transactions", {
     "referral_bonus",   // Points from referral
     "admin_adjustment", // Manual adjustment by admin
     "redemption",       // Points spent on rewards
-    "expiration"        // Points expired
+    "expiration",       // Points expired
+    "reward_claim"      // Points from claiming a reward
   ]).notNull(),
   
   // Reference to related entity
@@ -409,6 +410,7 @@ export type InsertReferralCode = typeof referralCodes.$inferInsert;
 
 /**
  * Rewards catalog - available rewards users can purchase with points
+ * Note: 1 point = 1 sum (currency)
  */
 export const rewards = mysqlTable("rewards", {
   id: int("id").autoincrement().primaryKey(),
@@ -421,31 +423,27 @@ export const rewards = mysqlTable("rewards", {
   descriptionRu: text("descriptionRu"),
   imageUrl: text("imageUrl"),
   
-  // Reward type
+  // Reward type - simplified to points-based
   rewardType: mysqlEnum("rewardType", [
-    "free_drink",       // Free drink of specific type
-    "discount_percent", // Percentage discount on order
-    "discount_fixed",   // Fixed amount discount
-    "free_upgrade",     // Free size upgrade
-    "bonus_points",     // Bonus points multiplier
-    "exclusive_item",   // Access to exclusive menu item
-    "custom"            // Custom reward defined by admin
+    "bonus_points",     // Direct points award (1 point = 1 sum)
+    "promo_code",       // Promo code for machine input
+    "free_drink",       // Free drink (awarded as points equivalent)
+    "discount_percent", // Percentage discount (awarded as points)
+    "discount_fixed",   // Fixed amount discount (awarded as points)
+    "custom"            // Custom reward
   ]).notNull(),
   
   // Cost and value
-  pointsCost: int("pointsCost").notNull(),
-  discountValue: int("discountValue"), // Percent or fixed amount depending on type
+  pointsCost: int("pointsCost").notNull(), // Points required to purchase
+  pointsAwarded: int("pointsAwarded").default(0), // Points given when reward is claimed (1 point = 1 sum)
   
-  // Linked product (for free_drink type)
-  productId: int("productId"),
+  // For promo_code type - the actual code to show user
+  promoCode: varchar("promoCode", { length: 32 }),
   
   // Availability
   stockLimit: int("stockLimit"), // null = unlimited
   stockRemaining: int("stockRemaining"),
   maxPerUser: int("maxPerUser").default(1), // Max times a user can purchase
-  
-  // Validity
-  validityDays: int("validityDays").default(30), // Days until reward expires after purchase
   
   // Display
   sortOrder: int("sortOrder").default(0).notNull(),
@@ -464,7 +462,8 @@ export type Reward = typeof rewards.$inferSelect;
 export type InsertReward = typeof rewards.$inferInsert;
 
 /**
- * User rewards - rewards purchased by users
+ * User rewards - rewards claimed by users
+ * Points are awarded immediately upon claiming
  */
 export const userRewards = mysqlTable("user_rewards", {
   id: int("id").autoincrement().primaryKey(),
@@ -472,25 +471,13 @@ export const userRewards = mysqlTable("user_rewards", {
   rewardId: int("rewardId").notNull(),
   
   // Purchase info
-  pointsSpent: int("pointsSpent").notNull(),
-  purchasedAt: timestamp("purchasedAt").defaultNow().notNull(),
+  pointsSpent: int("pointsSpent").notNull(), // Points spent to claim
+  pointsAwarded: int("pointsAwarded").notNull().default(0), // Points received (1 point = 1 sum)
   
-  // Redemption status
-  status: mysqlEnum("status", [
-    "active",     // Ready to use
-    "redeemed",   // Already used
-    "expired"     // Expired without use
-  ]).default("active").notNull(),
+  // For promo_code rewards - store the code shown to user
+  promoCode: varchar("promoCode", { length: 32 }),
   
-  // Redemption details
-  redeemedAt: timestamp("redeemedAt"),
-  redeemedOrderId: int("redeemedOrderId"), // Order where reward was used
-  
-  // Expiration
-  expiresAt: timestamp("expiresAt").notNull(),
-  
-  // Generated code for redemption
-  redemptionCode: varchar("redemptionCode", { length: 16 }).unique(),
+  claimedAt: timestamp("claimedAt").defaultNow().notNull(),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

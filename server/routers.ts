@@ -828,32 +828,17 @@ export const appRouter = router({
         return await db.getRewardById(input.id);
       }),
     
-    // Purchase a reward
+    // Claim a reward (points are awarded immediately)
     purchase: protectedProcedure
       .input(z.object({ rewardId: z.number() }))
       .mutation(async ({ ctx, input }) => {
         return await db.purchaseReward(ctx.user.id, input.rewardId);
       }),
     
-    // Get user's rewards
+    // Get user's claimed rewards
     myRewards: protectedProcedure
-      .input(z.object({ status: z.enum(['active', 'redeemed', 'expired']).optional() }).optional())
-      .query(async ({ ctx, input }) => {
-        return await db.getUserRewards(ctx.user.id, input?.status);
-      }),
-    
-    // Redeem a reward
-    redeem: protectedProcedure
-      .input(z.object({ userRewardId: z.number(), orderId: z.number().optional() }))
-      .mutation(async ({ ctx, input }) => {
-        return await db.redeemReward(ctx.user.id, input.userRewardId, input.orderId);
-      }),
-    
-    // Get reward by redemption code
-    getByCode: protectedProcedure
-      .input(z.object({ code: z.string() }))
-      .query(async ({ input }) => {
-        return await db.getUserRewardByCode(input.code);
+      .query(async ({ ctx }) => {
+        return await db.getUserRewards(ctx.user.id);
       }),
     
     // Admin: Get all rewards
@@ -870,13 +855,12 @@ export const appRouter = router({
         description: z.string().optional(),
         descriptionRu: z.string().optional(),
         imageUrl: z.string().optional(),
-        rewardType: z.enum(['free_drink', 'discount_percent', 'discount_fixed', 'free_upgrade', 'bonus_points', 'exclusive_item', 'custom']),
+        rewardType: z.enum(['bonus_points', 'promo_code', 'free_drink', 'discount_percent', 'discount_fixed', 'custom']),
         pointsCost: z.number(),
-        discountValue: z.number().optional(),
-        productId: z.number().optional(),
+        pointsAwarded: z.number().optional(),
+        promoCode: z.string().optional(),
         stockLimit: z.number().optional(),
         maxPerUser: z.number().optional(),
-        validityDays: z.number().optional(),
         sortOrder: z.number().optional(),
         isActive: z.boolean().optional(),
         isFeatured: z.boolean().optional(),
@@ -897,11 +881,11 @@ export const appRouter = router({
           descriptionRu: z.string().optional(),
           imageUrl: z.string().optional(),
           pointsCost: z.number().optional(),
-          discountValue: z.number().optional(),
+          pointsAwarded: z.number().optional(),
+          promoCode: z.string().optional(),
           stockLimit: z.number().optional(),
           stockRemaining: z.number().optional(),
           maxPerUser: z.number().optional(),
-          validityDays: z.number().optional(),
           sortOrder: z.number().optional(),
           isActive: z.boolean().optional(),
           isFeatured: z.boolean().optional(),

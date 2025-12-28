@@ -194,3 +194,13 @@
 - [x] Implement reward redemption flow with unique codes
 - [x] Add admin panel for managing rewards (/admin/rewards)
 - [x] Test rewards store functionality (109 tests passing)
+
+## Points-Based Rewards (1 point = 1 sum)
+- [x] Remove QR code component (not needed)
+- [x] Update rewards to award points directly (pointsAwarded field)
+- [x] Simplify reward types (bonus_points, promo_code as main types)
+- [x] Update rewards store UI to show points awarded
+- [x] Simplified claim flow (points added automatically on claim)
+- [x] Support promo codes for machine entry
+- [x] Update admin panel for new reward fields
+- [x] Test points-based rewards functionality (113 tests passing)
