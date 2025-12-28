@@ -19,7 +19,8 @@ import {
   LogOut,
   Star,
   Sparkles,
-  Users
+  Users,
+  Coins
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -82,6 +83,12 @@ export default function Profile() {
       label: 'Магазин наград', 
       href: '/profile/rewards',
       color: 'text-purple-500'
+    },
+    { 
+      icon: Coins, 
+      label: 'История баллов', 
+      href: '/profile/points-history',
+      color: 'text-amber-500'
     },
     { 
       icon: Settings, 

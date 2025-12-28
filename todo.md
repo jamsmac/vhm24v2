@@ -216,3 +216,12 @@
 - [x] Record points transaction in history
 - [x] Show points used in order confirmation
 - [x] Test points payment functionality (126 tests passing)
+
+## Points History Page
+- [x] Create PointsHistory page component (/profile/points-history)
+- [x] Display all points transactions with date, type, amount, description
+- [x] Add filter tabs (All, Earned, Spent)
+- [x] Show current balance at top
+- [x] Add visual indicators for credits (+) and debits (-)
+- [x] Add navigation link from Profile menu
+- [x] Test points history page (126 tests passing)
