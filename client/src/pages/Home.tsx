@@ -2,6 +2,8 @@
  * VendHub TWA - Modern Home Page
  * Clean, modern design with VendHub branding
  * Quick access to catalog and locations at the top
+ * 
+ * Dark Theme Support: All elements use theme-aware colors
  */
 
 import { Button } from "@/components/ui/button";
@@ -62,8 +64,8 @@ export default function Home() {
     <div className="min-h-screen bg-background pb-24">
       {/* Header with gradient */}
       <header className="relative overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-caramel/20 via-cream to-background" />
+        {/* Background gradient - theme aware */}
+        <div className="absolute inset-0 bg-gradient-to-br from-amber-600/20 via-amber-100/30 dark:via-amber-900/20 to-background" />
         
         <div className="relative px-4 pt-safe-top">
           {/* Top bar */}
@@ -85,7 +87,7 @@ export default function Home() {
             <Button 
               variant="ghost" 
               size="icon" 
-              className="rounded-full relative"
+              className="rounded-full relative text-foreground"
               onClick={() => {
                 haptic.selection();
                 setShowNotifications(true);
@@ -124,14 +126,14 @@ export default function Home() {
         >
           {/* Catalog Button */}
           <Card 
-            className="p-4 border-2 border-espresso/20 bg-gradient-to-br from-espresso/5 to-espresso/10 rounded-2xl cursor-pointer hover:border-espresso/40 hover:shadow-lg transition-all active:scale-[0.98]"
+            className="p-4 border-2 border-amber-700/20 dark:border-amber-500/30 bg-gradient-to-br from-amber-700/5 to-amber-700/10 dark:from-amber-600/10 dark:to-amber-600/20 rounded-2xl cursor-pointer hover:border-amber-700/40 dark:hover:border-amber-500/50 hover:shadow-lg transition-all active:scale-[0.98]"
             onClick={() => {
               haptic.selection();
               navigate('/menu/1');
             }}
           >
             <div className="flex flex-col items-center text-center gap-2">
-              <div className="w-14 h-14 rounded-2xl bg-espresso flex items-center justify-center shadow-lg shadow-espresso/30">
+              <div className="w-14 h-14 rounded-2xl bg-amber-700 dark:bg-amber-600 flex items-center justify-center shadow-lg shadow-amber-700/30 dark:shadow-amber-600/30">
                 <Coffee className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -143,14 +145,14 @@ export default function Home() {
 
           {/* Locations Button */}
           <Card 
-            className="p-4 border-2 border-caramel/20 bg-gradient-to-br from-caramel/5 to-caramel/10 rounded-2xl cursor-pointer hover:border-caramel/40 hover:shadow-lg transition-all active:scale-[0.98]"
+            className="p-4 border-2 border-amber-500/20 dark:border-amber-400/30 bg-gradient-to-br from-amber-500/5 to-amber-500/10 dark:from-amber-500/10 dark:to-amber-500/20 rounded-2xl cursor-pointer hover:border-amber-500/40 dark:hover:border-amber-400/50 hover:shadow-lg transition-all active:scale-[0.98]"
             onClick={() => {
               haptic.selection();
               navigate('/locations');
             }}
           >
             <div className="flex flex-col items-center text-center gap-2">
-              <div className="w-14 h-14 rounded-2xl bg-caramel flex items-center justify-center shadow-lg shadow-caramel/30">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500 dark:bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
                 <MapPin className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -170,15 +172,15 @@ export default function Home() {
         >
           {/* QR Scan */}
           <Card 
-            className="p-3 bg-secondary/50 border-0 rounded-xl cursor-pointer hover:bg-secondary/70 transition-colors active:scale-[0.98]"
+            className="p-3 bg-card border border-border rounded-xl cursor-pointer hover:bg-secondary/70 transition-colors active:scale-[0.98]"
             onClick={() => {
               haptic.selection();
               navigate('/scan');
             }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                <QrCode className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                <QrCode className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <h4 className="font-medium text-sm text-foreground">QR Скан</h4>
@@ -189,15 +191,15 @@ export default function Home() {
 
           {/* Promotions */}
           <Card 
-            className="p-3 bg-secondary/50 border-0 rounded-xl cursor-pointer hover:bg-secondary/70 transition-colors active:scale-[0.98]"
+            className="p-3 bg-card border border-border rounded-xl cursor-pointer hover:bg-secondary/70 transition-colors active:scale-[0.98]"
             onClick={() => {
               haptic.selection();
               navigate('/promotions');
             }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-                <Percent className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                <Percent className="w-5 h-5 text-red-600 dark:text-red-400" />
               </div>
               <div>
                 <h4 className="font-medium text-sm text-foreground">Акции</h4>
@@ -214,7 +216,7 @@ export default function Home() {
           transition={{ delay: 0.15 }}
         >
           <Link href="/profile/bonuses">
-            <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-espresso via-espresso/95 to-espresso/90 text-white p-4 rounded-2xl shadow-lg shadow-espresso/20">
+            <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-amber-800 via-amber-800/95 to-amber-900 text-white p-4 rounded-2xl shadow-lg shadow-amber-900/20">
               {/* Decorative circles */}
               <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
               
@@ -230,7 +232,7 @@ export default function Home() {
                 <div className="flex items-center gap-3">
                   {/* Level badge */}
                   <div className="text-right">
-                    <div className="flex items-center gap-1 text-caramel">
+                    <div className="flex items-center gap-1 text-amber-400">
                       <Sparkles className="w-3.5 h-3.5" />
                       <span className="text-sm font-medium">Silver</span>
                     </div>
@@ -253,23 +255,23 @@ export default function Home() {
             transition={{ delay: 0.2 }}
             className="grid grid-cols-3 gap-3"
           >
-            <Card className="p-3 text-center bg-secondary/50 border-0 rounded-xl">
-              <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-blue-100 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-blue-600" />
+            <Card className="p-3 text-center bg-card border border-border rounded-xl">
+              <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <p className="font-display font-bold text-foreground">{orderStats.totalOrders}</p>
               <p className="text-xs text-muted-foreground">Заказов</p>
             </Card>
-            <Card className="p-3 text-center bg-secondary/50 border-0 rounded-xl">
-              <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-green-100 flex items-center justify-center">
-                <span className="text-green-600 font-bold text-sm">₿</span>
+            <Card className="p-3 text-center bg-card border border-border rounded-xl">
+              <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+                <span className="text-green-600 dark:text-green-400 font-bold text-sm">₿</span>
               </div>
               <p className="font-display font-bold text-foreground">{formatPrice(orderStats.totalSpent)}</p>
               <p className="text-xs text-muted-foreground">Потрачено</p>
             </Card>
-            <Card className="p-3 text-center bg-secondary/50 border-0 rounded-xl">
-              <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-orange-100 flex items-center justify-center">
-                <Clock className="w-4 h-4 text-orange-600" />
+            <Card className="p-3 text-center bg-card border border-border rounded-xl">
+              <div className="w-8 h-8 mx-auto mb-1.5 rounded-lg bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center">
+                <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
               </div>
               <p className="font-display font-bold text-foreground">2.5</p>
               <p className="text-xs text-muted-foreground">мин</p>
@@ -301,7 +303,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-r from-caramel/90 to-caramel p-4 rounded-2xl">
+          <Card className="relative overflow-hidden border-0 bg-gradient-to-r from-amber-500/90 to-amber-500 p-4 rounded-2xl">
             <div className="absolute -right-4 -bottom-4 w-20 h-20 opacity-20">
               <img src="/images/espresso-card.png" alt="" className="w-full h-full object-cover" />
             </div>
@@ -319,7 +321,7 @@ export default function Home() {
               </div>
               <Button 
                 size="sm" 
-                className="bg-white text-espresso hover:bg-white/90 rounded-xl h-9"
+                className="bg-white text-amber-800 hover:bg-white/90 rounded-xl h-9"
                 onClick={() => {
                   haptic.selection();
                   navigate('/locations');
@@ -361,13 +363,13 @@ export default function Home() {
                 transition={{ delay: 0.4 + index * 0.05 }}
               >
                 <Card 
-                  className="overflow-hidden border-0 bg-card rounded-2xl cursor-pointer hover:shadow-lg transition-shadow active:scale-[0.98]"
+                  className="overflow-hidden border border-border bg-card rounded-2xl cursor-pointer hover:shadow-lg transition-shadow active:scale-[0.98]"
                   onClick={() => {
                     haptic.selection();
                     navigate(`/drink/${item.id}`);
                   }}
                 >
-                  <div className="aspect-square relative bg-secondary/50">
+                  <div className="aspect-square relative bg-secondary/50 dark:bg-secondary/30">
                     <img 
                       src={item.image} 
                       alt={item.name}
@@ -376,7 +378,7 @@ export default function Home() {
                   </div>
                   <div className="p-3">
                     <h4 className="font-medium text-sm text-foreground">{item.name}</h4>
-                    <p className="text-sm font-semibold text-espresso mt-1">
+                    <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mt-1">
                       {formatPrice(item.price)} UZS
                     </p>
                   </div>

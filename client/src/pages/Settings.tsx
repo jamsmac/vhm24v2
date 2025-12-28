@@ -10,7 +10,8 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone } from "lucide-react";
+import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw } from "lucide-react";
+import { useOnboardingStore } from "@/stores/onboardingStore";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ const languages = [
 export default function Settings() {
   const { haptic } = useTelegram();
   const { theme, toggleTheme } = useTheme();
+  const { resetOnboarding } = useOnboardingStore();
   const [language, setLanguage] = useState('ru');
   const [notifications, setNotifications] = useState(true);
   const [showLanguages, setShowLanguages] = useState(false);
@@ -268,6 +270,38 @@ export default function Settings() {
                 <div className="text-left">
                   <p className="font-medium text-foreground">Политика конфиденциальности</p>
                   <p className="text-sm text-muted-foreground">Как мы используем ваши данные</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </button>
+          </Card>
+        </motion.div>
+
+        {/* Tutorial Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.35 }}
+        >
+          <h2 className="text-sm font-medium text-muted-foreground mb-2 px-1">Обучение</h2>
+          <Card className="coffee-card">
+            <button 
+              className="w-full flex items-center justify-between"
+              onClick={() => {
+                haptic.impact('medium');
+                resetOnboarding();
+                toast.success('Приветственные экраны будут показаны при следующем запуске', {
+                  icon: '👋',
+                });
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                  <RotateCcw className="w-5 h-5 text-[#5D4037] dark:text-[#D4A574]" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-foreground">Показать обучение</p>
+                  <p className="text-sm text-muted-foreground">Посмотреть приветственные экраны</p>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-muted-foreground" />

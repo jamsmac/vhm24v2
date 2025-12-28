@@ -6,6 +6,8 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { TelegramProvider } from "./contexts/TelegramContext";
 import BottomNav from "./components/BottomNav";
+import Onboarding from "./components/Onboarding";
+import { useOnboardingStore } from "./stores/onboardingStore";
 
 // Pages
 import Home from "./pages/Home";
@@ -60,6 +62,9 @@ function Router() {
  * Modern design with bottom navigation
  */
 function App() {
+  const { shouldShowOnboarding, completeOnboarding } = useOnboardingStore();
+  const showOnboarding = shouldShowOnboarding();
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" switchable>
@@ -75,8 +80,14 @@ function App() {
                 },
               }}
             />
-            <Router />
-            <BottomNav />
+            {showOnboarding ? (
+              <Onboarding onComplete={completeOnboarding} />
+            ) : (
+              <>
+                <Router />
+                <BottomNav />
+              </>
+            )}
           </TooltipProvider>
         </TelegramProvider>
       </ThemeProvider>
