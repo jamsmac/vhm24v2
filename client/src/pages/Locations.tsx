@@ -2,9 +2,10 @@
  * VendHub TWA - Locations Page
  * Shows nearby vending machines with interactive map
  * Handles pending order flow - adds drink to cart after selection
+ * Features route display on embedded map before opening external navigator
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { NavigatorDialog } from "@/components/NavigatorDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,11 +14,16 @@ import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore, Machine } from "@/stores/cartStore";
 import { usePendingOrderStore } from "@/stores/pendingOrderStore";
 import { MapView } from "@/components/Map";
-import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag, Map, List, ExternalLink, Filter, Clock } from "lucide-react";
+import { 
+  ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, 
+  ShoppingBag, Map, List, ExternalLink, Filter, Clock, 
+  Footprints, Car, X, Loader2, Route
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // Calculate walking time from distance (average walking speed: 5 km/h)
 const calculateWalkingTime = (distanceKm: number): string => {
@@ -33,6 +39,16 @@ const calculateWalkingTime = (distanceKm: number): string => {
   if (mins === 0) return `${hours} ч`;
   return `${hours} ч ${mins} мин`;
 };
+
+// Route info interface
+interface RouteInfo {
+  distance: string;
+  duration: string;
+  distanceValue: number;
+  durationValue: number;
+}
+
+type TravelMode = 'WALKING' | 'DRIVING';
 
 // Mock locations data with coordinates - sorted by distance
 const mockLocations: Array<Machine & { 
@@ -123,8 +139,18 @@ export default function Locations() {
   } | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
+  
+  // Route display state
+  const [showingRoute, setShowingRoute] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [travelMode, setTravelMode] = useState<TravelMode>('WALKING');
+  const [routeError, setRouteError] = useState<string | null>(null);
+  
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
 
   // Check if we're in order mode (coming from drink detail)
   const isOrderMode = searchParams.includes('order=true');
@@ -184,6 +210,140 @@ export default function Locations() {
     }
   };
 
+  // Initialize directions service and renderer
+  const initDirections = useCallback(() => {
+    if (!directionsServiceRef.current && window.google) {
+      directionsServiceRef.current = new google.maps.DirectionsService();
+    }
+    
+    if (!directionsRendererRef.current && mapRef.current && window.google) {
+      directionsRendererRef.current = new google.maps.DirectionsRenderer({
+        map: mapRef.current,
+        suppressMarkers: false,
+        polylineOptions: {
+          strokeColor: '#D97706', // amber-600
+          strokeWeight: 5,
+          strokeOpacity: 0.8,
+        },
+      });
+    }
+    
+    return { 
+      service: directionsServiceRef.current, 
+      renderer: directionsRendererRef.current 
+    };
+  }, []);
+
+  // Calculate and display route on map
+  const calculateRoute = useCallback(async (destination: { lat: number; lng: number }, mode: TravelMode = travelMode) => {
+    setIsCalculatingRoute(true);
+    setRouteError(null);
+    
+    try {
+      const { service, renderer } = initDirections();
+      
+      if (!service || !mapRef.current) {
+        throw new Error('Карта не готова');
+      }
+
+      // Get current position
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('Геолокация не поддерживается'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000,
+        });
+      });
+
+      const origin = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+
+      const request: google.maps.DirectionsRequest = {
+        origin,
+        destination,
+        travelMode: google.maps.TravelMode[mode],
+        unitSystem: google.maps.UnitSystem.METRIC,
+        language: 'ru',
+      };
+
+      const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+        service.route(request, (result, status) => {
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            resolve(result);
+          } else {
+            let errorMessage = 'Ошибка построения маршрута';
+            if (status === google.maps.DirectionsStatus.ZERO_RESULTS) {
+              errorMessage = 'Маршрут не найден';
+            } else if (status === google.maps.DirectionsStatus.NOT_FOUND) {
+              errorMessage = 'Точка не найдена';
+            }
+            reject(new Error(errorMessage));
+          }
+        });
+      });
+
+      // Display route on map
+      if (renderer && mapRef.current) {
+        renderer.setMap(mapRef.current);
+        renderer.setDirections(result);
+      }
+
+      // Extract route info
+      const route = result.routes[0];
+      const leg = route.legs[0];
+      
+      setRouteInfo({
+        distance: leg.distance?.text || '',
+        duration: leg.duration?.text || '',
+        distanceValue: leg.distance?.value || 0,
+        durationValue: leg.duration?.value || 0,
+      });
+      
+      setShowingRoute(true);
+      setTravelMode(mode);
+      haptic.notification('success');
+      
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка построения маршрута';
+      setRouteError(errorMessage);
+      haptic.notification('error');
+      toast.error(errorMessage);
+    } finally {
+      setIsCalculatingRoute(false);
+    }
+  }, [travelMode, initDirections, haptic]);
+
+  // Clear route from map
+  const clearRoute = useCallback(() => {
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null);
+      directionsRendererRef.current = null;
+    }
+    setRouteInfo(null);
+    setShowingRoute(false);
+    setRouteError(null);
+  }, []);
+
+  // Open in external maps app
+  const openInExternalMaps = useCallback((destination: { lat: number; lng: number }, name: string, app: 'google' | 'yandex' = 'google') => {
+    const { lat, lng } = destination;
+    let url: string;
+
+    if (app === 'google') {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodeURIComponent(name)}&travelmode=${travelMode.toLowerCase()}`;
+    } else {
+      url = `https://yandex.ru/maps/?rtext=~${lat},${lng}&rtt=${travelMode === 'DRIVING' ? 'auto' : 'pd'}`;
+    }
+
+    window.open(url, '_blank');
+  }, [travelMode]);
+
   const handleMapReady = (map: google.maps.Map) => {
     mapRef.current = map;
     
@@ -230,6 +390,8 @@ export default function Locations() {
 
       // Add click listener
       marker.addListener('click', () => {
+        // Clear any existing route when selecting a new location
+        clearRoute();
         setSelectedLocationId(location.id);
         // Pan to marker
         map.panTo({ lat: location.lat, lng: location.lng });
@@ -250,6 +412,8 @@ export default function Locations() {
   const handleMarkerSelect = (locationId: string) => {
     const location = mockLocations.find(l => l.id === locationId);
     if (location && mapRef.current) {
+      // Clear any existing route
+      clearRoute();
       mapRef.current.panTo({ lat: location.lat, lng: location.lng });
       mapRef.current.setZoom(16);
       setSelectedLocationId(locationId);
@@ -290,6 +454,7 @@ export default function Locations() {
               onClick={() => {
                 haptic.selection();
                 setViewMode('list');
+                clearRoute();
               }}
             >
               <List className="w-4 h-4" />
@@ -389,6 +554,56 @@ export default function Locations() {
               />
             </div>
 
+            {/* Route Info Panel - Shows when route is displayed */}
+            <AnimatePresence>
+              {showingRoute && routeInfo && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="absolute top-16 left-4 right-4 z-10"
+                >
+                  <Card className="p-3 rounded-xl shadow-lg bg-background/95 backdrop-blur border-amber-500/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                            <Route className="w-4 h-4 text-amber-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">{routeInfo.distance}</p>
+                            <p className="text-xs text-muted-foreground">~{routeInfo.duration}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Travel mode indicator */}
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-xs">
+                          {travelMode === 'WALKING' ? (
+                            <Footprints className="w-3 h-3" />
+                          ) : (
+                            <Car className="w-3 h-3" />
+                          )}
+                          <span>{travelMode === 'WALKING' ? 'Пешком' : 'На авто'}</span>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          haptic.selection();
+                          clearRoute();
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Selected Location Card - Floating at bottom */}
             <AnimatePresence>
               {selectedLocation && (
@@ -445,31 +660,164 @@ export default function Locations() {
                       </div>
                     </div>
                     
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 mt-4">
-                      {/* Navigate Button */}
-                      <Button
-                        variant="outline"
-                        className="flex-1 h-12 rounded-xl font-semibold border-2 border-caramel text-caramel hover:bg-caramel/10"
-                        onClick={() => {
-                          haptic.impact('light');
-                          setNavigationDestination({
-                            lat: selectedLocation.lat,
-                            lng: selectedLocation.lng,
-                            name: selectedLocation.name,
-                            address: selectedLocation.address || ''
-                          });
-                          setNavigatorDialogOpen(true);
-                        }}
-                      >
-                        <Navigation className="w-5 h-5 mr-2" />
-                        Маршрут
-                        <ExternalLink className="w-4 h-4 ml-1 opacity-60" />
-                      </Button>
+                    {/* Route Panel - Travel Mode & Actions */}
+                    <div className="mt-4 pt-4 border-t space-y-3">
+                      {/* Travel Mode Selector */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant={travelMode === 'WALKING' ? 'default' : 'outline'}
+                          size="sm"
+                          className={cn("flex-1", travelMode === 'WALKING' && "bg-amber-600 hover:bg-amber-700")}
+                          onClick={() => {
+                            haptic.selection();
+                            setTravelMode('WALKING');
+                            // Recalculate route if already showing
+                            if (showingRoute) {
+                              calculateRoute({ lat: selectedLocation.lat, lng: selectedLocation.lng }, 'WALKING');
+                            }
+                          }}
+                          disabled={isCalculatingRoute}
+                        >
+                          <Footprints className="w-4 h-4 mr-1" />
+                          Пешком
+                        </Button>
+                        <Button
+                          variant={travelMode === 'DRIVING' ? 'default' : 'outline'}
+                          size="sm"
+                          className={cn("flex-1", travelMode === 'DRIVING' && "bg-amber-600 hover:bg-amber-700")}
+                          onClick={() => {
+                            haptic.selection();
+                            setTravelMode('DRIVING');
+                            // Recalculate route if already showing
+                            if (showingRoute) {
+                              calculateRoute({ lat: selectedLocation.lat, lng: selectedLocation.lng }, 'DRIVING');
+                            }
+                          }}
+                          disabled={isCalculatingRoute}
+                        >
+                          <Car className="w-4 h-4 mr-1" />
+                          На авто
+                        </Button>
+                      </div>
                       
-                      {/* Select Button */}
+                      {/* Route Error */}
+                      {routeError && (
+                        <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm">
+                          {routeError}
+                        </div>
+                      )}
+                      
+                      {/* Route Info Display */}
+                      {routeInfo && showingRoute && (
+                        <div className="flex items-center gap-4 p-2 rounded-lg bg-secondary text-sm">
+                          <div className="flex items-center gap-1">
+                            <Navigation className="w-4 h-4 text-amber-600" />
+                            <span className="font-medium">{routeInfo.distance}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">~{routeInfo.duration}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Action Buttons */}
+                      <div className="flex gap-2">
+                        {!showingRoute ? (
+                          <Button
+                            className="flex-1 bg-amber-600 hover:bg-amber-700 text-white"
+                            onClick={() => {
+                              haptic.impact('light');
+                              calculateRoute({ lat: selectedLocation.lat, lng: selectedLocation.lng });
+                            }}
+                            disabled={isCalculatingRoute}
+                          >
+                            {isCalculatingRoute ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Построение...
+                              </>
+                            ) : (
+                              <>
+                                <Route className="w-4 h-4 mr-2" />
+                                Показать маршрут
+                              </>
+                            )}
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => {
+                                haptic.selection();
+                                clearRoute();
+                              }}
+                            >
+                              <X className="w-4 h-4 mr-2" />
+                              Очистить
+                            </Button>
+                            <Button
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                              onClick={() => {
+                                haptic.impact('light');
+                                setNavigationDestination({
+                                  lat: selectedLocation.lat,
+                                  lng: selectedLocation.lng,
+                                  name: selectedLocation.name,
+                                  address: selectedLocation.address || ''
+                                });
+                                setNavigatorDialogOpen(true);
+                              }}
+                            >
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Навигатор
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      
+                      {/* External Maps Links - Quick access when route is shown */}
+                      {showingRoute && routeInfo && (
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 text-xs"
+                            onClick={() => {
+                              haptic.selection();
+                              openInExternalMaps(
+                                { lat: selectedLocation.lat, lng: selectedLocation.lng },
+                                selectedLocation.name,
+                                'google'
+                              );
+                            }}
+                          >
+                            Google Maps
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1 text-xs"
+                            onClick={() => {
+                              haptic.selection();
+                              openInExternalMaps(
+                                { lat: selectedLocation.lat, lng: selectedLocation.lng },
+                                selectedLocation.name,
+                                'yandex'
+                              );
+                            }}
+                          >
+                            Яндекс Карты
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Select Machine Button */}
+                    <div className="mt-3 pt-3 border-t">
                       <Button
-                        className={`flex-1 h-12 rounded-xl font-semibold ${
+                        className={`w-full h-12 rounded-xl font-semibold ${
                           selectedLocation.isAvailable 
                             ? 'bg-espresso hover:bg-espresso/90 text-white' 
                             : 'bg-muted text-muted-foreground cursor-not-allowed'
@@ -479,7 +827,7 @@ export default function Locations() {
                       >
                         {selectedLocation.isAvailable ? (
                           <>
-                            {isOrderMode ? 'Заказать' : 'Выбрать'}
+                            {isOrderMode ? 'Заказать здесь' : 'Выбрать автомат'}
                             <ChevronRight className="w-5 h-5 ml-1" />
                           </>
                         ) : (

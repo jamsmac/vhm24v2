@@ -46,3 +46,12 @@
 - [x] Add option to open in external maps app (Google Maps, Яндекс.Карты, 2GIS)
 - [x] Integrate into Locations page with NavigatorDialog
 - [x] Test route navigation functionality
+
+## Route Display on Map
+- [x] Update useRouteNavigation hook to return route polyline data
+- [x] Render route polyline on Google Maps using DirectionsRenderer
+- [x] Add route info panel with distance, time, and travel mode
+- [x] Add clear route button
+- [x] Add travel mode selector (walking/driving)
+- [x] Add quick links to open in Google Maps or Yandex Maps
+- [x] Test route display functionality (works with geolocation)
