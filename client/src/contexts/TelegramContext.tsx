@@ -22,6 +22,9 @@ interface PopupParams {
   buttons?: PopupButton[];
 }
 
+// Invoice status types
+type InvoiceStatus = 'paid' | 'cancelled' | 'failed' | 'pending';
+
 interface TelegramWebApp {
   initData: string;
   initDataUnsafe: {
@@ -119,8 +122,14 @@ interface TelegramContextType {
     showConfirm: (message: string) => Promise<boolean>;
     showPopup: (params: PopupParams) => Promise<string>;
   };
+  invoice: {
+    openInvoice: (url: string) => Promise<InvoiceStatus>;
+    isAvailable: boolean;
+  };
   updateHeaderColor: (color: string) => void;
   updateBackgroundColor: (color: string) => void;
+  openLink: (url: string, tryInstantView?: boolean) => void;
+  openTelegramLink: (url: string) => void;
   closeApp: () => void;
   enableClosingConfirmation: () => void;
   disableClosingConfirmation: () => void;
@@ -198,6 +207,24 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   // Update background color
   const updateBackgroundColor = useCallback((color: string) => {
     webApp?.setBackgroundColor(color);
+  }, [webApp]);
+
+  // Open external link
+  const openLink = useCallback((url: string, tryInstantView: boolean = false) => {
+    if (webApp) {
+      webApp.openLink(url, { try_instant_view: tryInstantView });
+    } else {
+      window.open(url, '_blank');
+    }
+  }, [webApp]);
+
+  // Open Telegram link (e.g., t.me/username)
+  const openTelegramLink = useCallback((url: string) => {
+    if (webApp) {
+      webApp.openTelegramLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
   }, [webApp]);
 
   // Close the app
@@ -278,6 +305,46 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     },
   };
 
+  // Invoice methods for Telegram Payments
+  const invoice = {
+    /**
+     * Check if Telegram Invoice is available
+     * Invoice is only available in Telegram WebApp
+     */
+    isAvailable: isTelegram,
+
+    /**
+     * Open a Telegram Invoice for payment
+     * @param url - Invoice link (e.g., https://t.me/$invoiceSlug or tg://invoice?slug=...)
+     * @returns Promise with payment status: 'paid', 'cancelled', 'failed', or 'pending'
+     * 
+     * Note: To create an invoice, you need to:
+     * 1. Set up a payment provider in BotFather
+     * 2. Use Bot API createInvoiceLink method to generate invoice URL
+     * 3. Pass the URL to this method
+     */
+    openInvoice: (url: string): Promise<InvoiceStatus> => {
+      return new Promise((resolve) => {
+        if (webApp) {
+          webApp.openInvoice(url, (status) => {
+            // Map Telegram status to our type
+            const statusMap: Record<string, InvoiceStatus> = {
+              'paid': 'paid',
+              'cancelled': 'cancelled',
+              'failed': 'failed',
+              'pending': 'pending',
+            };
+            resolve(statusMap[status] || 'failed');
+          });
+        } else {
+          // Fallback: open in new window and assume pending
+          window.open(url, '_blank');
+          resolve('pending');
+        }
+      });
+    },
+  };
+
   return (
     <TelegramContext.Provider value={{ 
       webApp, 
@@ -289,8 +356,11 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       onThemeChange,
       haptic,
       popup,
+      invoice,
       updateHeaderColor,
       updateBackgroundColor,
+      openLink,
+      openTelegramLink,
       closeApp,
       enableClosingConfirmation,
       disableClosingConfirmation

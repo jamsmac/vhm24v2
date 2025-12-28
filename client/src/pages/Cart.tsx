@@ -16,21 +16,23 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore } from "@/stores/cartStore";
-import { ArrowLeft, Plus, Minus, Trash2, Tag, MapPin, CreditCard, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, Tag, MapPin, CreditCard, Check, X, Send } from "lucide-react";
 import CartRecommendations from "@/components/CartRecommendations";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { useTelegramMainButton } from "@/hooks/useTelegramMainButton";
 import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
+import { useTelegramInvoice } from "@/hooks/useTelegramInvoice";
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('ru-RU').format(price);
 }
 
-type PaymentProvider = 'click' | 'payme' | 'uzum';
+type PaymentProvider = 'click' | 'payme' | 'uzum' | 'telegram';
 
-const paymentMethods: Array<{ id: PaymentProvider; name: string; logo: string; color: string }> = [
+const paymentMethods: Array<{ id: PaymentProvider; name: string; logo: string; color: string; icon?: React.ReactNode }> = [
+  { id: 'telegram', name: 'Telegram', logo: '✈️', color: '#0088cc' },
   { id: 'click', name: 'Click', logo: '💳', color: '#00A1E4' },
   { id: 'payme', name: 'Payme', logo: '💳', color: '#00CCCC' },
   { id: 'uzum', name: 'Uzum', logo: '💳', color: '#7B2D8E' },
@@ -38,7 +40,8 @@ const paymentMethods: Array<{ id: PaymentProvider; name: string; logo: string; c
 
 export default function Cart() {
   const [, navigate] = useLocation();
-  const { haptic, isTelegram, popup } = useTelegram();
+  const { haptic, isTelegram, popup, invoice } = useTelegram();
+  const telegramInvoice = useTelegramInvoice();
   const { 
     machine, 
     items, 
@@ -56,7 +59,8 @@ export default function Cart() {
   
   const [promoInput, setPromoInput] = useState("");
   const [isPromoLoading, setIsPromoLoading] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentProvider>('click');
+  // Default to Telegram payment if available, otherwise Click
+  const [selectedPayment, setSelectedPayment] = useState<PaymentProvider>(isTelegram ? 'telegram' : 'click');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const subtotal = getSubtotal();
@@ -106,20 +110,66 @@ export default function Cart() {
       mainButton.showProgress(true);
     }
     
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // In real app, this would redirect to payment provider
-    haptic.notification('success');
-    toast.success('Заказ оформлен!');
-    clearCart();
-    
-    if (mainButton.isAvailable) {
-      mainButton.hideProgress();
+    try {
+      // Handle Telegram Invoice payment
+      if (selectedPayment === 'telegram' && telegramInvoice.isAvailable) {
+        // Create invoice data
+        const invoiceData = {
+          items: items.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          total,
+          currency: 'UZS',
+          description: `Заказ в VendHub Coffee: ${itemsCount} ${itemsText}`,
+          machineId: machine?.id,
+          machineName: machine?.name,
+          promoCode: promoCode || undefined,
+          discount: discount > 0 ? discount : undefined,
+        };
+        
+        // Open Telegram Invoice
+        const status = await telegramInvoice.createAndOpenInvoice(invoiceData);
+        
+        if (status === 'paid') {
+          haptic.notification('success');
+          toast.success('Оплата успешна! Заказ оформлен.');
+          clearCart();
+          navigate('/order/success');
+        } else if (status === 'cancelled') {
+          haptic.selection();
+          toast.info('Оплата отменена');
+        } else if (status === 'pending') {
+          // For demo mode or when invoice URL is opened in browser
+          toast.info('Ожидается подтверждение оплаты...');
+          // In production, you would poll for payment status or use webhooks
+        } else {
+          haptic.notification('error');
+          toast.error('Ошибка оплаты. Попробуйте другой способ.');
+        }
+      } else {
+        // Handle other payment methods (Click, Payme, Uzum)
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // In real app, this would redirect to payment provider
+        haptic.notification('success');
+        toast.success('Заказ оформлен!');
+        clearCart();
+        navigate('/order/success');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      haptic.notification('error');
+      toast.error('Ошибка обработки платежа');
+    } finally {
+      if (mainButton.isAvailable) {
+        mainButton.hideProgress();
+      }
+      setIsProcessing(false);
     }
-    
-    navigate('/order/success');
-    setIsProcessing(false);
   };
 
   // Telegram MainButton for checkout
@@ -331,8 +381,43 @@ export default function Cart() {
         {/* Payment Method */}
         <Card className="coffee-card">
           <h2 className="font-semibold text-foreground mb-3">Способ оплаты</h2>
+          
+          {/* Telegram Payment - Recommended when in Telegram */}
+          {isTelegram && (
+            <button
+              onClick={() => {
+                haptic.selection();
+                setSelectedPayment('telegram');
+              }}
+              className={`w-full p-4 rounded-xl border-2 transition-all mb-3 ${
+                selectedPayment === 'telegram'
+                  ? 'border-sky-500 bg-gradient-to-r from-sky-500/10 to-blue-500/10'
+                  : 'border-border hover:border-sky-400/50'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center">
+                  <Send className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">Telegram Payments</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-400">
+                      Рекомендуем
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Быстрая оплата через Telegram</p>
+                </div>
+                {selectedPayment === 'telegram' && (
+                  <Check className="w-5 h-5 text-sky-500" />
+                )}
+              </div>
+            </button>
+          )}
+          
+          {/* Other payment methods */}
           <div className="grid grid-cols-3 gap-2">
-            {paymentMethods.map((method) => (
+            {paymentMethods.filter(m => m.id !== 'telegram').map((method) => (
               <button
                 key={method.id}
                 onClick={() => {
@@ -350,6 +435,13 @@ export default function Cart() {
               </button>
             ))}
           </div>
+          
+          {/* Info about Telegram Payments */}
+          {selectedPayment === 'telegram' && isTelegram && (
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+              Оплата будет обработана через защищённую систему Telegram
+            </p>
+          )}
         </Card>
 
         {/* You Might Also Like */}
