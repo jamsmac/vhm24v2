@@ -21,6 +21,7 @@ import Help from "./pages/Help";
 import OrderSuccess from "./pages/OrderSuccess";
 import Favorites from "./pages/Favorites";
 import DrinkDetail from "./pages/DrinkDetail";
+import Promotions from "./pages/Promotions";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/scan" component={Scan} />
       <Route path="/locations" component={Locations} />
       <Route path="/drink/:id" component={DrinkDetail} />
+      <Route path="/promotions" component={Promotions} />
       <Route path="/menu/:id" component={Menu} />
       <Route path="/cart" component={Cart} />
       

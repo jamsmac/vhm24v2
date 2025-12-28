@@ -180,7 +180,7 @@ export default function Home() {
             className="p-3 bg-secondary/50 border-0 rounded-xl cursor-pointer hover:bg-secondary/70 transition-colors active:scale-[0.98]"
             onClick={() => {
               haptic.selection();
-              // TODO: Navigate to promotions page
+              navigate('/promotions');
             }}
           >
             <div className="flex items-center gap-3">
