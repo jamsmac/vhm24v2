@@ -405,3 +405,96 @@ export const referralCodes = mysqlTable("referral_codes", {
 
 export type ReferralCode = typeof referralCodes.$inferSelect;
 export type InsertReferralCode = typeof referralCodes.$inferInsert;
+
+
+/**
+ * Rewards catalog - available rewards users can purchase with points
+ */
+export const rewards = mysqlTable("rewards", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  
+  // Display info
+  name: varchar("name", { length: 128 }).notNull(),
+  nameRu: varchar("nameRu", { length: 128 }),
+  description: text("description"),
+  descriptionRu: text("descriptionRu"),
+  imageUrl: text("imageUrl"),
+  
+  // Reward type
+  rewardType: mysqlEnum("rewardType", [
+    "free_drink",       // Free drink of specific type
+    "discount_percent", // Percentage discount on order
+    "discount_fixed",   // Fixed amount discount
+    "free_upgrade",     // Free size upgrade
+    "bonus_points",     // Bonus points multiplier
+    "exclusive_item",   // Access to exclusive menu item
+    "custom"            // Custom reward defined by admin
+  ]).notNull(),
+  
+  // Cost and value
+  pointsCost: int("pointsCost").notNull(),
+  discountValue: int("discountValue"), // Percent or fixed amount depending on type
+  
+  // Linked product (for free_drink type)
+  productId: int("productId"),
+  
+  // Availability
+  stockLimit: int("stockLimit"), // null = unlimited
+  stockRemaining: int("stockRemaining"),
+  maxPerUser: int("maxPerUser").default(1), // Max times a user can purchase
+  
+  // Validity
+  validityDays: int("validityDays").default(30), // Days until reward expires after purchase
+  
+  // Display
+  sortOrder: int("sortOrder").default(0).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  isFeatured: boolean("isFeatured").default(false).notNull(),
+  
+  // Time limits
+  startsAt: timestamp("startsAt"),
+  expiresAt: timestamp("expiresAt"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Reward = typeof rewards.$inferSelect;
+export type InsertReward = typeof rewards.$inferInsert;
+
+/**
+ * User rewards - rewards purchased by users
+ */
+export const userRewards = mysqlTable("user_rewards", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  rewardId: int("rewardId").notNull(),
+  
+  // Purchase info
+  pointsSpent: int("pointsSpent").notNull(),
+  purchasedAt: timestamp("purchasedAt").defaultNow().notNull(),
+  
+  // Redemption status
+  status: mysqlEnum("status", [
+    "active",     // Ready to use
+    "redeemed",   // Already used
+    "expired"     // Expired without use
+  ]).default("active").notNull(),
+  
+  // Redemption details
+  redeemedAt: timestamp("redeemedAt"),
+  redeemedOrderId: int("redeemedOrderId"), // Order where reward was used
+  
+  // Expiration
+  expiresAt: timestamp("expiresAt").notNull(),
+  
+  // Generated code for redemption
+  redemptionCode: varchar("redemptionCode", { length: 16 }).unique(),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserReward = typeof userRewards.$inferSelect;
+export type InsertUserReward = typeof userRewards.$inferInsert;

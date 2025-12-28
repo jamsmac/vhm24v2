@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, isNull, gte, lte, asc, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users,
@@ -16,7 +16,9 @@ import {
   InsertPointsTransaction, pointsTransactions,
   InsertUserPreferences, userPreferences, UserPreferences,
   InsertReferral, referrals, Referral,
-  InsertReferralCode, referralCodes, ReferralCode
+  InsertReferralCode, referralCodes, ReferralCode,
+  InsertReward, rewards, Reward,
+  InsertUserReward, userRewards, UserReward
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1464,4 +1466,449 @@ export async function getUserReferrer(userId: number): Promise<{
     referrerName: referrer[0]?.name || referrer[0]?.telegramFirstName || null,
     bonusReceived: ref.referredPointsAwarded,
   };
+}
+
+
+// ==================== REWARDS STORE QUERIES ====================
+
+// Generate a unique redemption code
+function generateRedemptionCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// Get all active rewards
+export async function getActiveRewards(): Promise<Reward[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const now = new Date();
+  
+  const result = await db
+    .select()
+    .from(rewards)
+    .where(
+      and(
+        eq(rewards.isActive, true),
+        or(isNull(rewards.startsAt), lte(rewards.startsAt, now)),
+        or(isNull(rewards.expiresAt), gte(rewards.expiresAt, now))
+      )
+    )
+    .orderBy(asc(rewards.sortOrder), desc(rewards.isFeatured));
+  
+  return result;
+}
+
+// Get reward by ID
+export async function getRewardById(id: number): Promise<Reward | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db
+    .select()
+    .from(rewards)
+    .where(eq(rewards.id, id))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+// Get reward by slug
+export async function getRewardBySlug(slug: string): Promise<Reward | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db
+    .select()
+    .from(rewards)
+    .where(eq(rewards.slug, slug))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+// Create a new reward (admin)
+export async function createReward(data: InsertReward): Promise<Reward | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  await db.insert(rewards).values(data);
+  
+  return await getRewardBySlug(data.slug);
+}
+
+// Update a reward (admin)
+export async function updateReward(id: number, data: Partial<InsertReward>): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  await db
+    .update(rewards)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(rewards.id, id));
+  
+  return true;
+}
+
+// Delete a reward (admin)
+export async function deleteReward(id: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  await db.delete(rewards).where(eq(rewards.id, id));
+  return true;
+}
+
+// Get all rewards (admin)
+export async function getAllRewards(): Promise<Reward[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  return await db
+    .select()
+    .from(rewards)
+    .orderBy(asc(rewards.sortOrder));
+}
+
+// Purchase a reward
+export async function purchaseReward(userId: number, rewardId: number): Promise<{
+  success: boolean;
+  error?: string;
+  userReward?: UserReward;
+}> {
+  const db = await getDb();
+  if (!db) return { success: false, error: 'Database not available' };
+  
+  // Get the reward
+  const reward = await getRewardById(rewardId);
+  if (!reward) {
+    return { success: false, error: 'Reward not found' };
+  }
+  
+  // Check if reward is active
+  if (!reward.isActive) {
+    return { success: false, error: 'Reward is not available' };
+  }
+  
+  // Check time limits
+  const now = new Date();
+  if (reward.startsAt && reward.startsAt > now) {
+    return { success: false, error: 'Reward not yet available' };
+  }
+  if (reward.expiresAt && reward.expiresAt < now) {
+    return { success: false, error: 'Reward has expired' };
+  }
+  
+  // Check stock
+  if (reward.stockLimit !== null && (reward.stockRemaining === null || reward.stockRemaining <= 0)) {
+    return { success: false, error: 'Reward out of stock' };
+  }
+  
+  // Check user's purchase count for this reward
+  if (reward.maxPerUser) {
+    const userPurchases = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(userRewards)
+      .where(
+        and(
+          eq(userRewards.userId, userId),
+          eq(userRewards.rewardId, rewardId)
+        )
+      );
+    
+    if (userPurchases[0]?.count >= reward.maxPerUser) {
+      return { success: false, error: 'Maximum purchase limit reached' };
+    }
+  }
+  
+  // Get user's points balance
+  const user = await db
+    .select({ pointsBalance: users.pointsBalance })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  
+  if (!user[0] || user[0].pointsBalance < reward.pointsCost) {
+    return { success: false, error: 'Insufficient points' };
+  }
+  
+  // Calculate expiration date
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + (reward.validityDays || 30));
+  
+  // Generate unique redemption code
+  let redemptionCode = generateRedemptionCode();
+  let attempts = 0;
+  while (attempts < 10) {
+    const existing = await db
+      .select()
+      .from(userRewards)
+      .where(eq(userRewards.redemptionCode, redemptionCode))
+      .limit(1);
+    
+    if (existing.length === 0) break;
+    redemptionCode = generateRedemptionCode();
+    attempts++;
+  }
+  
+  // Deduct points from user
+  const newBalance = user[0].pointsBalance - reward.pointsCost;
+  await db
+    .update(users)
+    .set({ 
+      pointsBalance: newBalance,
+      updatedAt: new Date()
+    })
+    .where(eq(users.id, userId));
+  
+  // Record points transaction
+  await db.insert(pointsTransactions).values({
+    userId,
+    amount: -reward.pointsCost,
+    type: 'redemption',
+    referenceType: 'reward',
+    referenceId: rewardId,
+    balanceAfter: newBalance,
+    description: `Покупка награды: ${reward.nameRu || reward.name}`,
+  });
+  
+  // Create user reward
+  await db.insert(userRewards).values({
+    userId,
+    rewardId,
+    pointsSpent: reward.pointsCost,
+    expiresAt,
+    redemptionCode,
+  });
+  
+  // Update stock if limited
+  if (reward.stockLimit !== null && reward.stockRemaining !== null) {
+    await db
+      .update(rewards)
+      .set({ 
+        stockRemaining: reward.stockRemaining - 1,
+        updatedAt: new Date()
+      })
+      .where(eq(rewards.id, rewardId));
+  }
+  
+  // Get the created user reward
+  const created = await db
+    .select()
+    .from(userRewards)
+    .where(eq(userRewards.redemptionCode, redemptionCode))
+    .limit(1);
+  
+  return { success: true, userReward: created[0] };
+}
+
+// Get user's rewards
+export async function getUserRewards(userId: number, status?: 'active' | 'redeemed' | 'expired'): Promise<Array<UserReward & { reward: Reward }>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  let query = db
+    .select({
+      userReward: userRewards,
+      reward: rewards,
+    })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(eq(userRewards.userId, userId));
+  
+  const results = await query.orderBy(desc(userRewards.purchasedAt));
+  
+  // Filter by status if provided
+  let filtered = results;
+  if (status) {
+    filtered = results.filter(r => r.userReward.status === status);
+  }
+  
+  // Check for expired rewards and update status
+  const now = new Date();
+  for (const result of filtered) {
+    if (result.userReward.status === 'active' && result.userReward.expiresAt < now) {
+      await db
+        .update(userRewards)
+        .set({ status: 'expired', updatedAt: new Date() })
+        .where(eq(userRewards.id, result.userReward.id));
+      result.userReward.status = 'expired';
+    }
+  }
+  
+  return filtered.map(r => ({
+    ...r.userReward,
+    reward: r.reward,
+  }));
+}
+
+// Redeem a reward
+export async function redeemReward(userId: number, userRewardId: number, orderId?: number): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  const db = await getDb();
+  if (!db) return { success: false, error: 'Database not available' };
+  
+  // Get the user reward
+  const userReward = await db
+    .select()
+    .from(userRewards)
+    .where(
+      and(
+        eq(userRewards.id, userRewardId),
+        eq(userRewards.userId, userId)
+      )
+    )
+    .limit(1);
+  
+  if (!userReward[0]) {
+    return { success: false, error: 'Reward not found' };
+  }
+  
+  if (userReward[0].status !== 'active') {
+    return { success: false, error: 'Reward is not active' };
+  }
+  
+  // Check expiration
+  if (userReward[0].expiresAt < new Date()) {
+    await db
+      .update(userRewards)
+      .set({ status: 'expired', updatedAt: new Date() })
+      .where(eq(userRewards.id, userRewardId));
+    return { success: false, error: 'Reward has expired' };
+  }
+  
+  // Mark as redeemed
+  await db
+    .update(userRewards)
+    .set({
+      status: 'redeemed',
+      redeemedAt: new Date(),
+      redeemedOrderId: orderId || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(userRewards.id, userRewardId));
+  
+  return { success: true };
+}
+
+// Get user reward by redemption code
+export async function getUserRewardByCode(code: string): Promise<(UserReward & { reward: Reward }) | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db
+    .select({
+      userReward: userRewards,
+      reward: rewards,
+    })
+    .from(userRewards)
+    .innerJoin(rewards, eq(userRewards.rewardId, rewards.id))
+    .where(eq(userRewards.redemptionCode, code.toUpperCase()))
+    .limit(1);
+  
+  if (!result[0]) return null;
+  
+  return {
+    ...result[0].userReward,
+    reward: result[0].reward,
+  };
+}
+
+// Seed default rewards
+export async function seedDefaultRewards(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  const defaultRewards: InsertReward[] = [
+    {
+      slug: 'free_americano',
+      name: 'Free Americano',
+      nameRu: 'Бесплатный Американо',
+      description: 'Get a free Americano coffee',
+      descriptionRu: 'Получите бесплатный кофе Американо',
+      rewardType: 'free_drink',
+      pointsCost: 500,
+      validityDays: 30,
+      sortOrder: 1,
+      isActive: true,
+      isFeatured: true,
+    },
+    {
+      slug: 'free_cappuccino',
+      name: 'Free Cappuccino',
+      nameRu: 'Бесплатный Капучино',
+      description: 'Get a free Cappuccino',
+      descriptionRu: 'Получите бесплатный Капучино',
+      rewardType: 'free_drink',
+      pointsCost: 600,
+      validityDays: 30,
+      sortOrder: 2,
+      isActive: true,
+      isFeatured: true,
+    },
+    {
+      slug: 'discount_10',
+      name: '10% Discount',
+      nameRu: 'Скидка 10%',
+      description: 'Get 10% off your next order',
+      descriptionRu: 'Получите скидку 10% на следующий заказ',
+      rewardType: 'discount_percent',
+      pointsCost: 300,
+      discountValue: 10,
+      validityDays: 14,
+      sortOrder: 3,
+      isActive: true,
+    },
+    {
+      slug: 'discount_20',
+      name: '20% Discount',
+      nameRu: 'Скидка 20%',
+      description: 'Get 20% off your next order',
+      descriptionRu: 'Получите скидку 20% на следующий заказ',
+      rewardType: 'discount_percent',
+      pointsCost: 500,
+      discountValue: 20,
+      validityDays: 14,
+      sortOrder: 4,
+      isActive: true,
+    },
+    {
+      slug: 'discount_5000',
+      name: '5000 UZS Off',
+      nameRu: 'Скидка 5000 сум',
+      description: 'Get 5000 UZS off your next order',
+      descriptionRu: 'Получите скидку 5000 сум на следующий заказ',
+      rewardType: 'discount_fixed',
+      pointsCost: 200,
+      discountValue: 5000,
+      validityDays: 14,
+      sortOrder: 5,
+      isActive: true,
+    },
+    {
+      slug: 'free_upgrade',
+      name: 'Free Size Upgrade',
+      nameRu: 'Бесплатное увеличение',
+      description: 'Upgrade your drink size for free',
+      descriptionRu: 'Увеличьте размер напитка бесплатно',
+      rewardType: 'free_upgrade',
+      pointsCost: 150,
+      validityDays: 7,
+      sortOrder: 6,
+      isActive: true,
+    },
+  ];
+  
+  for (const reward of defaultRewards) {
+    const existing = await getRewardBySlug(reward.slug);
+    if (!existing) {
+      await createReward(reward);
+    }
+  }
 }

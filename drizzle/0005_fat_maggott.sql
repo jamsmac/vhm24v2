@@ -1,0 +1,43 @@
+CREATE TABLE `rewards` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`slug` varchar(64) NOT NULL,
+	`name` varchar(128) NOT NULL,
+	`nameRu` varchar(128),
+	`description` text,
+	`descriptionRu` text,
+	`imageUrl` text,
+	`rewardType` enum('free_drink','discount_percent','discount_fixed','free_upgrade','bonus_points','exclusive_item','custom') NOT NULL,
+	`pointsCost` int NOT NULL,
+	`discountValue` int,
+	`productId` int,
+	`stockLimit` int,
+	`stockRemaining` int,
+	`maxPerUser` int DEFAULT 1,
+	`validityDays` int DEFAULT 30,
+	`sortOrder` int NOT NULL DEFAULT 0,
+	`isActive` boolean NOT NULL DEFAULT true,
+	`isFeatured` boolean NOT NULL DEFAULT false,
+	`startsAt` timestamp,
+	`expiresAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `rewards_id` PRIMARY KEY(`id`),
+	CONSTRAINT `rewards_slug_unique` UNIQUE(`slug`)
+);
+--> statement-breakpoint
+CREATE TABLE `user_rewards` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`rewardId` int NOT NULL,
+	`pointsSpent` int NOT NULL,
+	`purchasedAt` timestamp NOT NULL DEFAULT (now()),
+	`status` enum('active','redeemed','expired') NOT NULL DEFAULT 'active',
+	`redeemedAt` timestamp,
+	`redeemedOrderId` int,
+	`expiresAt` timestamp NOT NULL,
+	`redemptionCode` varchar(16),
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `user_rewards_id` PRIMARY KEY(`id`),
+	CONSTRAINT `user_rewards_redemptionCode_unique` UNIQUE(`redemptionCode`)
+);

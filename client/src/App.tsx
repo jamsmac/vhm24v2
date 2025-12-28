@@ -30,6 +30,7 @@ import Tasks from "./pages/Tasks";
 import LinkEmail from "./pages/LinkEmail";
 import HomeSettings from "./pages/HomeSettings";
 import Referral from "./pages/Referral";
+import RewardsStore from "./pages/RewardsStore";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -39,6 +40,7 @@ import AdminPromoCodes from "./pages/admin/PromoCodes";
 import AdminMachines from "./pages/admin/Machines";
 import AdminMachinesMap from "./pages/admin/MachinesMap";
 import AdminTasks from "./pages/admin/Tasks";
+import AdminRewards from "./pages/admin/Rewards";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -64,6 +66,7 @@ function Router() {
       <Route path="/profile/link-email" component={LinkEmail} />
       <Route path="/profile/home-settings" component={HomeSettings} />
       <Route path="/profile/referral" component={Referral} />
+      <Route path="/profile/rewards" component={RewardsStore} />
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />
@@ -76,6 +79,7 @@ function Router() {
       <Route path="/admin/machines" component={AdminMachines} />
       <Route path="/admin/machines/map" component={AdminMachinesMap} />
       <Route path="/admin/tasks" component={AdminTasks} />
+      <Route path="/admin/rewards" component={AdminRewards} />
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

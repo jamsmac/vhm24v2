@@ -813,6 +813,119 @@ export const appRouter = router({
       return await db.getUserReferrer(ctx.user.id);
     }),
   }),
+
+  // Rewards Store API
+  rewards: router({
+    // Get all active rewards
+    list: publicProcedure.query(async () => {
+      return await db.getActiveRewards();
+    }),
+    
+    // Get reward by ID
+    getById: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getRewardById(input.id);
+      }),
+    
+    // Purchase a reward
+    purchase: protectedProcedure
+      .input(z.object({ rewardId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.purchaseReward(ctx.user.id, input.rewardId);
+      }),
+    
+    // Get user's rewards
+    myRewards: protectedProcedure
+      .input(z.object({ status: z.enum(['active', 'redeemed', 'expired']).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getUserRewards(ctx.user.id, input?.status);
+      }),
+    
+    // Redeem a reward
+    redeem: protectedProcedure
+      .input(z.object({ userRewardId: z.number(), orderId: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.redeemReward(ctx.user.id, input.userRewardId, input.orderId);
+      }),
+    
+    // Get reward by redemption code
+    getByCode: protectedProcedure
+      .input(z.object({ code: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getUserRewardByCode(input.code);
+      }),
+    
+    // Admin: Get all rewards
+    adminList: adminProcedure.query(async () => {
+      return await db.getAllRewards();
+    }),
+    
+    // Admin: Create reward
+    adminCreate: adminProcedure
+      .input(z.object({
+        slug: z.string(),
+        name: z.string(),
+        nameRu: z.string().optional(),
+        description: z.string().optional(),
+        descriptionRu: z.string().optional(),
+        imageUrl: z.string().optional(),
+        rewardType: z.enum(['free_drink', 'discount_percent', 'discount_fixed', 'free_upgrade', 'bonus_points', 'exclusive_item', 'custom']),
+        pointsCost: z.number(),
+        discountValue: z.number().optional(),
+        productId: z.number().optional(),
+        stockLimit: z.number().optional(),
+        maxPerUser: z.number().optional(),
+        validityDays: z.number().optional(),
+        sortOrder: z.number().optional(),
+        isActive: z.boolean().optional(),
+        isFeatured: z.boolean().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const reward = await db.createReward(input);
+        return { success: !!reward, reward };
+      }),
+    
+    // Admin: Update reward
+    adminUpdate: adminProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          name: z.string().optional(),
+          nameRu: z.string().optional(),
+          description: z.string().optional(),
+          descriptionRu: z.string().optional(),
+          imageUrl: z.string().optional(),
+          pointsCost: z.number().optional(),
+          discountValue: z.number().optional(),
+          stockLimit: z.number().optional(),
+          stockRemaining: z.number().optional(),
+          maxPerUser: z.number().optional(),
+          validityDays: z.number().optional(),
+          sortOrder: z.number().optional(),
+          isActive: z.boolean().optional(),
+          isFeatured: z.boolean().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        const success = await db.updateReward(input.id, input.data);
+        return { success };
+      }),
+    
+    // Admin: Delete reward
+    adminDelete: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const success = await db.deleteReward(input.id);
+        return { success };
+      }),
+    
+    // Admin: Seed default rewards
+    adminSeed: adminProcedure.mutation(async () => {
+      await db.seedDefaultRewards();
+      return { success: true };
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

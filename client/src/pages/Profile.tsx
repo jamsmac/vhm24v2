@@ -78,6 +78,12 @@ export default function Profile() {
       color: 'text-green-500'
     },
     { 
+      icon: Sparkles, 
+      label: 'Магазин наград', 
+      href: '/profile/rewards',
+      color: 'text-purple-500'
+    },
+    { 
       icon: Settings, 
       label: 'Настройки', 
       href: '/profile/settings',

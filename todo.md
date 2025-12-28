@@ -184,3 +184,13 @@
 - [x] Show referral statistics (invited count, earned points, pending)
 - [x] Add "Invite Friends" link to Profile menu
 - [x] Test referral system functionality (85 tests passing)
+
+## Rewards Store
+- [x] Create rewards table in database schema
+- [x] Create user_rewards table for purchased rewards
+- [x] Build API endpoints for rewards (list, purchase, redeem, adminList, adminCreate, adminUpdate, adminDelete)
+- [x] Create rewards store page with available rewards (/profile/rewards)
+- [x] Show user's purchased rewards with status tabs (active/redeemed/expired)
+- [x] Implement reward redemption flow with unique codes
+- [x] Add admin panel for managing rewards (/admin/rewards)
+- [x] Test rewards store functionality (109 tests passing)
