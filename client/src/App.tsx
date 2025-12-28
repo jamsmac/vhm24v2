@@ -22,6 +22,7 @@ import OrderSuccess from "./pages/OrderSuccess";
 import Favorites from "./pages/Favorites";
 import DrinkDetail from "./pages/DrinkDetail";
 import Promotions from "./pages/Promotions";
+import NotificationSettings from "./pages/NotificationSettings";
 
 function Router() {
   return (
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/profile/favorites" component={Favorites} />
       <Route path="/profile/settings" component={Settings} />
       <Route path="/profile/help" component={Help} />
+      <Route path="/profile/notifications" component={NotificationSettings} />
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />

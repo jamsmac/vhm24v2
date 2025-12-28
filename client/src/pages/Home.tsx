@@ -13,6 +13,9 @@ import { useCartStore } from "@/stores/cartStore";
 import { useOrderHistoryStore } from "@/stores/orderHistoryStore";
 import Recommendations from "@/components/Recommendations";
 import { Gift, ChevronRight, Sparkles, Bell, Clock, TrendingUp, Coffee, MapPin, QrCode, Percent } from "lucide-react";
+import NotificationCenter from "@/components/NotificationCenter";
+import { useNotificationsStore } from "@/stores/notificationsStore";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 
@@ -29,7 +32,9 @@ export default function Home() {
   const { favorites } = useFavoritesStore();
   const { items: cartItems } = useCartStore();
   const { getOrderStats, getCompletedOrders } = useOrderHistoryStore();
+  const { unreadCount } = useNotificationsStore();
   const [, navigate] = useLocation();
+  const [showNotifications, setShowNotifications] = useState(false);
   
   const displayName = user?.first_name || profile?.firstName || mockUser.firstName;
   const points = loyalty?.pointsBalance || mockUser.pointsBalance;
@@ -81,10 +86,17 @@ export default function Home() {
               variant="ghost" 
               size="icon" 
               className="rounded-full relative"
-              onClick={() => haptic.selection()}
+              onClick={() => {
+                haptic.selection();
+                setShowNotifications(true);
+              }}
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center px-1">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </Button>
           </div>
 
@@ -374,6 +386,12 @@ export default function Home() {
           </div>
         </motion.div>
       </main>
+
+      {/* Notification Center */}
+      <NotificationCenter 
+        isOpen={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
+      />
     </div>
   );
 }
