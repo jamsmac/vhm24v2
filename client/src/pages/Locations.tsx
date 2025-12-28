@@ -5,7 +5,7 @@
  * Features route display on embedded map with turn-by-turn directions
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { NavigatorDialog } from "@/components/NavigatorDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,13 +18,15 @@ import {
   ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, 
   ShoppingBag, Map, List, ExternalLink, Filter, Clock, 
   Footprints, Car, X, Loader2, Route, ChevronDown, ChevronUp,
-  ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Flag
+  ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Flag,
+  Volume2, VolumeX, Play, Square
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useVoiceNavigation } from "@/hooks/useVoiceNavigation";
 
 // Calculate walking time from distance (average walking speed: 5 km/h)
 const calculateWalkingTime = (distanceKm: number): string => {
@@ -186,6 +188,9 @@ export default function Locations() {
   const [travelMode, setTravelMode] = useState<TravelMode>('WALKING');
   const [routeError, setRouteError] = useState<string | null>(null);
   const [directionsExpanded, setDirectionsExpanded] = useState(false);
+  
+  // Voice navigation
+  const [voiceState, voiceActions] = useVoiceNavigation({ language: 'ru-RU', rate: 0.9 });
   
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -359,6 +364,11 @@ export default function Locations() {
       setTravelMode(mode);
       haptic.notification('success');
       
+      // Announce route via voice if enabled
+      if (voiceState.isEnabled && leg.distance?.text && leg.duration?.text) {
+        voiceActions.announceRouteStart(leg.distance.text, leg.duration.text);
+      }
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка построения маршрута';
       setRouteError(errorMessage);
@@ -367,7 +377,7 @@ export default function Locations() {
     } finally {
       setIsCalculatingRoute(false);
     }
-  }, [travelMode, initDirections, haptic]);
+  }, [travelMode, initDirections, haptic, voiceState.isEnabled, voiceActions]);
 
   // Clear route from map
   const clearRoute = useCallback(() => {
@@ -379,7 +389,8 @@ export default function Locations() {
     setShowingRoute(false);
     setRouteError(null);
     setDirectionsExpanded(false);
-  }, []);
+    voiceActions.stop();
+  }, [voiceActions]);
 
   // Open in external maps app
   const openInExternalMaps = useCallback((destination: { lat: number; lng: number }, name: string, app: 'google' | 'yandex' = 'google') => {
@@ -641,6 +652,69 @@ export default function Locations() {
                         </div>
                         
                         <div className="flex items-center gap-1">
+                          {/* Voice Navigation Controls */}
+                          {voiceState.isSupported && routeInfo.steps.length > 0 && (
+                            <div className="flex items-center gap-1">
+                              {/* Voice Toggle Button */}
+                              <Button
+                                variant={voiceState.isEnabled ? 'default' : 'ghost'}
+                                size="sm"
+                                className={cn(
+                                  "h-8 px-2 text-xs",
+                                  voiceState.isEnabled && "bg-amber-600 hover:bg-amber-700 text-white"
+                                )}
+                                onClick={() => {
+                                  haptic.selection();
+                                  voiceActions.toggle();
+                                  if (!voiceState.isEnabled) {
+                                    toast.success('Голосовая навигация включена');
+                                  } else {
+                                    toast.info('Голосовая навигация выключена');
+                                  }
+                                }}
+                              >
+                                {voiceState.isEnabled ? (
+                                  <Volume2 className="w-4 h-4" />
+                                ) : (
+                                  <VolumeX className="w-4 h-4" />
+                                )}
+                              </Button>
+                              
+                              {/* Play All Steps Button */}
+                              {voiceState.isEnabled && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-xs"
+                                  onClick={() => {
+                                    haptic.selection();
+                                    if (voiceState.isSpeaking) {
+                                      voiceActions.stop();
+                                    } else {
+                                      const stepTexts = routeInfo.steps.map((step, i) => 
+                                        `Шаг ${i + 1}: ${step.instruction}. ${step.distance}`
+                                      );
+                                      voiceActions.speakAllSteps(stepTexts);
+                                    }
+                                  }}
+                                  disabled={!voiceState.isEnabled}
+                                >
+                                  {voiceState.isSpeaking ? (
+                                    <>
+                                      <Square className="w-3 h-3 mr-1" />
+                                      Стоп
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Play className="w-3 h-3 mr-1" />
+                                      Озвучить
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                          
                           {/* Expand/Collapse Directions Button */}
                           {routeInfo.steps.length > 0 && (
                             <Button
@@ -672,6 +746,7 @@ export default function Locations() {
                             className="h-8 w-8"
                             onClick={() => {
                               haptic.selection();
+                              voiceActions.stop();
                               clearRoute();
                             }}
                           >
@@ -696,19 +771,22 @@ export default function Locations() {
                               <div
                                 key={index}
                                 className={cn(
-                                  "flex items-start gap-3 p-3 text-sm",
-                                  index !== routeInfo.steps.length - 1 && "border-b border-border/50"
+                                  "flex items-start gap-3 p-3 text-sm transition-colors",
+                                  index !== routeInfo.steps.length - 1 && "border-b border-border/50",
+                                  voiceState.currentStepIndex === index && "bg-amber-50 dark:bg-amber-900/20"
                                 )}
                               >
                                 {/* Step Number & Icon */}
                                 <div className="flex-shrink-0 flex flex-col items-center">
                                   <div className={cn(
-                                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium",
-                                    index === 0 
-                                      ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
-                                      : index === routeInfo.steps.length - 1
-                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
-                                        : "bg-secondary text-muted-foreground"
+                                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all",
+                                    voiceState.currentStepIndex === index
+                                      ? "bg-amber-500 text-white ring-2 ring-amber-300 ring-offset-1"
+                                      : index === 0 
+                                        ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
+                                        : index === routeInfo.steps.length - 1
+                                          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                                          : "bg-secondary text-muted-foreground"
                                   )}>
                                     {getManeuverIcon(step.maneuver)}
                                   </div>
@@ -716,13 +794,45 @@ export default function Locations() {
                                 
                                 {/* Step Details */}
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-foreground leading-snug">{step.instruction}</p>
+                                  <p className={cn(
+                                    "leading-snug",
+                                    voiceState.currentStepIndex === index 
+                                      ? "text-amber-700 dark:text-amber-400 font-medium" 
+                                      : "text-foreground"
+                                  )}>
+                                    {step.instruction}
+                                  </p>
                                   <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                     {step.distance && <span>{step.distance}</span>}
                                     {step.distance && step.duration && <span>•</span>}
                                     {step.duration && <span>{step.duration}</span>}
                                   </div>
                                 </div>
+                                
+                                {/* Per-step voice button */}
+                                {voiceState.isSupported && voiceState.isEnabled && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn(
+                                      "h-7 w-7 flex-shrink-0",
+                                      voiceState.currentStepIndex === index && voiceState.isSpeaking && "text-amber-600"
+                                    )}
+                                    onClick={() => {
+                                      haptic.selection();
+                                      voiceActions.speakStep(
+                                        `${step.instruction}. ${step.distance}`,
+                                        index
+                                      );
+                                    }}
+                                  >
+                                    {voiceState.currentStepIndex === index && voiceState.isSpeaking ? (
+                                      <Volume2 className="w-4 h-4 animate-pulse" />
+                                    ) : (
+                                      <Play className="w-3 h-3" />
+                                    )}
+                                  </Button>
+                                )}
                               </div>
                             ))}
                           </div>

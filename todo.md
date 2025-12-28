@@ -64,3 +64,15 @@
 - [x] Add expand/collapse animation with framer-motion
 - [x] Add scrollable list for many steps (max-h-48)
 - [x] Test directions display functionality (works with geolocation)
+
+## Voice Navigation
+- [x] Create useVoiceNavigation hook with Web Speech API
+- [x] Add voice toggle button to route info panel
+- [x] Implement automatic step announcements
+- [x] Add "Play All" button to read all steps sequentially
+- [x] Add per-step play buttons with visual highlighting
+- [x] Add language support (Russian - ru-RU)
+- [x] Add voice settings (rate: 0.9)
+- [x] Announce route start with distance and duration
+- [x] Highlight currently speaking step in directions panel
+- [x] Test voice navigation functionality (18 tests passing)
