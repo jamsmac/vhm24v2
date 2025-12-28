@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 
 // Telegram WebApp types
 interface TelegramUser {
@@ -77,6 +77,8 @@ interface TelegramWebApp {
   openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
   openTelegramLink: (url: string) => void;
   openInvoice: (url: string, callback?: (status: string) => void) => void;
+  onEvent: (eventType: string, callback: () => void) => void;
+  offEvent: (eventType: string, callback: () => void) => void;
 }
 
 declare global {
@@ -93,11 +95,15 @@ interface TelegramContextType {
   isReady: boolean;
   isTelegram: boolean;
   colorScheme: 'light' | 'dark';
+  themeParams: TelegramWebApp['themeParams'] | null;
+  onThemeChange: (callback: (colorScheme: 'light' | 'dark') => void) => () => void;
   haptic: {
     impact: (style?: 'light' | 'medium' | 'heavy') => void;
     notification: (type: 'success' | 'error' | 'warning') => void;
     selection: () => void;
   };
+  updateHeaderColor: (color: string) => void;
+  updateBackgroundColor: (color: string) => void;
 }
 
 const TelegramContext = createContext<TelegramContextType | null>(null);
@@ -105,16 +111,36 @@ const TelegramContext = createContext<TelegramContextType | null>(null);
 export function TelegramProvider({ children }: { children: ReactNode }) {
   const [webApp, setWebApp] = useState<TelegramWebApp | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [colorScheme, setColorScheme] = useState<'light' | 'dark'>('light');
+  const [themeChangeCallbacks] = useState<Set<(colorScheme: 'light' | 'dark') => void>>(new Set());
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     
     if (tg) {
       setWebApp(tg);
+      setColorScheme(tg.colorScheme);
       
-      // Set theme colors
-      tg.setHeaderColor('#FDF8F3');
-      tg.setBackgroundColor('#FDF8F3');
+      // Set initial theme colors based on Telegram theme
+      const bgColor = tg.colorScheme === 'dark' ? '#1a1a1a' : '#FDF8F3';
+      tg.setHeaderColor(bgColor);
+      tg.setBackgroundColor(bgColor);
+      
+      // Listen for theme changes from Telegram
+      const handleThemeChange = () => {
+        const newColorScheme = tg.colorScheme;
+        setColorScheme(newColorScheme);
+        
+        // Update Telegram header/background colors
+        const newBgColor = newColorScheme === 'dark' ? '#1a1a1a' : '#FDF8F3';
+        tg.setHeaderColor(newBgColor);
+        tg.setBackgroundColor(newBgColor);
+        
+        // Notify all registered callbacks
+        themeChangeCallbacks.forEach(callback => callback(newColorScheme));
+      };
+      
+      tg.onEvent('themeChanged', handleThemeChange);
       
       // Expand to full height
       tg.expand();
@@ -122,15 +148,37 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
       // Signal ready
       tg.ready();
       setIsReady(true);
+      
+      return () => {
+        tg.offEvent('themeChanged', handleThemeChange);
+      };
     } else {
       // Development mode without Telegram
       setIsReady(true);
     }
-  }, []);
+  }, [themeChangeCallbacks]);
 
   const user = webApp?.initDataUnsafe?.user || null;
   const isTelegram = !!webApp;
-  const colorScheme = webApp?.colorScheme || 'light';
+  const themeParams = webApp?.themeParams || null;
+
+  // Register a callback for theme changes
+  const onThemeChange = useCallback((callback: (colorScheme: 'light' | 'dark') => void) => {
+    themeChangeCallbacks.add(callback);
+    return () => {
+      themeChangeCallbacks.delete(callback);
+    };
+  }, [themeChangeCallbacks]);
+
+  // Update header color
+  const updateHeaderColor = useCallback((color: string) => {
+    webApp?.setHeaderColor(color);
+  }, [webApp]);
+
+  // Update background color
+  const updateBackgroundColor = useCallback((color: string) => {
+    webApp?.setBackgroundColor(color);
+  }, [webApp]);
 
   const haptic = {
     impact: (style: 'light' | 'medium' | 'heavy' = 'light') => {
@@ -145,7 +193,18 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <TelegramContext.Provider value={{ webApp, user, isReady, isTelegram, colorScheme, haptic }}>
+    <TelegramContext.Provider value={{ 
+      webApp, 
+      user, 
+      isReady, 
+      isTelegram, 
+      colorScheme, 
+      themeParams,
+      onThemeChange,
+      haptic,
+      updateHeaderColor,
+      updateBackgroundColor
+    }}>
       {children}
     </TelegramContext.Provider>
   );

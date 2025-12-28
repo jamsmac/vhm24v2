@@ -1,7 +1,7 @@
 /**
  * VendHub TWA - Settings Page
  * "Warm Brew" Design System
- * Dark theme toggle enabled with Auto mode
+ * Dark theme toggle enabled with Auto and Telegram modes
  */
 
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw, Monitor } from "lucide-react";
+import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw, Monitor, Send } from "lucide-react";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -23,8 +23,8 @@ const languages = [
 ];
 
 export default function Settings() {
-  const { haptic } = useTelegram();
-  const { theme, themeMode, setThemeMode } = useTheme();
+  const { haptic, isTelegram } = useTelegram();
+  const { theme, themeMode, setThemeMode, isTelegramAvailable } = useTheme();
   const { resetOnboarding } = useOnboardingStore();
   const [language, setLanguage] = useState('ru');
   const [notifications, setNotifications] = useState(true);
@@ -43,14 +43,15 @@ export default function Settings() {
     toast.success(checked ? 'Уведомления включены' : 'Уведомления отключены');
   };
 
-  const handleThemeModeChange = (mode: 'light' | 'dark' | 'auto') => {
+  const handleThemeModeChange = (mode: 'light' | 'dark' | 'auto' | 'telegram') => {
     haptic.impact('medium');
     setThemeMode(mode);
     
-    const messages = {
+    const messages: Record<string, { text: string; icon: string }> = {
       light: { text: 'Светлая тема включена', icon: '☀️' },
       dark: { text: 'Тёмная тема включена', icon: '🌙' },
-      auto: { text: 'Автоматическая тема включена', icon: '🔄' },
+      auto: { text: 'Системная тема включена', icon: '🔄' },
+      telegram: { text: 'Тема Telegram включена', icon: '✈️' },
     };
     
     toast.success(messages[mode].text, { icon: messages[mode].icon });
@@ -59,21 +60,25 @@ export default function Settings() {
   const currentLang = languages.find(l => l.code === language);
   const isDarkMode = theme === 'dark';
   const isAutoMode = themeMode === 'auto';
+  const isTelegramMode = themeMode === 'telegram';
 
   // Get icon and description based on current mode
   const getThemeIcon = () => {
+    if (isTelegramMode) return <Send className="w-5 h-5 text-sky-500" />;
     if (isAutoMode) return <Monitor className="w-5 h-5 text-blue-500" />;
     if (isDarkMode) return <Moon className="w-5 h-5 text-indigo-500" />;
     return <Sun className="w-5 h-5 text-amber-500" />;
   };
 
   const getThemeDescription = () => {
-    if (isAutoMode) return 'Авто (системная)';
-    if (isDarkMode) return 'Включена';
-    return 'Выключена';
+    if (isTelegramMode) return 'Telegram';
+    if (isAutoMode) return 'Системная';
+    if (isDarkMode) return 'Тёмная';
+    return 'Светлая';
   };
 
   const getThemeIconBg = () => {
+    if (isTelegramMode) return 'bg-sky-500/20';
     if (isAutoMode) return 'bg-blue-500/20';
     if (isDarkMode) return 'bg-indigo-500/20';
     return 'bg-amber-500/20';
@@ -108,14 +113,14 @@ export default function Settings() {
                   {getThemeIcon()}
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">Тёмная тема</p>
+                  <p className="font-medium text-foreground">Тема оформления</p>
                   <p className="text-sm text-muted-foreground">
                     {getThemeDescription()}
                   </p>
                 </div>
               </div>
               <Switch 
-                checked={isDarkMode && !isAutoMode} 
+                checked={isDarkMode && !isAutoMode && !isTelegramMode} 
                 onCheckedChange={(checked) => handleThemeModeChange(checked ? 'dark' : 'light')}
               />
             </div>
@@ -126,75 +131,108 @@ export default function Settings() {
               initial={false}
               animate={{ opacity: 1 }}
             >
-              <div className="flex gap-2">
+              <div className={`grid gap-2 ${isTelegramAvailable ? 'grid-cols-4' : 'grid-cols-3'}`}>
                 {/* Light Theme Preview */}
                 <button
                   onClick={() => handleThemeModeChange('light')}
-                  className={`flex-1 p-3 rounded-xl border-2 transition-all ${
+                  className={`p-2 rounded-xl border-2 transition-all ${
                     themeMode === 'light' 
                       ? 'border-primary ring-2 ring-primary/20' 
                       : 'border-border hover:border-muted-foreground/30'
                   }`}
                 >
-                  <div className="bg-[#FDF8F3] rounded-lg p-2 mb-2">
-                    <div className="h-2 w-8 bg-[#5D4037] rounded mb-1" />
-                    <div className="h-1.5 w-12 bg-[#D4A574] rounded" />
+                  <div className="bg-[#FDF8F3] rounded-lg p-1.5 mb-1.5 aspect-[4/3] flex flex-col justify-center">
+                    <div className="h-1.5 w-6 bg-[#5D4037] rounded mb-0.5 mx-auto" />
+                    <div className="h-1 w-8 bg-[#D4A574] rounded mx-auto" />
                   </div>
-                  <p className="text-xs font-medium">Светлая</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <Sun className="w-3 h-3 text-amber-500" />
+                    <p className="text-[10px] font-medium">Светлая</p>
+                  </div>
                 </button>
                 
                 {/* Dark Theme Preview */}
                 <button
                   onClick={() => handleThemeModeChange('dark')}
-                  className={`flex-1 p-3 rounded-xl border-2 transition-all ${
+                  className={`p-2 rounded-xl border-2 transition-all ${
                     themeMode === 'dark' 
                       ? 'border-primary ring-2 ring-primary/20' 
                       : 'border-border hover:border-muted-foreground/30'
                   }`}
                 >
-                  <div className="bg-[#1a1a1a] rounded-lg p-2 mb-2">
-                    <div className="h-2 w-8 bg-[#D4A574] rounded mb-1" />
-                    <div className="h-1.5 w-12 bg-[#8B7355] rounded" />
+                  <div className="bg-[#1a1a1a] rounded-lg p-1.5 mb-1.5 aspect-[4/3] flex flex-col justify-center">
+                    <div className="h-1.5 w-6 bg-[#D4A574] rounded mb-0.5 mx-auto" />
+                    <div className="h-1 w-8 bg-[#8B7355] rounded mx-auto" />
                   </div>
-                  <p className="text-xs font-medium">Тёмная</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <Moon className="w-3 h-3 text-indigo-500" />
+                    <p className="text-[10px] font-medium">Тёмная</p>
+                  </div>
                 </button>
                 
                 {/* Auto Theme Preview */}
                 <button
                   onClick={() => handleThemeModeChange('auto')}
-                  className={`flex-1 p-3 rounded-xl border-2 transition-all ${
+                  className={`p-2 rounded-xl border-2 transition-all ${
                     themeMode === 'auto' 
                       ? 'border-primary ring-2 ring-primary/20' 
                       : 'border-border hover:border-muted-foreground/30'
                   }`}
                 >
-                  <div className="rounded-lg p-2 mb-2 overflow-hidden relative">
-                    {/* Split preview: light on left, dark on right */}
-                    <div className="flex">
-                      <div className="w-1/2 bg-[#FDF8F3] p-1">
-                        <div className="h-1.5 w-4 bg-[#5D4037] rounded mb-0.5" />
-                        <div className="h-1 w-6 bg-[#D4A574] rounded" />
-                      </div>
-                      <div className="w-1/2 bg-[#1a1a1a] p-1">
-                        <div className="h-1.5 w-4 bg-[#D4A574] rounded mb-0.5" />
-                        <div className="h-1 w-6 bg-[#8B7355] rounded" />
-                      </div>
+                  <div className="rounded-lg mb-1.5 aspect-[4/3] overflow-hidden flex">
+                    <div className="w-1/2 bg-[#FDF8F3] p-1 flex flex-col justify-center">
+                      <div className="h-1 w-3 bg-[#5D4037] rounded mb-0.5" />
+                      <div className="h-0.5 w-4 bg-[#D4A574] rounded" />
+                    </div>
+                    <div className="w-1/2 bg-[#1a1a1a] p-1 flex flex-col justify-center items-end">
+                      <div className="h-1 w-3 bg-[#D4A574] rounded mb-0.5" />
+                      <div className="h-0.5 w-4 bg-[#8B7355] rounded" />
                     </div>
                   </div>
-                  <p className="text-xs font-medium">Авто</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <Monitor className="w-3 h-3 text-blue-500" />
+                    <p className="text-[10px] font-medium">Система</p>
+                  </div>
                 </button>
+                
+                {/* Telegram Theme Preview - only show if in Telegram */}
+                {isTelegramAvailable && (
+                  <button
+                    onClick={() => handleThemeModeChange('telegram')}
+                    className={`p-2 rounded-xl border-2 transition-all ${
+                      themeMode === 'telegram' 
+                        ? 'border-sky-500 ring-2 ring-sky-500/20' 
+                        : 'border-border hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <div className="rounded-lg mb-1.5 aspect-[4/3] bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center">
+                      <Send className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex items-center justify-center gap-1">
+                      <Send className="w-3 h-3 text-sky-500" />
+                      <p className="text-[10px] font-medium">Telegram</p>
+                    </div>
+                  </button>
+                )}
               </div>
               
-              {/* Auto mode hint */}
-              {isAutoMode && (
-                <motion.p 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  className="text-xs text-muted-foreground mt-3 text-center"
-                >
-                  Тема меняется автоматически в зависимости от настроек вашего устройства
-                </motion.p>
-              )}
+              {/* Mode hints */}
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mt-3"
+              >
+                {isAutoMode && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Тема меняется в зависимости от настроек вашего устройства
+                  </p>
+                )}
+                {isTelegramMode && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Тема синхронизируется с настройками Telegram
+                  </p>
+                )}
+              </motion.div>
             </motion.div>
           </Card>
         </motion.div>
@@ -363,6 +401,9 @@ export default function Settings() {
           <p className="font-medium text-foreground">VendHub Coffee</p>
           <p className="text-sm text-muted-foreground">Версия 1.0.0</p>
           <p className="text-xs text-muted-foreground mt-1">© 2024 VendHub. Все права защищены.</p>
+          {isTelegram && (
+            <p className="text-xs text-sky-500 mt-2">Запущено в Telegram</p>
+          )}
         </motion.div>
       </main>
 
