@@ -1,7 +1,7 @@
 /**
  * VendHub TWA - Settings Page
  * "Warm Brew" Design System
- * Dark theme toggle enabled
+ * Dark theme toggle enabled with Auto mode
  */
 
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw } from "lucide-react";
+import { ArrowLeft, Globe, Bell, Moon, Sun, Shield, ChevronRight, Check, Smartphone, RotateCcw, Monitor } from "lucide-react";
 import { useOnboardingStore } from "@/stores/onboardingStore";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -24,7 +24,7 @@ const languages = [
 
 export default function Settings() {
   const { haptic } = useTelegram();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, themeMode, setThemeMode } = useTheme();
   const { resetOnboarding } = useOnboardingStore();
   const [language, setLanguage] = useState('ru');
   const [notifications, setNotifications] = useState(true);
@@ -43,18 +43,41 @@ export default function Settings() {
     toast.success(checked ? 'Уведомления включены' : 'Уведомления отключены');
   };
 
-  const handleDarkModeChange = (checked: boolean) => {
+  const handleThemeModeChange = (mode: 'light' | 'dark' | 'auto') => {
     haptic.impact('medium');
-    if (toggleTheme) {
-      toggleTheme();
-      toast.success(checked ? 'Тёмная тема включена' : 'Светлая тема включена', {
-        icon: checked ? '🌙' : '☀️',
-      });
-    }
+    setThemeMode(mode);
+    
+    const messages = {
+      light: { text: 'Светлая тема включена', icon: '☀️' },
+      dark: { text: 'Тёмная тема включена', icon: '🌙' },
+      auto: { text: 'Автоматическая тема включена', icon: '🔄' },
+    };
+    
+    toast.success(messages[mode].text, { icon: messages[mode].icon });
   };
 
   const currentLang = languages.find(l => l.code === language);
   const isDarkMode = theme === 'dark';
+  const isAutoMode = themeMode === 'auto';
+
+  // Get icon and description based on current mode
+  const getThemeIcon = () => {
+    if (isAutoMode) return <Monitor className="w-5 h-5 text-blue-500" />;
+    if (isDarkMode) return <Moon className="w-5 h-5 text-indigo-500" />;
+    return <Sun className="w-5 h-5 text-amber-500" />;
+  };
+
+  const getThemeDescription = () => {
+    if (isAutoMode) return 'Авто (системная)';
+    if (isDarkMode) return 'Включена';
+    return 'Выключена';
+  };
+
+  const getThemeIconBg = () => {
+    if (isAutoMode) return 'bg-blue-500/20';
+    if (isDarkMode) return 'bg-indigo-500/20';
+    return 'bg-amber-500/20';
+  };
 
   return (
     <div className="min-h-screen bg-background safe-top safe-bottom">
@@ -77,29 +100,23 @@ export default function Settings() {
         >
           <h2 className="text-sm font-medium text-muted-foreground mb-2 px-1">Оформление</h2>
           
-          {/* Dark Mode */}
+          {/* Theme Mode */}
           <Card className="coffee-card overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                  isDarkMode ? 'bg-indigo-500/20' : 'bg-amber-500/20'
-                }`}>
-                  {isDarkMode ? (
-                    <Moon className="w-5 h-5 text-indigo-500" />
-                  ) : (
-                    <Sun className="w-5 h-5 text-amber-500" />
-                  )}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${getThemeIconBg()}`}>
+                  {getThemeIcon()}
                 </div>
                 <div>
                   <p className="font-medium text-foreground">Тёмная тема</p>
                   <p className="text-sm text-muted-foreground">
-                    {isDarkMode ? 'Включена' : 'Выключена'}
+                    {getThemeDescription()}
                   </p>
                 </div>
               </div>
               <Switch 
-                checked={isDarkMode} 
-                onCheckedChange={handleDarkModeChange}
+                checked={isDarkMode && !isAutoMode} 
+                onCheckedChange={(checked) => handleThemeModeChange(checked ? 'dark' : 'light')}
               />
             </div>
             
@@ -109,18 +126,12 @@ export default function Settings() {
               initial={false}
               animate={{ opacity: 1 }}
             >
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 {/* Light Theme Preview */}
                 <button
-                  onClick={() => {
-                    if (isDarkMode && toggleTheme) {
-                      haptic.selection();
-                      toggleTheme();
-                      toast.success('Светлая тема включена', { icon: '☀️' });
-                    }
-                  }}
+                  onClick={() => handleThemeModeChange('light')}
                   className={`flex-1 p-3 rounded-xl border-2 transition-all ${
-                    !isDarkMode 
+                    themeMode === 'light' 
                       ? 'border-primary ring-2 ring-primary/20' 
                       : 'border-border hover:border-muted-foreground/30'
                   }`}
@@ -134,15 +145,9 @@ export default function Settings() {
                 
                 {/* Dark Theme Preview */}
                 <button
-                  onClick={() => {
-                    if (!isDarkMode && toggleTheme) {
-                      haptic.selection();
-                      toggleTheme();
-                      toast.success('Тёмная тема включена', { icon: '🌙' });
-                    }
-                  }}
+                  onClick={() => handleThemeModeChange('dark')}
                   className={`flex-1 p-3 rounded-xl border-2 transition-all ${
-                    isDarkMode 
+                    themeMode === 'dark' 
                       ? 'border-primary ring-2 ring-primary/20' 
                       : 'border-border hover:border-muted-foreground/30'
                   }`}
@@ -153,7 +158,43 @@ export default function Settings() {
                   </div>
                   <p className="text-xs font-medium">Тёмная</p>
                 </button>
+                
+                {/* Auto Theme Preview */}
+                <button
+                  onClick={() => handleThemeModeChange('auto')}
+                  className={`flex-1 p-3 rounded-xl border-2 transition-all ${
+                    themeMode === 'auto' 
+                      ? 'border-primary ring-2 ring-primary/20' 
+                      : 'border-border hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <div className="rounded-lg p-2 mb-2 overflow-hidden relative">
+                    {/* Split preview: light on left, dark on right */}
+                    <div className="flex">
+                      <div className="w-1/2 bg-[#FDF8F3] p-1">
+                        <div className="h-1.5 w-4 bg-[#5D4037] rounded mb-0.5" />
+                        <div className="h-1 w-6 bg-[#D4A574] rounded" />
+                      </div>
+                      <div className="w-1/2 bg-[#1a1a1a] p-1">
+                        <div className="h-1.5 w-4 bg-[#D4A574] rounded mb-0.5" />
+                        <div className="h-1 w-6 bg-[#8B7355] rounded" />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs font-medium">Авто</p>
+                </button>
               </div>
+              
+              {/* Auto mode hint */}
+              {isAutoMode && (
+                <motion.p 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="text-xs text-muted-foreground mt-3 text-center"
+                >
+                  Тема меняется автоматически в зависимости от настроек вашего устройства
+                </motion.p>
+              )}
             </motion.div>
           </Card>
         </motion.div>
