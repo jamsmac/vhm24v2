@@ -13,7 +13,8 @@ import { useTelegram } from "@/contexts/TelegramContext";
 import { useCartStore, Machine } from "@/stores/cartStore";
 import { usePendingOrderStore } from "@/stores/pendingOrderStore";
 import { MapView } from "@/components/Map";
-import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag, Map, List, ExternalLink } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, ShoppingBag, Map, List, ExternalLink, Filter } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Link, useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -106,6 +107,7 @@ export default function Locations() {
     address: string;
   } | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
 
@@ -113,11 +115,19 @@ export default function Locations() {
   const isOrderMode = searchParams.includes('order=true');
 
   const filteredLocations = mockLocations.filter(
-    (loc) =>
-      loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      loc.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      loc.address?.toLowerCase().includes(searchQuery.toLowerCase())
+    (loc) => {
+      // Apply availability filter
+      if (showOnlyAvailable && !loc.isAvailable) return false;
+      
+      // Apply search filter
+      return loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loc.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        loc.address?.toLowerCase().includes(searchQuery.toLowerCase());
+    }
   );
+
+  // Count unavailable machines for filter label
+  const unavailableCount = mockLocations.filter(loc => !loc.isAvailable).length;
 
   const handleSelectLocation = (location: typeof mockLocations[0]) => {
     if (!location.isAvailable) {
@@ -292,6 +302,30 @@ export default function Locations() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-11 rounded-xl bg-secondary border-0"
+          />
+        </div>
+
+        {/* Availability Filter */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Только доступные</span>
+            {unavailableCount > 0 && (
+              <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">
+                {unavailableCount} скрыто
+              </span>
+            )}
+          </div>
+          <Switch
+            checked={showOnlyAvailable}
+            onCheckedChange={(checked) => {
+              haptic.selection();
+              setShowOnlyAvailable(checked);
+              if (checked) {
+                toast.success('Показаны только доступные автоматы');
+              }
+            }}
+            className="data-[state=checked]:bg-espresso"
           />
         </div>
       </header>
