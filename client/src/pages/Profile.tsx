@@ -1,58 +1,92 @@
 /**
- * VendHub TWA - Profile Page
- * "Warm Brew" Design System
- * 
- * Features:
- * - User avatar and info
- * - Bonus balance display
- * - Loyalty level progress
- * - Navigation to sub-pages
+ * VendHub TWA - Modern Profile Page
  */
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useUserStore, formatPoints, getLoyaltyLevelName } from "@/stores/userStore";
-import { ArrowLeft, Gift, History, Settings, HelpCircle, ChevronRight, Sparkles, User, LogOut, Heart } from "lucide-react";
+import { useFavoritesStore } from "@/stores/favoritesStore";
+import { useOrderHistoryStore } from "@/stores/orderHistoryStore";
+import { 
+  User, 
+  Heart, 
+  Clock, 
+  Gift, 
+  Settings, 
+  HelpCircle, 
+  ChevronRight,
+  LogOut,
+  Star,
+  Sparkles
+} from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 
-// Mock data for demo
-const mockProfile = {
+// Mock user data
+const mockUser = {
   firstName: "Jamshid",
-  lastName: "M.",
-  telegramUsername: "@jamshid_tg",
-};
-
-const mockLoyalty = {
+  lastName: "Mamatov",
+  phone: "+998 90 123 45 67",
   pointsBalance: 25000,
-  lifetimePoints: 150000,
   level: "silver" as const,
-  nextLevelPoints: 200000,
-  pointsToNextLevel: 50000,
 };
 
 export default function Profile() {
   const { user, haptic, webApp } = useTelegram();
   const { profile, loyalty, logout } = useUserStore();
-
-  const displayProfile = profile || {
-    firstName: user?.first_name || mockProfile.firstName,
-    lastName: user?.last_name || mockProfile.lastName,
-    telegramUsername: user?.username ? `@${user.username}` : mockProfile.telegramUsername,
-  };
-
-  const displayLoyalty = loyalty || mockLoyalty;
-
-  const levelProgress = ((displayLoyalty.lifetimePoints / displayLoyalty.nextLevelPoints) * 100);
+  const { favorites } = useFavoritesStore();
+  const { getOrderStats } = useOrderHistoryStore();
+  
+  const displayName = user?.first_name || profile?.firstName || mockUser.firstName;
+  const lastName = user?.last_name || profile?.lastName || mockUser.lastName;
+  const points = loyalty?.pointsBalance || mockUser.pointsBalance;
+  const orderStats = getOrderStats();
 
   const menuItems = [
-    { icon: Heart, label: "Избранное", href: "/profile/favorites" },
-    { icon: History, label: "История заказов", href: "/profile/history" },
-    { icon: Gift, label: "Бонусы и уровни", href: "/profile/bonuses" },
-    { icon: Settings, label: "Настройки", href: "/profile/settings" },
-    { icon: HelpCircle, label: "Помощь", href: "/profile/help" },
+    { 
+      icon: Heart, 
+      label: 'Избранное', 
+      href: '/profile/favorites',
+      badge: favorites.length > 0 ? favorites.length : undefined,
+      color: 'text-red-500'
+    },
+    { 
+      icon: Clock, 
+      label: 'История заказов', 
+      href: '/profile/history',
+      badge: orderStats.totalOrders > 0 ? orderStats.totalOrders : undefined,
+      color: 'text-blue-500'
+    },
+    { 
+      icon: Gift, 
+      label: 'Бонусы и акции', 
+      href: '/profile/bonuses',
+      color: 'text-caramel'
+    },
+    { 
+      icon: Settings, 
+      label: 'Настройки', 
+      href: '/profile/settings',
+      color: 'text-gray-500'
+    },
+    { 
+      icon: HelpCircle, 
+      label: 'Помощь', 
+      href: '/profile/help',
+      color: 'text-green-500'
+    },
   ];
+
+  const getLevelColor = (level: string) => {
+    switch (level) {
+      case 'bronze': return 'from-amber-600 to-amber-700';
+      case 'silver': return 'from-gray-400 to-gray-500';
+      case 'gold': return 'from-yellow-400 to-yellow-500';
+      case 'platinum': return 'from-slate-300 to-slate-400';
+      default: return 'from-gray-400 to-gray-500';
+    }
+  };
 
   const handleLogout = () => {
     haptic.impact('medium');
@@ -61,139 +95,129 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-background safe-top safe-bottom">
-      {/* Header */}
-      <header className="px-4 py-3 border-b border-border flex items-center gap-3">
-        <Link href="/">
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={() => haptic.selection()}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-        <h1 className="font-display text-xl font-bold">Мой профиль</h1>
-      </header>
-
-      <main className="px-4 py-6 space-y-6">
-        {/* Profile Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-        >
-          <Card className="coffee-card">
-            <div className="flex items-center gap-4">
-              {/* Avatar */}
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4A574] to-[#B8956C] flex items-center justify-center">
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header with gradient */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-espresso via-espresso/95 to-espresso/90" />
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-caramel rounded-full blur-3xl" />
+          <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-white rounded-full blur-2xl" />
+        </div>
+        
+        <div className="relative px-4 pt-safe-top pb-8">
+          {/* Profile info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-4 pt-4"
+          >
+            <div className="relative">
+              <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
                 {user?.photo_url ? (
                   <img 
                     src={user.photo_url} 
                     alt="Avatar" 
-                    className="w-full h-full rounded-full object-cover"
+                    className="w-full h-full rounded-2xl object-cover"
                   />
                 ) : (
-                  <User className="w-8 h-8 text-white" />
+                  <User className="w-10 h-10 text-white" />
                 )}
               </div>
-              
-              {/* Info */}
-              <div>
-                <h2 className="font-display text-xl font-bold text-foreground">
-                  {displayProfile.firstName} {displayProfile.lastName}
-                </h2>
-                <p className="text-muted-foreground">{displayProfile.telegramUsername}</p>
+              {/* Level badge */}
+              <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-gradient-to-br ${getLevelColor(mockUser.level)} flex items-center justify-center shadow-lg`}>
+                <Star className="w-4 h-4 text-white fill-white" />
               </div>
             </div>
-          </Card>
-        </motion.div>
+            <div className="flex-1">
+              <h1 className="font-display text-xl font-bold text-white">
+                {displayName} {lastName}
+              </h1>
+              <p className="text-white/70 text-sm">{mockUser.phone}</p>
+              <div className="flex items-center gap-1 mt-1">
+                <Sparkles className="w-3 h-3 text-caramel" />
+                <span className="text-xs text-caramel font-medium capitalize">{getLoyaltyLevelName(mockUser.level)}</span>
+              </div>
+            </div>
+          </motion.div>
 
-        {/* Bonus Card */}
+          {/* Stats cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-3 gap-3 mt-6"
+          >
+            <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
+              <p className="font-display text-xl font-bold text-white">{orderStats.totalOrders}</p>
+              <p className="text-xs text-white/60">Заказов</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
+              <p className="font-display text-xl font-bold text-white">{favorites.length}</p>
+              <p className="text-xs text-white/60">Избранное</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-xl p-3 text-center">
+              <p className="font-display text-xl font-bold text-caramel">{formatPoints(points)}</p>
+              <p className="text-xs text-white/60">Бонусов</p>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Menu items */}
+      <main className="px-4 -mt-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
+          transition={{ delay: 0.2 }}
         >
-          <Card className="coffee-card bg-gradient-to-br from-[#5D4037] to-[#3E2723] text-white">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Gift className="w-5 h-5" />
-                <span className="font-medium">Бонусный баланс</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Sparkles className="w-4 h-4 text-[#C0C0C0]" />
-                <span className="text-sm">{getLoyaltyLevelName(displayLoyalty.level)}</span>
-              </div>
-            </div>
-            
-            <div className="text-center py-4">
-              <p className="font-display text-4xl font-bold">
-                {formatPoints(displayLoyalty.pointsBalance)}
-              </p>
-              <p className="text-white/70 text-sm mt-1">UZS</p>
-            </div>
-            
-            {/* Level Progress */}
-            <div className="mt-4 pt-4 border-t border-white/20">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-white/70">До {getLoyaltyLevelName('gold')}</span>
-                <span>{formatPoints(displayLoyalty.pointsToNextLevel)} UZS</span>
-              </div>
-              <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-                <motion.div 
-                  className="h-full bg-gradient-to-r from-[#C0C0C0] to-[#FFD700] rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(levelProgress, 100)}%` }}
-                  transition={{ duration: 1, delay: 0.5 }}
-                />
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-
-        {/* Menu Items */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="space-y-2"
-        >
-          {menuItems.map((item, index) => (
-            <Link key={item.href} href={item.href}>
-              <Card 
-                className="coffee-card hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => haptic.selection()}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                      <item.icon className="w-5 h-5 text-[#5D4037]" />
-                    </div>
-                    <span className="font-medium text-foreground">{item.label}</span>
+          <Card className="coffee-card divide-y divide-border">
+            {menuItems.map((item, index) => (
+              <Link key={item.href} href={item.href}>
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 + index * 0.05 }}
+                  className="flex items-center gap-4 py-4 px-1 hover:bg-secondary/50 -mx-4 px-4 transition-colors cursor-pointer"
+                  onClick={() => haptic.selection()}
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-secondary flex items-center justify-center`}>
+                    <item.icon className={`w-5 h-5 ${item.color}`} />
                   </div>
+                  <span className="flex-1 font-medium text-foreground">{item.label}</span>
+                  {item.badge && (
+                    <span className="px-2 py-0.5 bg-secondary rounded-full text-xs font-medium text-muted-foreground">
+                      {item.badge}
+                    </span>
+                  )}
                   <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </div>
-              </Card>
-            </Link>
-          ))}
+                </motion.div>
+              </Link>
+            ))}
+          </Card>
         </motion.div>
 
-        {/* Logout Button */}
+        {/* Logout button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          transition={{ delay: 0.4 }}
+          className="mt-4"
         >
-          <Button
-            variant="outline"
-            className="w-full h-12 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
+          <Button 
+            variant="ghost" 
+            className="w-full h-12 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={handleLogout}
           >
             <LogOut className="w-5 h-5 mr-2" />
-            Выйти
+            Выйти из аккаунта
           </Button>
         </motion.div>
-      </main>
 
-      {/* Bottom safe area spacer */}
-      <div className="h-8" />
+        {/* App version */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          VendHub v1.0.0
+        </p>
+      </main>
     </div>
   );
 }

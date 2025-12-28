@@ -5,9 +5,11 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { TelegramProvider } from "./contexts/TelegramContext";
+import BottomNav from "./components/BottomNav";
 
 // Pages
 import Home from "./pages/Home";
+import Scan from "./pages/Scan";
 import Locations from "./pages/Locations";
 import Menu from "./pages/Menu";
 import Cart from "./pages/Cart";
@@ -24,6 +26,7 @@ function Router() {
     <Switch>
       {/* Main Routes */}
       <Route path="/" component={Home} />
+      <Route path="/scan" component={Scan} />
       <Route path="/locations" component={Locations} />
       <Route path="/menu/:id" component={Menu} />
       <Route path="/cart" component={Cart} />
@@ -48,7 +51,7 @@ function Router() {
 
 /**
  * VendHub Telegram Web App
- * "Warm Brew" Design System - Light theme optimized for Telegram
+ * Modern design with bottom navigation
  */
 function App() {
   return (
@@ -67,6 +70,7 @@ function App() {
               }}
             />
             <Router />
+            <BottomNav />
           </TooltipProvider>
         </TelegramProvider>
       </ThemeProvider>
