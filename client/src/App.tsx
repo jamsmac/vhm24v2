@@ -29,6 +29,7 @@ import NotificationSettings from "./pages/NotificationSettings";
 import Tasks from "./pages/Tasks";
 import LinkEmail from "./pages/LinkEmail";
 import HomeSettings from "./pages/HomeSettings";
+import Referral from "./pages/Referral";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/profile/tasks" component={Tasks} />
       <Route path="/profile/link-email" component={LinkEmail} />
       <Route path="/profile/home-settings" component={HomeSettings} />
+      <Route path="/profile/referral" component={Referral} />
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />

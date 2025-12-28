@@ -18,7 +18,8 @@ import {
   ChevronRight,
   LogOut,
   Star,
-  Sparkles
+  Sparkles,
+  Users
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -69,6 +70,12 @@ export default function Profile() {
       label: 'Задания', 
       href: '/profile/tasks',
       color: 'text-amber-500'
+    },
+    { 
+      icon: Users, 
+      label: 'Пригласить друзей', 
+      href: '/profile/referral',
+      color: 'text-green-500'
     },
     { 
       icon: Settings, 

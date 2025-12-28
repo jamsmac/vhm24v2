@@ -173,3 +173,14 @@
 - [x] Show confirmation dialog before applying template with preview
 - [x] Update preview when template is selected
 - [x] Test preset templates functionality (66 tests passing)
+
+## Referral System
+- [x] Create referrals table in database schema (referrals, referral_codes)
+- [x] Generate unique referral codes for each user (8-char alphanumeric)
+- [x] Build API endpoints for referral tracking (getStats, getCode, list, trackClick, validateCode, applyCode)
+- [x] Create referral page with shareable link (/profile/referral)
+- [x] Award points to referrer when friend joins (200 points)
+- [x] Award bonus points to new user from referral (100 points)
+- [x] Show referral statistics (invited count, earned points, pending)
+- [x] Add "Invite Friends" link to Profile menu
+- [x] Test referral system functionality (85 tests passing)

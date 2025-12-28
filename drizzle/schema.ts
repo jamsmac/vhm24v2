@@ -347,3 +347,61 @@ export const userPreferences = mysqlTable("user_preferences", {
 
 export type UserPreferences = typeof userPreferences.$inferSelect;
 export type InsertUserPreferences = typeof userPreferences.$inferInsert;
+
+
+/**
+ * Referrals - tracks user referrals and rewards
+ */
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  
+  // Referrer (the user who invited)
+  referrerId: int("referrerId").notNull(),
+  referrerCode: varchar("referrerCode", { length: 16 }).notNull(),
+  
+  // Referred user (the new user who joined)
+  referredUserId: int("referredUserId").unique(),
+  
+  // Status tracking
+  status: mysqlEnum("status", [
+    "pending",      // Link clicked but user not registered
+    "registered",   // User registered but not completed action
+    "completed",    // Referral completed, points awarded
+    "expired"       // Referral link expired
+  ]).default("pending").notNull(),
+  
+  // Points awarded
+  referrerPointsAwarded: int("referrerPointsAwarded").default(0).notNull(),
+  referredPointsAwarded: int("referredPointsAwarded").default(0).notNull(),
+  
+  // Tracking
+  clickCount: int("clickCount").default(0).notNull(),
+  
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+
+/**
+ * Referral codes - unique codes for each user
+ */
+export const referralCodes = mysqlTable("referral_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  code: varchar("code", { length: 16 }).notNull().unique(),
+  
+  // Statistics
+  totalClicks: int("totalClicks").default(0).notNull(),
+  totalReferrals: int("totalReferrals").default(0).notNull(),
+  totalPointsEarned: int("totalPointsEarned").default(0).notNull(),
+  
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type InsertReferralCode = typeof referralCodes.$inferInsert;

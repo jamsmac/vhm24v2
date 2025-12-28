@@ -14,7 +14,9 @@ import {
   InsertGamificationTask, gamificationTasks, GamificationTask,
   InsertUserTaskCompletion, userTaskCompletions, UserTaskCompletion,
   InsertPointsTransaction, pointsTransactions,
-  InsertUserPreferences, userPreferences, UserPreferences
+  InsertUserPreferences, userPreferences, UserPreferences,
+  InsertReferral, referrals, Referral,
+  InsertReferralCode, referralCodes, ReferralCode
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1112,4 +1114,354 @@ export async function seedDefaultTasks(): Promise<void> {
       await createTask(task);
     }
   }
+}
+
+
+// ==================== REFERRAL QUERIES ====================
+
+// Generate a unique referral code
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude confusing chars like 0, O, 1, I
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// Get or create referral code for a user
+export async function getOrCreateReferralCode(userId: number): Promise<ReferralCode | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  // Check if user already has a code
+  const existing = await db
+    .select()
+    .from(referralCodes)
+    .where(eq(referralCodes.userId, userId))
+    .limit(1);
+  
+  if (existing.length > 0) {
+    return existing[0];
+  }
+  
+  // Generate a unique code
+  let code = generateReferralCode();
+  let attempts = 0;
+  while (attempts < 10) {
+    const codeExists = await db
+      .select()
+      .from(referralCodes)
+      .where(eq(referralCodes.code, code))
+      .limit(1);
+    
+    if (codeExists.length === 0) break;
+    code = generateReferralCode();
+    attempts++;
+  }
+  
+  // Create the referral code
+  await db.insert(referralCodes).values({
+    userId,
+    code,
+  });
+  
+  // Return the created code
+  const created = await db
+    .select()
+    .from(referralCodes)
+    .where(eq(referralCodes.userId, userId))
+    .limit(1);
+  
+  return created[0] || null;
+}
+
+// Get referral code by code string
+export async function getReferralCodeByCode(code: string): Promise<ReferralCode | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const result = await db
+    .select()
+    .from(referralCodes)
+    .where(eq(referralCodes.code, code.toUpperCase()))
+    .limit(1);
+  
+  return result[0] || null;
+}
+
+// Get referral statistics for a user
+export async function getReferralStats(userId: number): Promise<{
+  code: string;
+  totalClicks: number;
+  totalReferrals: number;
+  totalPointsEarned: number;
+  pendingReferrals: number;
+  completedReferrals: number;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const codeData = await getOrCreateReferralCode(userId);
+  if (!codeData) return null;
+  
+  // Count pending and completed referrals
+  const referralsList = await db
+    .select()
+    .from(referrals)
+    .where(eq(referrals.referrerId, userId));
+  
+  const pendingReferrals = referralsList.filter(r => r.status === 'pending' || r.status === 'registered').length;
+  const completedReferrals = referralsList.filter(r => r.status === 'completed').length;
+  
+  return {
+    code: codeData.code,
+    totalClicks: codeData.totalClicks,
+    totalReferrals: codeData.totalReferrals,
+    totalPointsEarned: codeData.totalPointsEarned,
+    pendingReferrals,
+    completedReferrals,
+  };
+}
+
+// Track a referral click
+export async function trackReferralClick(code: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  const codeData = await getReferralCodeByCode(code);
+  if (!codeData || !codeData.isActive) return false;
+  
+  // Increment click count
+  await db
+    .update(referralCodes)
+    .set({ 
+      totalClicks: sql`${referralCodes.totalClicks} + 1`,
+      updatedAt: new Date()
+    })
+    .where(eq(referralCodes.id, codeData.id));
+  
+  return true;
+}
+
+// Create a referral when a new user registers with a referral code
+export async function createReferral(referrerCode: string, referredUserId: number): Promise<Referral | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const codeData = await getReferralCodeByCode(referrerCode);
+  if (!codeData || !codeData.isActive) return null;
+  
+  // Check if user was already referred
+  const existingReferral = await db
+    .select()
+    .from(referrals)
+    .where(eq(referrals.referredUserId, referredUserId))
+    .limit(1);
+  
+  if (existingReferral.length > 0) return null;
+  
+  // Can't refer yourself
+  if (codeData.userId === referredUserId) return null;
+  
+  // Create the referral
+  await db.insert(referrals).values({
+    referrerId: codeData.userId,
+    referrerCode: codeData.code,
+    referredUserId,
+    status: 'registered',
+  });
+  
+  // Get the created referral
+  const created = await db
+    .select()
+    .from(referrals)
+    .where(eq(referrals.referredUserId, referredUserId))
+    .limit(1);
+  
+  return created[0] || null;
+}
+
+// Complete a referral and award points
+export async function completeReferral(
+  referredUserId: number, 
+  referrerPoints: number = 200, 
+  referredPoints: number = 100
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  // Find the referral
+  const referral = await db
+    .select()
+    .from(referrals)
+    .where(eq(referrals.referredUserId, referredUserId))
+    .limit(1);
+  
+  if (referral.length === 0 || referral[0].status === 'completed') return false;
+  
+  const ref = referral[0];
+  
+  // Update referral status
+  await db
+    .update(referrals)
+    .set({
+      status: 'completed',
+      referrerPointsAwarded: referrerPoints,
+      referredPointsAwarded: referredPoints,
+      completedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(referrals.id, ref.id));
+  
+  // Award points to referrer
+  await db
+    .update(users)
+    .set({ 
+      pointsBalance: sql`${users.pointsBalance} + ${referrerPoints}`,
+      updatedAt: new Date()
+    })
+    .where(eq(users.id, ref.referrerId));
+  
+  // Get referrer's new balance for transaction log
+  const referrer = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, ref.referrerId))
+    .limit(1);
+  
+  if (referrer.length > 0) {
+    await db.insert(pointsTransactions).values({
+      userId: ref.referrerId,
+      amount: referrerPoints,
+      type: 'referral_bonus',
+      referenceType: 'referral',
+      referenceId: ref.id,
+      balanceAfter: referrer[0].pointsBalance,
+      description: `Бонус за приглашение друга`,
+    });
+  }
+  
+  // Award points to referred user
+  await db
+    .update(users)
+    .set({ 
+      pointsBalance: sql`${users.pointsBalance} + ${referredPoints}`,
+      updatedAt: new Date()
+    })
+    .where(eq(users.id, referredUserId));
+  
+  // Get referred user's new balance for transaction log
+  const referred = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, referredUserId))
+    .limit(1);
+  
+  if (referred.length > 0) {
+    await db.insert(pointsTransactions).values({
+      userId: referredUserId,
+      amount: referredPoints,
+      type: 'referral_bonus',
+      referenceType: 'referral',
+      referenceId: ref.id,
+      balanceAfter: referred[0].pointsBalance,
+      description: `Бонус за регистрацию по приглашению`,
+    });
+  }
+  
+  // Update referral code statistics
+  await db
+    .update(referralCodes)
+    .set({
+      totalReferrals: sql`${referralCodes.totalReferrals} + 1`,
+      totalPointsEarned: sql`${referralCodes.totalPointsEarned} + ${referrerPoints}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(referralCodes.code, ref.referrerCode));
+  
+  return true;
+}
+
+// Get list of referrals for a user
+export async function getUserReferrals(userId: number): Promise<Array<{
+  id: number;
+  referredUserId: number | null;
+  referredUserName: string | null;
+  status: string;
+  pointsAwarded: number;
+  createdAt: Date;
+  completedAt: Date | null;
+}>> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const referralsList = await db
+    .select({
+      id: referrals.id,
+      referredUserId: referrals.referredUserId,
+      status: referrals.status,
+      pointsAwarded: referrals.referrerPointsAwarded,
+      createdAt: referrals.createdAt,
+      completedAt: referrals.completedAt,
+    })
+    .from(referrals)
+    .where(eq(referrals.referrerId, userId))
+    .orderBy(desc(referrals.createdAt));
+  
+  // Get user names for referred users
+  const result = await Promise.all(
+    referralsList.map(async (ref) => {
+      let referredUserName: string | null = null;
+      if (ref.referredUserId) {
+        const user = await db
+          .select({ name: users.name, telegramFirstName: users.telegramFirstName })
+          .from(users)
+          .where(eq(users.id, ref.referredUserId))
+          .limit(1);
+        if (user.length > 0) {
+          referredUserName = user[0].name || user[0].telegramFirstName || 'Пользователь';
+        }
+      }
+      return {
+        ...ref,
+        referredUserName,
+      };
+    })
+  );
+  
+  return result;
+}
+
+// Check if user was referred and get referrer info
+export async function getUserReferrer(userId: number): Promise<{
+  referrerId: number;
+  referrerName: string | null;
+  bonusReceived: number;
+} | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  const referral = await db
+    .select()
+    .from(referrals)
+    .where(eq(referrals.referredUserId, userId))
+    .limit(1);
+  
+  if (referral.length === 0) return null;
+  
+  const ref = referral[0];
+  
+  // Get referrer name
+  const referrer = await db
+    .select({ name: users.name, telegramFirstName: users.telegramFirstName })
+    .from(users)
+    .where(eq(users.id, ref.referrerId))
+    .limit(1);
+  
+  return {
+    referrerId: ref.referrerId,
+    referrerName: referrer[0]?.name || referrer[0]?.telegramFirstName || null,
+    bonusReceived: ref.referredPointsAwarded,
+  };
 }

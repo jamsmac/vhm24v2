@@ -750,6 +750,69 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // Referral System API
+  referral: router({
+    // Get user's referral code and stats
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getReferralStats(ctx.user.id);
+    }),
+    
+    // Get user's referral code (creates one if doesn't exist)
+    getCode: protectedProcedure.query(async ({ ctx }) => {
+      const codeData = await db.getOrCreateReferralCode(ctx.user.id);
+      return codeData ? { code: codeData.code } : null;
+    }),
+    
+    // Get list of user's referrals
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserReferrals(ctx.user.id);
+    }),
+    
+    // Track a referral click (public - no auth needed)
+    trackClick: publicProcedure
+      .input(z.object({ code: z.string() }))
+      .mutation(async ({ input }) => {
+        const success = await db.trackReferralClick(input.code);
+        return { success };
+      }),
+    
+    // Validate a referral code (public - for registration flow)
+    validateCode: publicProcedure
+      .input(z.object({ code: z.string() }))
+      .query(async ({ input }) => {
+        const codeData = await db.getReferralCodeByCode(input.code);
+        return { 
+          valid: codeData !== null && codeData.isActive,
+          code: codeData?.code || null
+        };
+      }),
+    
+    // Apply referral code after registration
+    applyCode: protectedProcedure
+      .input(z.object({ code: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        // Create the referral record
+        const referral = await db.createReferral(input.code, ctx.user.id);
+        if (!referral) {
+          return { success: false, error: 'Invalid or already used referral code' };
+        }
+        
+        // Complete the referral and award points
+        const completed = await db.completeReferral(ctx.user.id, 200, 100);
+        
+        return { 
+          success: completed,
+          referrerPoints: 200,
+          referredPoints: 100
+        };
+      }),
+    
+    // Check if current user was referred
+    getReferrer: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserReferrer(ctx.user.id);
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
