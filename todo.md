@@ -55,3 +55,12 @@
 - [x] Add travel mode selector (walking/driving)
 - [x] Add quick links to open in Google Maps or Yandex Maps
 - [x] Test route display functionality (works with geolocation)
+
+## Turn-by-Turn Directions
+- [x] Extract navigation steps from DirectionsResult
+- [x] Create expandable directions panel component
+- [x] Display step icons (turn left, turn right, straight, U-turn, destination)
+- [x] Show distance and duration for each step
+- [x] Add expand/collapse animation with framer-motion
+- [x] Add scrollable list for many steps (max-h-48)
+- [x] Test directions display functionality (works with geolocation)

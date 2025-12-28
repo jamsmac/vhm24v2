@@ -2,7 +2,7 @@
  * VendHub TWA - Locations Page
  * Shows nearby vending machines with interactive map
  * Handles pending order flow - adds drink to cart after selection
- * Features route display on embedded map before opening external navigator
+ * Features route display on embedded map with turn-by-turn directions
  */
 
 import { useState, useRef, useCallback } from "react";
@@ -17,7 +17,8 @@ import { MapView } from "@/components/Map";
 import { 
   ArrowLeft, Search, MapPin, Coffee, ChevronRight, Navigation, 
   ShoppingBag, Map, List, ExternalLink, Filter, Clock, 
-  Footprints, Car, X, Loader2, Route
+  Footprints, Car, X, Loader2, Route, ChevronDown, ChevronUp,
+  ArrowUp, CornerUpLeft, CornerUpRight, RotateCcw, Flag
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Link, useLocation, useSearch } from "wouter";
@@ -40,15 +41,53 @@ const calculateWalkingTime = (distanceKm: number): string => {
   return `${hours} ч ${mins} мин`;
 };
 
+// Route step interface for turn-by-turn directions
+interface RouteStep {
+  instruction: string;
+  distance: string;
+  duration: string;
+  maneuver?: string;
+}
+
 // Route info interface
 interface RouteInfo {
   distance: string;
   duration: string;
   distanceValue: number;
   durationValue: number;
+  steps: RouteStep[];
 }
 
 type TravelMode = 'WALKING' | 'DRIVING';
+
+// Get icon for maneuver type
+const getManeuverIcon = (maneuver?: string) => {
+  if (!maneuver) return <ArrowUp className="w-4 h-4" />;
+  
+  const lowerManeuver = maneuver.toLowerCase();
+  
+  if (lowerManeuver.includes('left')) {
+    return <CornerUpLeft className="w-4 h-4" />;
+  }
+  if (lowerManeuver.includes('right')) {
+    return <CornerUpRight className="w-4 h-4" />;
+  }
+  if (lowerManeuver.includes('uturn') || lowerManeuver.includes('u-turn')) {
+    return <RotateCcw className="w-4 h-4" />;
+  }
+  if (lowerManeuver.includes('destination') || lowerManeuver.includes('arrive')) {
+    return <Flag className="w-4 h-4" />;
+  }
+  
+  return <ArrowUp className="w-4 h-4" />;
+};
+
+// Strip HTML tags from instruction text
+const stripHtml = (html: string): string => {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+};
 
 // Mock locations data with coordinates - sorted by distance
 const mockLocations: Array<Machine & { 
@@ -146,6 +185,7 @@ export default function Locations() {
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [travelMode, setTravelMode] = useState<TravelMode>('WALKING');
   const [routeError, setRouteError] = useState<string | null>(null);
+  const [directionsExpanded, setDirectionsExpanded] = useState(false);
   
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -238,6 +278,7 @@ export default function Locations() {
   const calculateRoute = useCallback(async (destination: { lat: number; lng: number }, mode: TravelMode = travelMode) => {
     setIsCalculatingRoute(true);
     setRouteError(null);
+    setDirectionsExpanded(false);
     
     try {
       const { service, renderer } = initDirections();
@@ -294,15 +335,24 @@ export default function Locations() {
         renderer.setDirections(result);
       }
 
-      // Extract route info
+      // Extract route info including turn-by-turn steps
       const route = result.routes[0];
       const leg = route.legs[0];
+      
+      // Extract steps for turn-by-turn directions
+      const steps: RouteStep[] = leg.steps?.map(step => ({
+        instruction: stripHtml(step.instructions || ''),
+        distance: step.distance?.text || '',
+        duration: step.duration?.text || '',
+        maneuver: step.maneuver,
+      })) || [];
       
       setRouteInfo({
         distance: leg.distance?.text || '',
         duration: leg.duration?.text || '',
         distanceValue: leg.distance?.value || 0,
         durationValue: leg.duration?.value || 0,
+        steps,
       });
       
       setShowingRoute(true);
@@ -328,6 +378,7 @@ export default function Locations() {
     setRouteInfo(null);
     setShowingRoute(false);
     setRouteError(null);
+    setDirectionsExpanded(false);
   }, []);
 
   // Open in external maps app
@@ -563,42 +614,121 @@ export default function Locations() {
                   exit={{ opacity: 0, y: -20 }}
                   className="absolute top-16 left-4 right-4 z-10"
                 >
-                  <Card className="p-3 rounded-xl shadow-lg bg-background/95 backdrop-blur border-amber-500/30">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-                            <Route className="w-4 h-4 text-amber-600" />
+                  <Card className="rounded-xl shadow-lg bg-background/95 backdrop-blur border-amber-500/30 overflow-hidden">
+                    {/* Route Summary Header */}
+                    <div className="p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                              <Route className="w-4 h-4 text-amber-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">{routeInfo.distance}</p>
+                              <p className="text-xs text-muted-foreground">~{routeInfo.duration}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold text-foreground">{routeInfo.distance}</p>
-                            <p className="text-xs text-muted-foreground">~{routeInfo.duration}</p>
+                          
+                          {/* Travel mode indicator */}
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-xs">
+                            {travelMode === 'WALKING' ? (
+                              <Footprints className="w-3 h-3" />
+                            ) : (
+                              <Car className="w-3 h-3" />
+                            )}
+                            <span>{travelMode === 'WALKING' ? 'Пешком' : 'На авто'}</span>
                           </div>
                         </div>
                         
-                        {/* Travel mode indicator */}
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-xs">
-                          {travelMode === 'WALKING' ? (
-                            <Footprints className="w-3 h-3" />
-                          ) : (
-                            <Car className="w-3 h-3" />
+                        <div className="flex items-center gap-1">
+                          {/* Expand/Collapse Directions Button */}
+                          {routeInfo.steps.length > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => {
+                                haptic.selection();
+                                setDirectionsExpanded(!directionsExpanded);
+                              }}
+                            >
+                              {directionsExpanded ? (
+                                <>
+                                  <ChevronUp className="w-4 h-4 mr-1" />
+                                  Скрыть
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="w-4 h-4 mr-1" />
+                                  {routeInfo.steps.length} шагов
+                                </>
+                              )}
+                            </Button>
                           )}
-                          <span>{travelMode === 'WALKING' ? 'Пешком' : 'На авто'}</span>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => {
+                              haptic.selection();
+                              clearRoute();
+                            }}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                      
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                          haptic.selection();
-                          clearRoute();
-                        }}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
                     </div>
+                    
+                    {/* Turn-by-Turn Directions Panel */}
+                    <AnimatePresence>
+                      {directionsExpanded && routeInfo.steps.length > 0 && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="border-t max-h-48 overflow-y-auto">
+                            {routeInfo.steps.map((step, index) => (
+                              <div
+                                key={index}
+                                className={cn(
+                                  "flex items-start gap-3 p-3 text-sm",
+                                  index !== routeInfo.steps.length - 1 && "border-b border-border/50"
+                                )}
+                              >
+                                {/* Step Number & Icon */}
+                                <div className="flex-shrink-0 flex flex-col items-center">
+                                  <div className={cn(
+                                    "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium",
+                                    index === 0 
+                                      ? "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
+                                      : index === routeInfo.steps.length - 1
+                                        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                                        : "bg-secondary text-muted-foreground"
+                                  )}>
+                                    {getManeuverIcon(step.maneuver)}
+                                  </div>
+                                </div>
+                                
+                                {/* Step Details */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-foreground leading-snug">{step.instruction}</p>
+                                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                    {step.distance && <span>{step.distance}</span>}
+                                    {step.distance && step.duration && <span>•</span>}
+                                    {step.duration && <span>{step.duration}</span>}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </Card>
                 </motion.div>
               )}
@@ -718,6 +848,11 @@ export default function Locations() {
                             <Clock className="w-4 h-4 text-muted-foreground" />
                             <span className="text-muted-foreground">~{routeInfo.duration}</span>
                           </div>
+                          {routeInfo.steps.length > 0 && (
+                            <div className="flex items-center gap-1 ml-auto">
+                              <span className="text-muted-foreground">{routeInfo.steps.length} шагов</span>
+                            </div>
+                          )}
                         </div>
                       )}
                       
