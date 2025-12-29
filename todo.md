@@ -19,7 +19,7 @@
 - [x] Add admin routes to App.tsx
 - [ ] Create machines management page
 - [ ] Add admin role protection
-- [ ] Write vitest tests for admin endpoints
+- [x] Write vitest tests for admin endpoints (29 tests passed)
 
 ## Geolocation Caching
 - [x] Create useGeolocation hook with localStorage caching
@@ -173,3 +173,121 @@
 - [x] Create scheduled task for midnight notification (node-cron)
 - [x] Reset user quest progress at midnight
 - [x] Admin buttons for manual daily/weekly reset
+
+## Admin Panel - Vending Business Management
+
+### Employees Management
+- [x] Create employees table in database (13 roles)
+- [x] Build admin employees page with CRUD
+- [x] Add employee roles (platform_owner, platform_admin, org_owner, org_admin, manager, supervisor, operator, technician, collector, warehouse_manager, warehouse_worker, accountant, investor)
+- [ ] Track employee assignments to machines
+
+### Machines Management (Extended)
+- [x] Extend machines table with detailed specs (serial, model, manufacturer)
+- [x] Build admin machines page with CRUD
+- [ ] Add machine components tracking
+- [ ] Track machine maintenance history
+- [ ] Assign employees to machines
+
+### Ingredients Management
+- [x] Create ingredients table in database
+- [x] Build admin ingredients page with CRUD
+- [x] Track ingredient stock levels with progress bars
+- [x] Set low stock alerts (visual warning)
+
+### Cleaning Supplies Management
+- [x] Create cleaning supplies table
+- [x] Build admin cleaning supplies page with CRUD
+- [x] Track stock levels with progress bars
+- [x] Set low stock alerts (visual warning)
+
+### Bunkers Management
+- [x] Create bunkers table (ingredient containers)
+- [x] Build admin bunkers page
+- [x] Track bunker capacity and fill levels
+- [x] Link bunkers to machines
+
+### Mixers Management
+- [ ] Create mixers table
+- [ ] Build admin mixers page
+- [ ] Track mixer maintenance
+- [ ] Link mixers to machines
+
+### Spare Parts Management
+- [x] Create spare parts table
+- [x] Build admin spare parts page with CRUD
+- [x] Track spare parts inventory with stock levels
+- [x] Link parts to machine models (compatibility)
+
+### Warehouse Management
+- [x] Create warehouse zones table
+- [x] Build admin warehouse page with zones and movements tabs
+- [x] Track stock movements (in/out)
+- [x] Show zone capacity and fill levels
+
+### Contractors Management
+- [x] Create contractors table
+- [x] Build admin contractors page with CRUD
+- [x] Track contractor services (supplier, service, logistics)
+- [x] Telegram integration for contractors
+
+
+## Document Upload & Data Import System
+
+### Document Parser
+- [ ] Create document upload endpoint (Excel, CSV, Word, TXT, MD, PDF, images)
+- [ ] Implement Excel parser with automatic column detection
+- [ ] Implement CSV parser with delimiter detection
+- [ ] Implement PDF text extraction
+- [ ] Implement image OCR for receipts/documents
+- [ ] Create document preview modal
+- [ ] Track uploaded files history
+
+### Sales Data Import
+- [x] Create sales_records table in database
+- [x] Build admin sales import page with drag-drop upload
+- [x] Auto-detect data structure from uploaded files
+- [x] Deduplicate records on import
+- [x] Support date range filtering
+- [x] Support payment type filtering (Cash, QR, VIP, Card)
+- [x] Pagination for large datasets (50/100/250/500 per page)
+- [x] Export filtered data to Excel/CSV
+
+### Bunkers Management (Extended)
+- [x] Build admin bunkers page with CRUD
+- [x] Link bunkers to machines
+- [x] Link bunkers to ingredients
+- [x] Track bunker capacity and fill levels
+- [x] Low level alerts (threshold-based)
+- [x] Refill history tracking
+
+### Mixers Management
+- [ ] Build admin mixers page with CRUD
+- [ ] Link mixers to machines
+- [ ] Track mixer maintenance cycles
+- [ ] Maintenance alerts (cycle-based)
+- [ ] Maintenance history tracking
+
+### Inventory Reconciliation (Инвентаризация)
+- [x] Create inventory_checks table
+- [x] Build inventory reconciliation page
+- [x] Compare expected vs actual stock levels
+- [x] Calculate discrepancies (shortages/overages)
+- [x] Generate reconciliation reports
+- [x] Track reconciliation history
+- [x] Link discrepancies to responsible employees
+
+### Stock Movement Tracking
+- [ ] Extend stock movements with detailed action types
+- [ ] Track all material movements (ingredients, cleaning, spare parts)
+- [ ] Register employee for each action
+- [ ] Track source and destination (warehouse zone, machine, bunker)
+- [ ] Generate movement reports
+- [ ] Compare movements with sales data
+
+### Sales vs Stock Analysis
+- [ ] Calculate expected consumption from sales
+- [ ] Compare with actual stock movements
+- [ ] Identify discrepancies
+- [ ] Generate variance reports
+- [ ] Alert on significant variances

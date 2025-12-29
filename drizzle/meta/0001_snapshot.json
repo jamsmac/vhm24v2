@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "92ac73ef-c0a9-4b87-aa96-ec3b877d162c",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "fd244be8-c97f-4260-93ca-397a48bd5417",
+  "prevId": "92ac73ef-c0a9-4b87-aa96-ec3b877d162c",
   "tables": {
     "bunkers": {
       "name": "bunkers",
@@ -729,11 +729,11 @@
         },
         "employeeRole": {
           "name": "employeeRole",
-          "type": "enum('owner','admin','manager','operator','collector','technician','viewer')",
+          "type": "enum('platform_owner','platform_admin','org_owner','org_admin','manager','supervisor','operator','technician','collector','warehouse_manager','warehouse_worker','accountant','investor')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'viewer'"
+          "default": "'operator'"
         },
         "employeeStatus": {
           "name": "employeeStatus",

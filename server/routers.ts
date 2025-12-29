@@ -766,13 +766,104 @@ export const appRouter = router({
         return await db.getAllMachines();
       }),
       
+      create: adminProcedure
+        .input(z.object({
+          machineCode: z.string(),
+          name: z.string(),
+          model: z.string().optional(),
+          serialNumber: z.string().optional(),
+          manufacturer: z.string().optional(),
+          address: z.string().optional(),
+          latitude: z.string().optional(),
+          longitude: z.string().optional(),
+          status: z.enum(['online', 'offline', 'maintenance', 'inactive']).default('online'),
+          assignedEmployeeId: z.number().nullable().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createMachine(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          machineCode: z.string().optional(),
+          name: z.string().optional(),
+          model: z.string().optional(),
+          serialNumber: z.string().optional(),
+          manufacturer: z.string().optional(),
+          address: z.string().optional(),
+          latitude: z.string().optional(),
+          longitude: z.string().optional(),
+          status: z.enum(['online', 'offline', 'maintenance', 'inactive']).optional(),
+          assignedEmployeeId: z.number().nullable().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateMachine(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteMachine(input.id);
+          return { success: true };
+        }),
+      
       updateStatus: adminProcedure
         .input(z.object({
           id: z.number(),
-          status: z.enum(['online', 'offline', 'maintenance']),
+          status: z.enum(['online', 'offline', 'maintenance', 'inactive']),
         }))
         .mutation(async ({ input }) => {
           await db.updateMachineStatus(input.id, input.status);
+          return { success: true };
+        }),
+    }),
+    
+    // Employees management
+    employees: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllEmployees();
+      }),
+      
+      create: adminProcedure
+        .input(z.object({
+          fullName: z.string(),
+          phone: z.string().optional(),
+          email: z.string().optional(),
+          username: z.string().optional(),
+          role: z.enum(['platform_owner', 'platform_admin', 'org_owner', 'org_admin', 'manager', 'supervisor', 'operator', 'technician', 'collector', 'warehouse_manager', 'warehouse_worker', 'accountant', 'investor']).default('operator'),
+          status: z.enum(['pending', 'active', 'inactive', 'suspended']).default('active'),
+          telegramUsername: z.string().optional(),
+          salary: z.number().default(0),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createEmployee(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          fullName: z.string().optional(),
+          phone: z.string().optional(),
+          email: z.string().optional(),
+          username: z.string().optional(),
+          role: z.enum(['platform_owner', 'platform_admin', 'org_owner', 'org_admin', 'manager', 'supervisor', 'operator', 'technician', 'collector', 'warehouse_manager', 'warehouse_worker', 'accountant', 'investor']).optional(),
+          status: z.enum(['pending', 'active', 'inactive', 'suspended']).optional(),
+          telegramUsername: z.string().optional(),
+          salary: z.number().optional(),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateEmployee(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteEmployee(input.id);
           return { success: true };
         }),
     }),

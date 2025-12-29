@@ -1,0 +1,98 @@
+{
+  "query": "SHOW COLUMNS FROM ingredients;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute SHOW COLUMNS FROM ingredients;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "category",
+      "Type": "enum('coffee','milk','sugar','syrup','powder','other')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "other",
+      "Extra": ""
+    },
+    {
+      "Field": "unit",
+      "Type": "varchar(50)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "kg",
+      "Extra": ""
+    },
+    {
+      "Field": "currentStock",
+      "Type": "decimal(10,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "minStock",
+      "Type": "decimal(10,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "maxStock",
+      "Type": "decimal(10,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "100",
+      "Extra": ""
+    },
+    {
+      "Field": "pricePerUnit",
+      "Type": "decimal(15,2)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "supplierId",
+      "Type": "int(11)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "datetime",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "datetime",
+      "Null": "YES",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nname\tvarchar(255)\tNO\t\tNULL\t\ncategory\tenum('coffee','milk','sugar','syrup','powder','other')\tNO\t\tother\t\nunit\tvarchar(50)\tNO\t\tkg\t\ncurrentStock\tdecimal(10,2)\tYES\t\t0\t\nminStock\tdecimal(10,2)\tYES\t\t0\t\nmaxStock\tdecimal(10,2)\tYES\t\t100\t\npricePerUnit\tdecimal(15,2)\tYES\t\tNULL\t\nsupplierId\tint(11)\tYES\t\tNULL\t\ncreatedAt\tdatetime\tYES\t\tCURRENT_TIMESTAMP\t\nupdatedAt\tdatetime\tYES\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 108
+}

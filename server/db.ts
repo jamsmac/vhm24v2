@@ -11,7 +11,8 @@ import {
   InsertNotification, notifications,
   InsertPointsTransaction, pointsTransactions, PointsTransaction,
   InsertDailyQuest, dailyQuests, DailyQuest,
-  InsertUserDailyQuestProgress, userDailyQuestProgress, UserDailyQuestProgress
+  InsertUserDailyQuestProgress, userDailyQuestProgress, UserDailyQuestProgress,
+  InsertEmployee, employees, Employee
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -247,11 +248,7 @@ export async function getMachineById(id: number): Promise<Machine | undefined> {
   return result.length > 0 ? result[0] : undefined;
 }
 
-export async function createMachine(machine: InsertMachine): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  await db.insert(machines).values(machine);
-}
+// createMachine moved to bottom of file with improved return type
 
 // ==================== FAVORITES QUERIES ====================
 
@@ -1160,5 +1157,105 @@ export async function notifyAllUsersAboutNewQuests(): Promise<void> {
   for (const user of activeUsers) {
     await sendNewQuestsNotification(user.id);
     await sendNewQuestsTelegramNotification(user.id);
+  }
+}
+
+
+// ==================== EMPLOYEE QUERIES ====================
+
+export async function getAllEmployees(): Promise<Employee[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    return await db.select().from(employees).orderBy(desc(employees.createdAt));
+  } catch (error) {
+    console.error("[Database] Error getting employees:", error);
+    return [];
+  }
+}
+
+export async function createEmployee(data: Omit<InsertEmployee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const result = await db.insert(employees).values({
+      ...data,
+      hireDate: new Date(),
+    });
+    const insertId = result[0].insertId;
+    const [employee] = await db.select().from(employees).where(eq(employees.id, insertId));
+    return employee || null;
+  } catch (error) {
+    console.error("[Database] Error creating employee:", error);
+    return null;
+  }
+}
+
+export async function updateEmployee(id: number, data: Partial<InsertEmployee>): Promise<Employee | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(employees).set(data).where(eq(employees.id, id));
+    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
+    return employee || null;
+  } catch (error) {
+    console.error("[Database] Error updating employee:", error);
+    return null;
+  }
+}
+
+export async function deleteEmployee(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  try {
+    await db.delete(employees).where(eq(employees.id, id));
+  } catch (error) {
+    console.error("[Database] Error deleting employee:", error);
+  }
+}
+
+// ==================== MACHINE CRUD QUERIES ====================
+
+export async function createMachine(data: Omit<InsertMachine, 'id' | 'createdAt' | 'updatedAt'> | InsertMachine): Promise<Machine | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const result = await db.insert(machines).values(data as InsertMachine);
+    const insertId = result[0].insertId;
+    const [machine] = await db.select().from(machines).where(eq(machines.id, insertId));
+    return machine || null;
+  } catch (error) {
+    console.error("[Database] Error creating machine:", error);
+    return null;
+  }
+}
+
+export async function updateMachine(id: number, data: Partial<InsertMachine>): Promise<Machine | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(machines).set(data).where(eq(machines.id, id));
+    const [machine] = await db.select().from(machines).where(eq(machines.id, id));
+    return machine || null;
+  } catch (error) {
+    console.error("[Database] Error updating machine:", error);
+    return null;
+  }
+}
+
+export async function deleteMachine(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  try {
+    await db.delete(machines).where(eq(machines.id, id));
+  } catch (error) {
+    console.error("[Database] Error deleting machine:", error);
   }
 }

@@ -1,0 +1,18 @@
+{
+  "query": "SHOW COLUMNS FROM users LIKE 'welcomeBonusReceived';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute SHOW COLUMNS FROM users LIKE 'welcomeBonusReceived';",
+  "rows": [
+    {
+      "Field": "welcomeBonusReceived",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nwelcomeBonusReceived\ttinyint(1)\tNO\t\t0\t\n",
+  "stderr": "",
+  "execution_time_ms": 92
+}

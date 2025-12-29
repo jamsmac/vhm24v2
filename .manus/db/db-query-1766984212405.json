@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE machines \nADD COLUMN IF NOT EXISTS model VARCHAR(255),\nADD COLUMN IF NOT EXISTS serialNumber VARCHAR(255),\nADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255),\nADD COLUMN IF NOT EXISTS installationDate DATETIME,\nADD COLUMN IF NOT EXISTS lastMaintenanceDate DATETIME,\nADD COLUMN IF NOT EXISTS assignedEmployeeId INT;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute ALTER TABLE machines \nADD COLUMN IF NOT EXISTS model VARCHAR(255),\nADD COLUMN IF NOT EXISTS serialNumber VARCHAR(255),\nADD COLUMN IF NOT EXISTS manufacturer VARCHAR(255),\nADD COLUMN IF NOT EXISTS installationDate DATETIME,\nADD COLUMN IF NOT EXISTS lastMaintenanceDate DATETIME,\nADD COLUMN IF NOT EXISTS assignedEmployeeId INT;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1744
+}

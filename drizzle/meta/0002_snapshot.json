@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "92ac73ef-c0a9-4b87-aa96-ec3b877d162c",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "68f0ba3f-fbad-4a1b-b022-3956e2570023",
+  "prevId": "fd244be8-c97f-4260-93ca-397a48bd5417",
   "tables": {
     "bunkers": {
       "name": "bunkers",
@@ -729,11 +729,11 @@
         },
         "employeeRole": {
           "name": "employeeRole",
-          "type": "enum('owner','admin','manager','operator','collector','technician','viewer')",
+          "type": "enum('platform_owner','platform_admin','org_owner','org_admin','manager','supervisor','operator','technician','collector','warehouse_manager','warehouse_worker','accountant','investor')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'viewer'"
+          "default": "'operator'"
         },
         "employeeStatus": {
           "name": "employeeStatus",
@@ -857,6 +857,141 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "import_batches": {
+      "name": "import_batches",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "batchId": {
+          "name": "batchId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fileName": {
+          "name": "fileName",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fileType": {
+          "name": "fileType",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "fileSize": {
+          "name": "fileSize",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "recordCount": {
+          "name": "recordCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "successCount": {
+          "name": "successCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "errorCount": {
+          "name": "errorCount",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "importStatus": {
+          "name": "importStatus",
+          "type": "enum('pending','processing','completed','failed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "importedBy": {
+          "name": "importedBy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "errors": {
+          "name": "errors",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "dateRangeStart": {
+          "name": "dateRangeStart",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "dateRangeEnd": {
+          "name": "dateRangeEnd",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "completedAt": {
+          "name": "completedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "import_batches_id": {
+          "name": "import_batches_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "import_batches_batchId_unique": {
+          "name": "import_batches_batchId_unique",
+          "columns": [
+            "batchId"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
     "ingredients": {
       "name": "ingredients",
       "columns": {
@@ -950,6 +1085,214 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "inventory_check_items": {
+      "name": "inventory_check_items",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "checkId": {
+          "name": "checkId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "checkItemType": {
+          "name": "checkItemType",
+          "type": "enum('ingredient','cleaning','spare_part')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "itemId": {
+          "name": "itemId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expectedQuantity": {
+          "name": "expectedQuantity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actualQuantity": {
+          "name": "actualQuantity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "discrepancy": {
+          "name": "discrepancy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "discrepancyReason": {
+          "name": "discrepancyReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "countedBy": {
+          "name": "countedBy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "countedAt": {
+          "name": "countedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "inventory_check_items_id": {
+          "name": "inventory_check_items_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "inventory_checks": {
+      "name": "inventory_checks",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "checkNumber": {
+          "name": "checkNumber",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "checkType": {
+          "name": "checkType",
+          "type": "enum('full','partial','spot')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'full'"
+        },
+        "checkStatus": {
+          "name": "checkStatus",
+          "type": "enum('draft','in_progress','completed','approved')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "startedAt": {
+          "name": "startedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "completedAt": {
+          "name": "completedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "approvedAt": {
+          "name": "approvedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "approvedBy": {
+          "name": "approvedBy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "conductedBy": {
+          "name": "conductedBy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "inventory_checks_id": {
+          "name": "inventory_checks_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "inventory_checks_checkNumber_unique": {
+          "name": "inventory_checks_checkNumber_unique",
+          "columns": [
+            "checkNumber"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "machines": {
@@ -1650,6 +1993,91 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "product_recipes": {
+      "name": "product_recipes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "productId": {
+          "name": "productId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ingredientId": {
+          "name": "ingredientId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "unit": {
+          "name": "unit",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'g'"
+        },
+        "isOptional": {
+          "name": "isOptional",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "product_recipes_id": {
+          "name": "product_recipes_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "products": {
       "name": "products",
       "columns": {
@@ -1874,6 +2302,186 @@
           ]
         }
       },
+      "checkConstraint": {}
+    },
+    "sales_records": {
+      "name": "sales_records",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "orderNumber": {
+          "name": "orderNumber",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "operatorNumber": {
+          "name": "operatorNumber",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "productName": {
+          "name": "productName",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "flavorName": {
+          "name": "flavorName",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "orderResource": {
+          "name": "orderResource",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "orderType": {
+          "name": "orderType",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "paymentStatus": {
+          "name": "paymentStatus",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cupType": {
+          "name": "cupType",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "machineCode": {
+          "name": "machineCode",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar(256)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "orderPrice": {
+          "name": "orderPrice",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "brewingStatus": {
+          "name": "brewingStatus",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdTime": {
+          "name": "createdTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "paymentTime": {
+          "name": "paymentTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "brewingTime": {
+          "name": "brewingTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "deliveryTime": {
+          "name": "deliveryTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refundTime": {
+          "name": "refundTime",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "paymentCard": {
+          "name": "paymentCard",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "importBatchId": {
+          "name": "importBatchId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "sales_records_id": {
+          "name": "sales_records_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
       "checkConstraint": {}
     },
     "spare_parts": {
@@ -2449,6 +3057,113 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "warehouse_zones": {
+      "name": "warehouse_zones",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "code": {
+          "name": "code",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "currentOccupancy": {
+          "name": "currentOccupancy",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "zoneType": {
+          "name": "zoneType",
+          "type": "enum('ingredients','cleaning','spare_parts','mixed','cold_storage')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'mixed'"
+        },
+        "temperature": {
+          "name": "temperature",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "warehouse_zones_id": {
+          "name": "warehouse_zones_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "warehouse_zones_code_unique": {
+          "name": "warehouse_zones_code_unique",
+          "columns": [
+            "code"
+          ]
+        }
+      },
       "checkConstraint": {}
     }
   },

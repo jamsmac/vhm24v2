@@ -1,0 +1,109 @@
+{
+  "query": "SHOW TABLES;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute SHOW TABLES;",
+  "rows": [
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "__drizzle_migrations"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "bunkers"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "cart_items"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "cleaning_supplies"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "contractors"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "daily_quests"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "employees"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "favorites"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "gamification_tasks"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "import_batches"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "ingredients"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "inventory_check_items"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "inventory_checks"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "machine_inventory"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "machines"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "maintenance_logs"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "notifications"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "orders"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "points_transactions"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "product_recipes"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "products"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "promo_codes"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "referral_codes"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "referrals"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "rewards"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "sales_records"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "spare_parts"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "stock_movements"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "user_preferences"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "user_rewards"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "user_task_completions"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "users"
+    },
+    {
+      "Tables_in_ThTAtwhLC93Gu4TaZSL8s7": "warehouse_zones"
+    }
+  ],
+  "messages": [],
+  "stdout": "Tables_in_ThTAtwhLC93Gu4TaZSL8s7\n__drizzle_migrations\nbunkers\ncart_items\ncleaning_supplies\ncontractors\ndaily_quests\nemployees\nfavorites\ngamification_tasks\nimport_batches\ningredients\ninventory_check_items\ninventory_checks\nmachine_inventory\nmachines\nmaintenance_logs\nnotifications\norders\npoints_transactions\nproduct_recipes\nproducts\npromo_codes\nreferral_codes\nreferrals\nrewards\nsales_records\nspare_parts\nstock_movements\nuser_preferences\nuser_rewards\nuser_task_completions\nusers\nwarehouse_zones\n",
+  "stderr": "",
+  "execution_time_ms": 101
+}

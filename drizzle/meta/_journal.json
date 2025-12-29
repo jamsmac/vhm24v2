@@ -5,8 +5,22 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1766980446320,
-      "tag": "0000_lethal_kang",
+      "when": 1766983048803,
+      "tag": "0000_big_kree",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1766984661310,
+      "tag": "0001_flawless_medusa",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1766984886577,
+      "tag": "0002_optimal_menace",
       "breakpoints": true
     }
   ]

@@ -16,7 +16,18 @@ import {
   Menu,
   X,
   Bell,
-  Target
+  Target,
+  UserCog,
+  Cpu,
+  Droplets,
+  SprayCan,
+  Wrench,
+  Warehouse,
+  Building2,
+  ChevronDown,
+  FileSpreadsheet,
+  ClipboardCheck,
+  Package
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -31,11 +42,26 @@ interface AdminLayoutProps {
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Дашборд" },
-  { href: "/admin/products", icon: Coffee, label: "Продукты" },
   { href: "/admin/orders", icon: ShoppingCart, label: "Заказы" },
+  { href: "/admin/products", icon: Coffee, label: "Продукты" },
   { href: "/admin/promo", icon: Ticket, label: "Промокоды" },
   { href: "/admin/quests", icon: Target, label: "Задания" },
-  { href: "/admin/machines", icon: MapPin, label: "Автоматы" },
+];
+
+const businessNavItems = [
+  { href: "/admin/employees", icon: UserCog, label: "Сотрудники" },
+  { href: "/admin/machines", icon: Cpu, label: "Автоматы" },
+  { href: "/admin/bunkers", icon: Package, label: "Бункеры" },
+  { href: "/admin/ingredients", icon: Droplets, label: "Ингредиенты" },
+  { href: "/admin/cleaning", icon: SprayCan, label: "Чистящие" },
+  { href: "/admin/spare-parts", icon: Wrench, label: "Запчасти" },
+  { href: "/admin/warehouse", icon: Warehouse, label: "Склад" },
+  { href: "/admin/contractors", icon: Building2, label: "Контрагенты" },
+  { href: "/admin/sales-import", icon: FileSpreadsheet, label: "Импорт продаж" },
+  { href: "/admin/inventory-check", icon: ClipboardCheck, label: "Инвентаризация" },
+];
+
+const systemNavItems = [
   { href: "/admin/users", icon: Users, label: "Пользователи" },
   { href: "/admin/settings", icon: Settings, label: "Настройки" },
 ];
@@ -78,24 +104,73 @@ export default function AdminLayout({ children, title, description }: AdminLayou
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location === item.href || 
-              (item.href !== "/admin" && location.startsWith(item.href));
-            return (
-              <Link key={item.href} href={item.href}>
-                <div className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
-                  isActive 
-                    ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" 
-                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                )}>
-                  <item.icon className="w-5 h-5" />
-                  {item.label}
-                </div>
-              </Link>
-            );
-          })}
+        <nav className="p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+          {/* Main */}
+          <div className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = location === item.href || 
+                (item.href !== "/admin" && location.startsWith(item.href));
+              return (
+                <Link key={item.href} href={item.href}>
+                  <div className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                    isActive 
+                      ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" 
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  )}>
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Business Management */}
+          <div>
+            <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Управление</p>
+            <div className="space-y-1">
+              {businessNavItems.map((item) => {
+                const isActive = location === item.href || location.startsWith(item.href);
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                      isActive 
+                        ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" 
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    )}>
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* System */}
+          <div>
+            <p className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Система</p>
+            <div className="space-y-1">
+              {systemNavItems.map((item) => {
+                const isActive = location === item.href || location.startsWith(item.href);
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer",
+                      isActive 
+                        ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400" 
+                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    )}>
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         </nav>
 
         {/* User section at bottom */}

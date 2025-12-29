@@ -40,6 +40,16 @@ import AdminProducts from "./pages/admin/Products";
 import AdminOrders from "./pages/admin/Orders";
 import AdminPromoCodes from "./pages/admin/PromoCodes";
 import AdminQuests from "./pages/admin/Quests";
+import AdminEmployees from "./pages/admin/Employees";
+import AdminMachines from "./pages/admin/Machines";
+import AdminIngredients from "./pages/admin/Ingredients";
+import AdminCleaningSupplies from "./pages/admin/CleaningSupplies";
+import AdminSpareParts from "./pages/admin/SpareParts";
+import AdminWarehouse from "./pages/admin/Warehouse";
+import AdminContractors from "./pages/admin/Contractors";
+import AdminSalesImport from "./pages/admin/SalesImport";
+import AdminInventoryCheck from "./pages/admin/InventoryCheck";
+import AdminBunkers from "./pages/admin/Bunkers";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -78,6 +88,16 @@ function Router() {
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/promo" component={AdminPromoCodes} />
       <Route path="/admin/quests" component={AdminQuests} />
+      <Route path="/admin/employees" component={AdminEmployees} />
+      <Route path="/admin/machines" component={AdminMachines} />
+      <Route path="/admin/ingredients" component={AdminIngredients} />
+      <Route path="/admin/cleaning" component={AdminCleaningSupplies} />
+      <Route path="/admin/spare-parts" component={AdminSpareParts} />
+      <Route path="/admin/warehouse" component={AdminWarehouse} />
+      <Route path="/admin/contractors" component={AdminContractors} />
+      <Route path="/admin/sales-import" component={AdminSalesImport} />
+      <Route path="/admin/inventory-check" component={AdminInventoryCheck} />
+      <Route path="/admin/bunkers" component={AdminBunkers} />
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />
