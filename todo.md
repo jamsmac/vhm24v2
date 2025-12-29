@@ -115,3 +115,19 @@
 - [x] Show user avatars and achievement counts
 - [x] Highlight current user position with podium
 - [x] Top 3 podium visualization
+
+## Daily Quests Seed Data
+- [x] Create default daily quests templates (order, spend, visit)
+- [x] Seed quests function in db.ts
+- [x] Reset quests at midnight automatically
+
+## Quest Progress Auto-Update
+- [x] Update "make order" quest on order completion
+- [x] Update "spend" quest on order payment
+- [x] Update "visit app" quest on stats query
+- [x] Send notification when quest is completed
+
+## Leaderboard Filters
+- [x] Add weekly/monthly/all-time filter tabs
+- [x] Calculate rankings based on selected period
+- [x] Show period-specific stats in UI

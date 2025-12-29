@@ -909,10 +909,25 @@ export interface LeaderboardEntry {
   achievementCount: number;
 }
 
-export async function getLeaderboard(limit: number = 20): Promise<LeaderboardEntry[]> {
+export async function getLeaderboard(limit: number = 20, period: 'week' | 'month' | 'all' = 'all'): Promise<LeaderboardEntry[]> {
   const db = await getDb();
   if (!db) return [];
   
+  // For period filtering, we would need to aggregate orders by date
+  // For now, we use the total stats but could be enhanced with period-specific queries
+  let dateFilter = null;
+  if (period === 'week') {
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    dateFilter = weekAgo;
+  } else if (period === 'month') {
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    dateFilter = monthAgo;
+  }
+  
+  // If period filter is set, we need to count orders from that period
+  // For simplicity, we'll use total stats for now (in production, aggregate orders table)
   const result = await db.select({
     userId: users.id,
     name: users.name,

@@ -1,6 +1,6 @@
 /**
  * VendHub TWA - Leaderboard Page
- * Rankings by achievements and orders
+ * Rankings by achievements and orders with period filters
  */
 
 import { Button } from "@/components/ui/button";
@@ -12,27 +12,37 @@ import {
   Trophy,
   Medal,
   Crown,
-  Star,
-  Coffee,
-  User
+  User,
+  Calendar,
+  CalendarDays,
+  Infinity
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
-// Rank badges
-const rankBadges = [
-  { icon: Crown, color: 'text-yellow-500', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30' },
-  { icon: Medal, color: 'text-gray-400', bgColor: 'bg-gray-100 dark:bg-gray-800/50' },
-  { icon: Medal, color: 'text-amber-600', bgColor: 'bg-amber-100 dark:bg-amber-900/30' },
-];
+type Period = 'week' | 'month' | 'all';
+
+const periodLabels: Record<Period, string> = {
+  week: 'Неделя',
+  month: 'Месяц',
+  all: 'Всё время'
+};
+
+const periodIcons: Record<Period, typeof Calendar> = {
+  week: Calendar,
+  month: CalendarDays,
+  all: Infinity
+};
 
 export default function LeaderboardPage() {
   const { haptic, isTelegram } = useTelegram();
+  const [period, setPeriod] = useState<Period>('all');
   
-  // Get leaderboard
-  const { data: leaderboardData, isLoading } = trpc.profile.leaderboard.useQuery();
+  // Get leaderboard with period filter
+  const { data: leaderboardData, isLoading } = trpc.profile.leaderboard.useQuery({ period });
   const { data: userStats } = trpc.profile.stats.useQuery();
   
   useTelegramBackButton({
@@ -40,8 +50,9 @@ export default function LeaderboardPage() {
     onClick: () => window.history.back(),
   });
 
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('ru-RU').format(num);
+  const handlePeriodChange = (newPeriod: Period) => {
+    haptic.selection();
+    setPeriod(newPeriod);
   };
 
   const getInitials = (name: string | null, username: string | null) => {
@@ -63,6 +74,15 @@ export default function LeaderboardPage() {
     }
   };
 
+  const getLevelEmoji = (level: string) => {
+    switch (level) {
+      case 'platinum': return '💎';
+      case 'gold': return '👑';
+      case 'silver': return '🥈';
+      default: return '🥉';
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
@@ -80,11 +100,34 @@ export default function LeaderboardPage() {
       </div>
 
       <main className="px-4 py-4 space-y-4">
+        {/* Period Filter Tabs */}
+        <div className="flex gap-2 p-1 bg-secondary/50 rounded-xl">
+          {(Object.keys(periodLabels) as Period[]).map((p) => {
+            const Icon = periodIcons[p];
+            return (
+              <button
+                key={p}
+                onClick={() => handlePeriodChange(p)}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium transition-all",
+                  period === p 
+                    ? "bg-caramel text-white shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{periodLabels[p]}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Current User Rank Card */}
         {leaderboardData?.currentUserRank && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            key={`rank-${period}`}
           >
             <Card className="coffee-card overflow-hidden">
               <div className="relative p-6">
@@ -102,7 +145,7 @@ export default function LeaderboardPage() {
                       Ваша позиция
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      {userStats?.totalOrders || 0} заказов
+                      {userStats?.totalOrders || 0} заказов за {periodLabels[period].toLowerCase()}
                     </p>
                   </div>
                   
@@ -119,6 +162,7 @@ export default function LeaderboardPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            key={`podium-${period}`}
             className="flex items-end justify-center gap-3 py-4"
           >
             {/* 2nd Place */}
@@ -141,7 +185,10 @@ export default function LeaderboardPage() {
                   <span className="text-xs font-bold text-white">2</span>
                 </div>
               </div>
-              <div className="mt-4 h-16 w-20 bg-gray-200 dark:bg-gray-700 rounded-t-lg flex items-center justify-center">
+              <p className="mt-3 text-xs text-muted-foreground truncate max-w-16 text-center">
+                {leaderboardData.entries[1].name || leaderboardData.entries[1].telegramUsername || 'User'}
+              </p>
+              <div className="mt-2 h-16 w-20 bg-gray-200 dark:bg-gray-700 rounded-t-lg flex items-center justify-center">
                 <Medal className="w-6 h-6 text-gray-400" />
               </div>
             </div>
@@ -169,7 +216,10 @@ export default function LeaderboardPage() {
                   <span className="text-xs font-bold text-white">1</span>
                 </div>
               </div>
-              <div className="mt-4 h-20 w-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-t-lg flex items-center justify-center">
+              <p className="mt-3 text-xs text-muted-foreground truncate max-w-16 text-center">
+                {leaderboardData.entries[0].name || leaderboardData.entries[0].telegramUsername || 'User'}
+              </p>
+              <div className="mt-2 h-20 w-20 bg-yellow-100 dark:bg-yellow-900/30 rounded-t-lg flex items-center justify-center">
                 <Trophy className="w-8 h-8 text-yellow-500" />
               </div>
             </div>
@@ -194,7 +244,10 @@ export default function LeaderboardPage() {
                   <span className="text-xs font-bold text-white">3</span>
                 </div>
               </div>
-              <div className="mt-4 h-12 w-20 bg-amber-100 dark:bg-amber-900/30 rounded-t-lg flex items-center justify-center">
+              <p className="mt-3 text-xs text-muted-foreground truncate max-w-16 text-center">
+                {leaderboardData.entries[2].name || leaderboardData.entries[2].telegramUsername || 'User'}
+              </p>
+              <div className="mt-2 h-12 w-20 bg-amber-100 dark:bg-amber-900/30 rounded-t-lg flex items-center justify-center">
                 <Medal className="w-6 h-6 text-amber-600" />
               </div>
             </div>
@@ -263,10 +316,7 @@ export default function LeaderboardPage() {
                         </h4>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span className={getLevelColor(entry.loyaltyLevel)}>
-                            {entry.loyaltyLevel === 'platinum' && '💎'}
-                            {entry.loyaltyLevel === 'gold' && '👑'}
-                            {entry.loyaltyLevel === 'silver' && '🥈'}
-                            {entry.loyaltyLevel === 'bronze' && '🥉'}
+                            {getLevelEmoji(entry.loyaltyLevel)}
                           </span>
                           <span>{entry.totalOrders} заказов</span>
                         </div>
@@ -295,7 +345,7 @@ export default function LeaderboardPage() {
               </div>
               <h3 className="font-semibold text-foreground mb-1">Нет данных</h3>
               <p className="text-sm text-muted-foreground">
-                Таблица лидеров пока пуста
+                Таблица лидеров за {periodLabels[period].toLowerCase()} пока пуста
               </p>
             </motion.div>
           )}

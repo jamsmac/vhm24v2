@@ -6,6 +6,75 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as db from "./db";
 
+// Helper function to update quest progress on order
+async function updateQuestProgressOnOrder(userId: number, orderAmount: number) {
+  const today = new Date();
+  const quests = await db.getAllDailyQuests();
+  
+  for (const quest of quests) {
+    // Initialize progress if not exists
+    await db.initializeDailyQuestProgress(userId, quest.id, today);
+    
+    // Get current progress
+    const progressList = await db.getUserDailyQuestProgress(userId, today);
+    const progress = progressList.find(p => p.questId === quest.id);
+    
+    if (!progress || progress.isCompleted) continue;
+    
+    let newValue = progress.currentValue;
+    let isCompleted = false;
+    
+    if (quest.type === 'order') {
+      newValue = progress.currentValue + 1;
+      isCompleted = newValue >= quest.targetValue;
+    } else if (quest.type === 'spend') {
+      newValue = progress.currentValue + orderAmount;
+      isCompleted = newValue >= quest.targetValue;
+    }
+    
+    if (newValue !== progress.currentValue) {
+      await db.updateDailyQuestProgress(userId, quest.id, today, newValue, isCompleted);
+      
+      // Send notification if quest completed
+      if (isCompleted && !progress.isCompleted) {
+        await db.createNotification({
+          userId,
+          type: 'bonus',
+          title: '✅ Задание выполнено!',
+          message: `Вы выполнили задание "${quest.title}". Нажмите, чтобы получить награду!`,
+          data: { questId: quest.id, reward: quest.rewardPoints }
+        });
+      }
+    }
+  }
+}
+
+// Helper function to update visit quest on app open
+async function updateVisitQuestProgress(userId: number) {
+  const today = new Date();
+  const quests = await db.getAllDailyQuests();
+  
+  const visitQuest = quests.find(q => q.type === 'visit');
+  if (!visitQuest) return;
+  
+  await db.initializeDailyQuestProgress(userId, visitQuest.id, today);
+  
+  const progressList = await db.getUserDailyQuestProgress(userId, today);
+  const progress = progressList.find(p => p.questId === visitQuest.id);
+  
+  if (!progress || progress.isCompleted) return;
+  
+  await db.updateDailyQuestProgress(userId, visitQuest.id, today, 1, true);
+  
+  await db.createNotification({
+    userId,
+    type: 'bonus',
+    title: '✅ Задание выполнено!',
+    message: `Вы выполнили задание "${visitQuest.title}". Нажмите, чтобы получить награду!`,
+    data: { questId: visitQuest.id, reward: visitQuest.rewardPoints }
+  });
+}
+
 export const appRouter = router({
   system: systemRouter,
   
@@ -279,6 +348,9 @@ export const appRouter = router({
             data: { orderId: input.id, orderNumber: order.orderNumber },
           });
           
+          // Update daily quest progress for order
+          await updateQuestProgressOnOrder(ctx.user.id, order.total);
+          
           // Check for first order bonus
           const isFirst = await db.isFirstOrder(ctx.user.id);
           if (isFirst) {
@@ -372,6 +444,9 @@ export const appRouter = router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       const user = await db.getUserById(ctx.user.id);
       if (!user) return null;
+      
+      // Update visit quest progress on app open
+      await updateVisitQuestProgress(ctx.user.id);
       
       return {
         pointsBalance: user.pointsBalance,
@@ -478,9 +553,12 @@ export const appRouter = router({
     
     // Leaderboard
     leaderboard: protectedProcedure
-      .input(z.object({ limit: z.number().optional().default(20) }).optional())
+      .input(z.object({ 
+        limit: z.number().optional().default(20),
+        period: z.enum(['week', 'month', 'all']).optional().default('all')
+      }).optional())
       .query(async ({ ctx, input }) => {
-        const leaderboard = await db.getLeaderboard(input?.limit || 20);
+        const leaderboard = await db.getLeaderboard(input?.limit || 20, input?.period || 'all');
         const userRank = leaderboard.findIndex(u => u.userId === ctx.user.id) + 1;
         return {
           entries: leaderboard,
