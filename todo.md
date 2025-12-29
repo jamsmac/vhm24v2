@@ -43,3 +43,30 @@
 - [x] Add level discount helper functions (getLevelDiscount, applyLevelDiscount)
 - [x] Add next level info helper (getNextLevelInfo)
 - [x] All TypeScript errors resolved (19 tests passing)
+
+## Telegram Registration Flow
+- [x] Create Telegram bot deep link for registration (t.me/vendhubbot?start=...)
+- [x] Create TelegramConnectPage with bot link and bonus info
+- [x] Add route /profile/telegram to App.tsx
+- [x] Add Telegram link to Profile menu
+- [x] Send welcome message via Telegram after successful registration
+
+## Level Discount in Cart
+- [x] Display current level and discount percentage in cart
+- [x] Calculate and apply level discount to order total
+- [x] Show discount breakdown in order summary (promo + level discount)
+- [x] Update checkout confirmation with discount info
+
+## Level Progress Page
+- [x] Create dedicated level progress page (/profile/level)
+- [x] Visual progress bar showing progress to next level
+- [x] Display current level benefits and perks
+- [x] Show next level requirements and benefits
+- [x] All levels overview with thresholds
+- [x] Link from Profile menu to level page
+
+## First Order Bonus
+- [x] Track first order completion via totalOrders count
+- [x] Award 10,000 bonus points after first successful order
+- [x] Send in-app notification about first order bonus
+- [x] Send Telegram notification about first order bonus

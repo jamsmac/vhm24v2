@@ -24,7 +24,9 @@ import { toast } from "sonner";
 import { useTelegramMainButton } from "@/hooks/useTelegramMainButton";
 import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
 import { useTelegramInvoice } from "@/hooks/useTelegramInvoice";
-import { useUserStore, getLevelDiscount, getLevelDiscountAmount, getLoyaltyLevelName } from "@/stores/userStore";
+import { useUserStore, getLevelDiscount, getLevelDiscountAmount, getLoyaltyLevelName, applyLevelDiscount } from "@/stores/userStore";
+import { trpc } from "@/lib/trpc";
+import { Crown } from "lucide-react";
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('ru-RU').format(price);
@@ -65,8 +67,17 @@ export default function Cart() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const subtotal = getSubtotal();
-  const discount = getDiscount();
-  const total = getTotal();
+  const promoDiscountAmount = getDiscount();
+  
+  // Get user's loyalty level for discount
+  const { data: userStats } = trpc.profile.stats.useQuery();
+  const userLevel = (userStats?.loyaltyLevel || 'bronze') as 'bronze' | 'silver' | 'gold' | 'platinum';
+  const levelDiscountPercent = getLevelDiscount(userLevel);
+  const levelDiscountAmount = getLevelDiscountAmount(subtotal - promoDiscountAmount, userLevel);
+  
+  // Calculate total with both discounts
+  const totalAfterPromo = subtotal - promoDiscountAmount;
+  const total = applyLevelDiscount(totalAfterPromo, userLevel);
 
   // Telegram BackButton - navigate back to menu or locations
   useTelegramBackButton({
@@ -128,7 +139,7 @@ export default function Cart() {
           machineId: machine?.id,
           machineName: machine?.name,
           promoCode: promoCode || undefined,
-          discount: discount > 0 ? discount : undefined,
+          discount: (promoDiscountAmount + levelDiscountAmount) > 0 ? (promoDiscountAmount + levelDiscountAmount) : undefined,
         };
         
         // Open Telegram Invoice
@@ -456,10 +467,19 @@ export default function Cart() {
               <span className="text-muted-foreground">Подитог</span>
               <span>{formatPrice(subtotal)} UZS</span>
             </div>
-            {discount > 0 && (
+            {promoDiscountAmount > 0 && (
               <div className="flex justify-between text-green-600 dark:text-green-400">
-                <span>Скидка ({promoDiscount}%)</span>
-                <span>-{formatPrice(discount)} UZS</span>
+                <span>Промокод ({promoDiscount}%)</span>
+                <span>-{formatPrice(promoDiscountAmount)} UZS</span>
+              </div>
+            )}
+            {levelDiscountPercent > 0 && (
+              <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                <div className="flex items-center gap-1">
+                  <Crown className="w-3.5 h-3.5" />
+                  <span>Скидка {getLoyaltyLevelName(userLevel)} ({levelDiscountPercent}%)</span>
+                </div>
+                <span>-{formatPrice(levelDiscountAmount)} UZS</span>
               </div>
             )}
             <div className="pt-2 border-t border-border flex justify-between font-semibold text-base">

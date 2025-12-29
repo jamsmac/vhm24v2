@@ -18,7 +18,9 @@ import {
   ChevronRight,
   LogOut,
   Star,
-  Sparkles
+  Sparkles,
+  Crown,
+  MessageCircle
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -63,6 +65,18 @@ export default function Profile() {
       label: 'Бонусы и акции', 
       href: '/profile/bonuses',
       color: 'text-caramel'
+    },
+    { 
+      icon: Crown, 
+      label: 'Уровень лояльности', 
+      href: '/profile/level',
+      color: 'text-yellow-500'
+    },
+    { 
+      icon: MessageCircle, 
+      label: 'Telegram уведомления', 
+      href: '/profile/telegram',
+      color: 'text-sky-500'
     },
     { 
       icon: Settings, 

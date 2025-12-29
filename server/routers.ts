@@ -278,6 +278,33 @@ export const appRouter = router({
             message: `Оплата заказа ${order.orderNumber} успешно получена`,
             data: { orderId: input.id, orderNumber: order.orderNumber },
           });
+          
+          // Check for first order bonus
+          const isFirst = await db.isFirstOrder(ctx.user.id);
+          if (isFirst) {
+            await db.grantFirstOrderBonus(ctx.user.id);
+            
+            // Create notification about first order bonus
+            await db.createNotification({
+              userId: ctx.user.id,
+              type: 'bonus',
+              title: '🎉 Бонус за первый заказ!',
+              message: `Поздравляем с первым заказом! Вам начислено ${db.FIRST_ORDER_BONUS_AMOUNT.toLocaleString('ru-RU')} бонусных баллов!`,
+              data: { amount: db.FIRST_ORDER_BONUS_AMOUNT, type: 'first_order_bonus' }
+            });
+            
+            // Send Telegram notification if enabled
+            const user = await db.getUserById(ctx.user.id);
+            if (user?.telegramId) {
+              const { sendFirstOrderBonusMessage } = await import('./telegramBot');
+              const updatedUser = await db.getUserById(ctx.user.id);
+              await sendFirstOrderBonusMessage(
+                user.telegramId,
+                db.FIRST_ORDER_BONUS_AMOUNT,
+                updatedUser?.pointsBalance || 0
+              );
+            }
+          }
         }
         
         return { success: true };

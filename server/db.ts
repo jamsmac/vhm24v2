@@ -1,7 +1,7 @@
 import { eq, and, desc, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
-  InsertUser, users,
+  InsertUser, users, User,
   InsertProduct, products, Product,
   InsertMachine, machines, Machine,
   InsertFavorite, favorites,
@@ -122,6 +122,36 @@ export async function updateUserStats(userId: number, orderTotal: number) {
 
 // Welcome bonus amount (equivalent to espresso price)
 export const WELCOME_BONUS_AMOUNT = 15000;
+
+// First order bonus amount
+export const FIRST_ORDER_BONUS_AMOUNT = 10000;
+
+/**
+ * Check if user is eligible for first order bonus
+ * Returns true if this is the user's first completed order
+ */
+export async function isFirstOrder(userId: number): Promise<boolean> {
+  const user = await getUserById(userId);
+  // totalOrders is incremented BEFORE this check, so first order = 1
+  return user?.totalOrders === 1;
+}
+
+/**
+ * Grant first order bonus to user
+ */
+export async function grantFirstOrderBonus(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  // Grant bonus points
+  await db.update(users)
+    .set({ 
+      pointsBalance: sql`${users.pointsBalance} + ${FIRST_ORDER_BONUS_AMOUNT}`
+    })
+    .where(eq(users.id, userId));
+  
+  return true;
+}
 
 export async function grantWelcomeBonus(userId: number): Promise<boolean> {
   const db = await getDb();
