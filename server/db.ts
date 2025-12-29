@@ -61,7 +61,14 @@ export async function getDb() {
 
 // ==================== USER QUERIES ====================
 
-export async function upsertUser(user: InsertUser): Promise<void> {
+export interface UpsertUserResult {
+  isNewUser: boolean;
+  userId?: number;
+  telegramId?: string | null;
+  userName?: string | null;
+}
+
+export async function upsertUser(user: InsertUser): Promise<UpsertUserResult> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
   }
@@ -69,10 +76,17 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot upsert user: database not available");
-    return;
+    return { isNewUser: false };
   }
 
   try {
+    // Check if user exists before upsert
+    const existingUser = await db.select({ id: users.id, telegramId: users.telegramId, name: users.name, telegramFirstName: users.telegramFirstName })
+      .from(users)
+      .where(eq(users.openId, user.openId))
+      .limit(1);
+    const isNewUser = existingUser.length === 0;
+    
     const values: InsertUser = {
       openId: user.openId,
     };
@@ -114,6 +128,27 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     await db.insert(users).values(values).onDuplicateKeyUpdate({
       set: updateSet,
     });
+    
+    // Get user data for welcome message
+    const userData = await db.select({ id: users.id, telegramId: users.telegramId, name: users.name, telegramFirstName: users.telegramFirstName })
+      .from(users)
+      .where(eq(users.openId, user.openId))
+      .limit(1);
+    
+    // Send welcome message for new Telegram users
+    if (isNewUser && userData[0]?.telegramId) {
+      const { sendWelcomeMessage } = await import('./telegramBot');
+      const userName = userData[0].name || userData[0].telegramFirstName || undefined;
+      sendWelcomeMessage(userData[0].telegramId, userName)
+        .catch(err => console.error('[TelegramBot] Failed to send welcome message:', err));
+    }
+    
+    return {
+      isNewUser,
+      userId: userData[0]?.id,
+      telegramId: userData[0]?.telegramId,
+      userName: userData[0]?.name || userData[0]?.telegramFirstName,
+    };
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;

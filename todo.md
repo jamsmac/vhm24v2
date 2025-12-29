@@ -248,3 +248,9 @@
 - [x] Integrate Telegram notifications into addPointsTransaction
 - [x] TELEGRAM_BOT_TOKEN configured (@vendhubbot)
 - [x] Test Telegram Bot notifications (147 tests passing)
+
+## Welcome Message for New Users
+- [x] Create welcome message template with app features
+- [x] Add sendWelcomeMessage function to telegramBot.ts
+- [x] Integrate welcome message into user registration flow (upsertUser)
+- [x] Test welcome message sending (157 tests passing)

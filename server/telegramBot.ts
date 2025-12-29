@@ -130,3 +130,46 @@ export async function sendPointsNotificationTelegram(
   
   return response.ok;
 }
+
+/**
+ * Format welcome message for new users
+ */
+export function formatWelcomeMessage(userName?: string): string {
+  const greeting = userName ? `Привет, <b>${userName}</b>! 👋` : 'Привет! 👋';
+  
+  return `${greeting}
+
+☕ <b>Добро пожаловать в VendHub!</b>
+
+Заказывайте любимые напитки из вендинговых автоматов в пару кликов!
+
+<b>🎁 Что вас ждёт:</b>
+
+• <b>📍 Карта автоматов</b> — найдите ближайший автомат
+• <b>📱 QR-сканер</b> — быстрый заказ по QR-коду
+• <b>🏆 Бонусная программа</b> — кэшбэк 1% за каждый заказ
+• <b>✨ Задания</b> — выполняйте и получайте баллы
+• <b>👥 Реферальная программа</b> — приглашайте друзей и получайте бонусы
+
+💰 <b>1 балл = 1 сум</b> при оплате заказов!
+
+Приятного кофепития! ☕️`;
+}
+
+/**
+ * Send welcome message to new user
+ */
+export async function sendWelcomeMessage(
+  telegramId: string,
+  userName?: string
+): Promise<boolean> {
+  const text = formatWelcomeMessage(userName);
+  
+  const response = await sendTelegramMessage({
+    chatId: telegramId,
+    text,
+    parseMode: 'HTML',
+  });
+  
+  return response.ok;
+}
