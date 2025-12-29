@@ -378,7 +378,9 @@ export const appRouter = router({
         loyaltyLevel: user.loyaltyLevel,
         totalSpent: user.totalSpent,
         totalOrders: user.totalOrders,
-        welcomeBonusReceived: user.welcomeBonusReceived,
+        welcomeBonusReceived: (user as any).welcomeBonusReceived ?? false,
+        referralCount: (user as any).referralCount ?? 0,
+        telegramConnected: !!user.telegramId,
       };
     }),
     
@@ -412,6 +414,24 @@ export const appRouter = router({
         message: granted ? 'Приветственный бонус начислен!' : 'Бонус уже был получен ранее'
       };
     }),
+    
+    // Send achievement notification
+    notifyAchievement: protectedProcedure
+      .input(z.object({
+        id: z.string(),
+        name: z.string(),
+        description: z.string(),
+        category: z.string(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Create in-app notification
+        await db.createAchievementNotification(ctx.user.id, input);
+        
+        // Send Telegram notification
+        await db.sendAchievementTelegramNotification(ctx.user.id, input);
+        
+        return { success: true };
+      }),
   }),
 
   // Admin API

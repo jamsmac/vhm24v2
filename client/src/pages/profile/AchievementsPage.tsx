@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { trpc } from "@/lib/trpc";
 import { useConfetti } from "@/hooks/useConfetti";
+import { useAchievementsStore, BadgeDefinition } from "@/stores/achievementsStore";
+import AchievementUnlockModal from "@/components/AchievementUnlockModal";
 import { 
   ArrowLeft,
   Trophy,
@@ -22,12 +24,17 @@ import {
   Target,
   Flame,
   Award,
-  Lock
+  Lock,
+  UserPlus,
+  MessageSquare,
+  Share2,
+  Send
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
 import { cn } from "@/lib/utils";
+import { useEffect, useMemo } from "react";
 
 // Badge definitions
 interface Badge {
@@ -44,6 +51,12 @@ interface Badge {
   bgColor: string;
 }
 
+// Icon mapping for store
+const iconMap: Record<string, React.ElementType> = {
+  Coffee, Heart, Zap, Flame, Award, Star, Crown, Trophy, Gift, Target,
+  UserPlus, MessageSquare, Share2, Send
+};
+
 // Badge categories
 const categories = [
   { id: 'orders', name: 'Заказы', icon: ShoppingBag },
@@ -54,10 +67,18 @@ const categories = [
 
 export default function AchievementsPage() {
   const { haptic, isTelegram } = useTelegram();
-  const { fireConfetti, fireEmoji } = useConfetti();
+  const { fireConfetti } = useConfetti();
   
   // Get user stats for badge progress
   const { data: userStats } = trpc.profile.stats.useQuery();
+  
+  // Achievement store
+  const { 
+    currentAchievement, 
+    dismissCurrentAchievement,
+    checkAndQueueNewAchievements,
+    hasSeenAchievement
+  } = useAchievementsStore();
   
   useTelegramBackButton({
     isVisible: true,
@@ -69,9 +90,14 @@ export default function AchievementsPage() {
   const totalSpent = userStats?.totalSpent || 0;
   const pointsBalance = userStats?.pointsBalance || 0;
   const loyaltyLevel = userStats?.loyaltyLevel || 'bronze';
+  
+  // Mock social stats (would come from API in real implementation)
+  const referralCount = userStats?.referralCount || 0;
+  const reviewCount = 0; // Would come from reviews API
+  const telegramConnected = userStats?.telegramConnected || false;
 
   // Define all badges with progress
-  const badges: Badge[] = [
+  const badges: Badge[] = useMemo(() => [
     // Orders category
     {
       id: 'first_order',
@@ -132,6 +158,68 @@ export default function AchievementsPage() {
       unlocked: totalOrders >= 100,
       color: 'text-purple-500',
       bgColor: 'bg-purple-100',
+    },
+    
+    // Social category
+    {
+      id: 'first_referral',
+      name: 'Первый друг',
+      description: 'Пригласите первого друга',
+      icon: UserPlus,
+      category: 'social',
+      requirement: 1,
+      currentValue: referralCount,
+      unlocked: referralCount >= 1,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-100',
+    },
+    {
+      id: 'social_butterfly',
+      name: 'Душа компании',
+      description: 'Пригласите 5 друзей',
+      icon: Users,
+      category: 'social',
+      requirement: 5,
+      currentValue: referralCount,
+      unlocked: referralCount >= 5,
+      color: 'text-indigo-500',
+      bgColor: 'bg-indigo-100',
+    },
+    {
+      id: 'influencer',
+      name: 'Инфлюенсер',
+      description: 'Пригласите 10 друзей',
+      icon: Share2,
+      category: 'social',
+      requirement: 10,
+      currentValue: referralCount,
+      unlocked: referralCount >= 10,
+      color: 'text-pink-500',
+      bgColor: 'bg-pink-100',
+    },
+    {
+      id: 'first_review',
+      name: 'Критик',
+      description: 'Оставьте первый отзыв',
+      icon: MessageSquare,
+      category: 'social',
+      requirement: 1,
+      currentValue: reviewCount,
+      unlocked: reviewCount >= 1,
+      color: 'text-teal-500',
+      bgColor: 'bg-teal-100',
+    },
+    {
+      id: 'telegram_connected',
+      name: 'На связи',
+      description: 'Подключите Telegram бота',
+      icon: Send,
+      category: 'social',
+      requirement: 1,
+      currentValue: telegramConnected ? 1 : 0,
+      unlocked: telegramConnected,
+      color: 'text-sky-500',
+      bgColor: 'bg-sky-100',
     },
     
     // Loyalty category
@@ -204,12 +292,44 @@ export default function AchievementsPage() {
       icon: Star,
       category: 'special',
       requirement: 1,
-      currentValue: 1, // Always unlocked for registered users
+      currentValue: 1,
       unlocked: true,
       color: 'text-sky-500',
       bgColor: 'bg-sky-100',
     },
-  ];
+  ], [totalOrders, totalSpent, pointsBalance, loyaltyLevel, referralCount, reviewCount, telegramConnected]);
+
+  // Notify achievement API
+  const notifyAchievementMutation = trpc.profile.notifyAchievement.useMutation();
+  
+  // Check for new achievements when stats change
+  useEffect(() => {
+    if (userStats) {
+      const unlockedIds = badges.filter(b => b.unlocked).map(b => b.id);
+      const badgeDefinitions: BadgeDefinition[] = badges.map(b => ({
+        id: b.id,
+        name: b.name,
+        description: b.description,
+        icon: (b.icon as any).displayName || (b.icon as any).name || 'Star',
+        category: b.category,
+        color: b.color,
+        bgColor: b.bgColor,
+      }));
+      const newAchievements = checkAndQueueNewAchievements(unlockedIds, badgeDefinitions);
+      
+      // Send notifications for new achievements
+      if (newAchievements && newAchievements.length > 0) {
+        newAchievements.forEach(achievement => {
+          notifyAchievementMutation.mutate({
+            id: achievement.id,
+            name: achievement.name,
+            description: achievement.description,
+            category: achievement.category,
+          });
+        });
+      }
+    }
+  }, [userStats, badges]);
 
   const unlockedCount = badges.filter(b => b.unlocked).length;
   const totalBadges = badges.length;
@@ -231,8 +351,25 @@ export default function AchievementsPage() {
     return Math.min(Math.round((badge.currentValue / badge.requirement) * 100), 99);
   };
 
+  // Get icon component for modal
+  const getModalAchievement = () => {
+    if (!currentAchievement) return null;
+    const IconComponent = iconMap[currentAchievement.icon] || Star;
+    return {
+      ...currentAchievement,
+      icon: IconComponent,
+    };
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
+      {/* Achievement Unlock Modal */}
+      <AchievementUnlockModal
+        isOpen={!!currentAchievement}
+        onClose={dismissCurrentAchievement}
+        achievement={getModalAchievement()}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center gap-3 px-4 py-3">
@@ -255,11 +392,9 @@ export default function AchievementsPage() {
         >
           <Card className="coffee-card overflow-hidden">
             <div className="relative p-6">
-              {/* Background decoration */}
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-caramel/20 to-transparent rounded-full blur-2xl" />
               
               <div className="relative flex items-center gap-6">
-                {/* Trophy icon */}
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg">
                   <Trophy className="w-10 h-10 text-white" />
                 </div>
@@ -272,7 +407,6 @@ export default function AchievementsPage() {
                     достижений получено
                   </p>
                   
-                  {/* Progress bar */}
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
@@ -311,69 +445,75 @@ export default function AchievementsPage() {
               </div>
               
               <div className="grid grid-cols-2 gap-3">
-                {categoryBadges.map((badge, index) => (
-                  <motion.div
-                    key={badge.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.05 * index }}
-                  >
-                    <Card 
-                      className={cn(
-                        "coffee-card p-4 cursor-pointer transition-all hover:scale-[1.02]",
-                        !badge.unlocked && "opacity-60"
-                      )}
-                      onClick={() => handleBadgeClick(badge)}
+                {categoryBadges.map((badge, index) => {
+                  const isNew = badge.unlocked && !hasSeenAchievement(badge.id);
+                  
+                  return (
+                    <motion.div
+                      key={badge.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.05 * index }}
                     >
-                      <div className="flex items-start gap-3">
-                        {/* Badge icon */}
-                        <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center relative",
-                          badge.unlocked ? badge.bgColor : "bg-gray-100 dark:bg-gray-800"
-                        )}>
-                          {badge.unlocked ? (
-                            <badge.icon className={cn("w-6 h-6", badge.color)} />
-                          ) : (
-                            <Lock className="w-5 h-5 text-gray-400" />
-                          )}
-                          
-                          {/* Unlocked indicator */}
-                          {badge.unlocked && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
+                      <Card 
+                        className={cn(
+                          "coffee-card p-4 cursor-pointer transition-all hover:scale-[1.02] relative",
+                          !badge.unlocked && "opacity-60"
+                        )}
+                        onClick={() => handleBadgeClick(badge)}
+                      >
+                        {/* New badge indicator */}
+                        {isNew && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                        )}
                         
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm text-foreground truncate">
-                            {badge.name}
-                          </h4>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                            {badge.description}
-                          </p>
-                          
-                          {/* Progress */}
-                          {!badge.unlocked && (
-                            <div className="mt-2">
-                              <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-caramel/60 rounded-full transition-all"
-                                  style={{ width: `${getProgress(badge)}%` }}
-                                />
+                        <div className="flex items-start gap-3">
+                          <div className={cn(
+                            "w-12 h-12 rounded-xl flex items-center justify-center relative",
+                            badge.unlocked ? badge.bgColor : "bg-gray-100 dark:bg-gray-800"
+                          )}>
+                            {badge.unlocked ? (
+                              <badge.icon className={cn("w-6 h-6", badge.color)} />
+                            ) : (
+                              <Lock className="w-5 h-5 text-gray-400" />
+                            )}
+                            
+                            {badge.unlocked && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
                               </div>
-                              <p className="text-[10px] text-muted-foreground mt-1">
-                                {formatNumber(badge.currentValue)} / {formatNumber(badge.requirement)}
-                              </p>
-                            </div>
-                          )}
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-medium text-sm text-foreground truncate">
+                              {badge.name}
+                            </h4>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                              {badge.description}
+                            </p>
+                            
+                            {!badge.unlocked && (
+                              <div className="mt-2">
+                                <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-caramel/60 rounded-full transition-all"
+                                    style={{ width: `${getProgress(badge)}%` }}
+                                  />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-1">
+                                  {formatNumber(badge.currentValue)} / {formatNumber(badge.requirement)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
+                      </Card>
+                    </motion.div>
+                  );
+                })}
               </div>
             </motion.div>
           );

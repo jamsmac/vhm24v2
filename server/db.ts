@@ -639,3 +639,51 @@ export async function getAdminStats() {
     activePromoCodes: promoResult[0]?.count || 0,
   };
 }
+
+
+// ==================== ACHIEVEMENT NOTIFICATIONS ====================
+
+export interface AchievementData {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+}
+
+export async function createAchievementNotification(
+  userId: number, 
+  achievement: AchievementData
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.insert(notifications).values({
+    userId,
+    type: 'bonus',
+    title: `🏆 Новое достижение!`,
+    message: `Вы получили достижение "${achievement.name}"! ${achievement.description}`,
+    data: { 
+      type: 'achievement_unlock',
+      achievementId: achievement.id,
+      achievementName: achievement.name,
+      category: achievement.category
+    }
+  });
+}
+
+export async function sendAchievementTelegramNotification(
+  userId: number,
+  achievement: AchievementData
+): Promise<void> {
+  const user = await getUserById(userId);
+  if (!user?.telegramId) return;
+  
+  const { sendTelegramMessage } = await import('./telegramBot');
+  await sendTelegramMessage(
+    user.telegramId,
+    `🏆 <b>Новое достижение!</b>\n\n` +
+    `Вы получили достижение "<b>${achievement.name}</b>"!\n\n` +
+    `${achievement.description}\n\n` +
+    `Продолжайте в том же духе! ☕`
+  );
+}

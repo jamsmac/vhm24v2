@@ -86,3 +86,11 @@
 - [x] Trigger confetti on first order bonus (OrderSuccess.tsx)
 - [x] Trigger confetti on platinum level view (LevelProgressPage.tsx)
 - [x] Trigger confetti on achievement click (AchievementsPage.tsx)
+
+## Achievement Notifications & Social Badges
+- [x] Add social badges (referral, review, telegram connected)
+- [x] Create AchievementUnlockModal component with animation
+- [x] Track unlocked achievements in localStorage store
+- [x] Send push notification on achievement unlock (in-app + Telegram)
+- [x] Show modal when new achievement is unlocked
+- [x] Add confetti to achievement modal
