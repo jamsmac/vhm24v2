@@ -66,8 +66,8 @@ export default function Cart() {
   
   const [promoInput, setPromoInput] = useState("");
   const [isPromoLoading, setIsPromoLoading] = useState(false);
-  // Default to Telegram payment if available, otherwise Click
-  const [selectedPayment, setSelectedPayment] = useState<PaymentProvider>(isTelegram ? 'telegram' : 'click');
+  // Default to Click payment
+  const [selectedPayment, setSelectedPayment] = useState<PaymentProvider>('click');
   const [isProcessing, setIsProcessing] = useState(false);
   const [usePoints, setUsePoints] = useState(pointsToUse > 0);
 
@@ -544,40 +544,7 @@ export default function Cart() {
           {/* Show payment methods only if there's remaining amount to pay */}
           {total > 0 ? (
             <>
-              {/* Telegram Payment - Recommended when in Telegram */}
-              {isTelegram && (
-                <button
-                  onClick={() => {
-                    haptic.selection();
-                    setSelectedPayment('telegram');
-                  }}
-                  className={`w-full p-4 rounded-xl border-2 transition-all mb-3 ${
-                    selectedPayment === 'telegram'
-                      ? 'border-sky-500 bg-gradient-to-r from-sky-500/10 to-blue-500/10'
-                      : 'border-border hover:border-sky-400/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center">
-                      <Send className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">Telegram Payments</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-400">
-                          Рекомендуем
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">Быстрая оплата через Telegram</p>
-                    </div>
-                    {selectedPayment === 'telegram' && (
-                      <Check className="w-5 h-5 text-sky-500" />
-                    )}
-                  </div>
-                </button>
-              )}
-              
-              {/* Other payment methods */}
+              {/* Regular payment methods (Click, Payme, Uzum) - shown first */}
               <div className="grid grid-cols-3 gap-2">
                 {paymentMethods.filter(m => m.id !== 'telegram').map((method) => (
                   <button
@@ -597,6 +564,39 @@ export default function Cart() {
                   </button>
                 ))}
               </div>
+              
+              {/* Telegram Payment - shown at bottom */}
+              {isTelegram && (
+                <button
+                  onClick={() => {
+                    haptic.selection();
+                    setSelectedPayment('telegram');
+                  }}
+                  className={`w-full p-4 rounded-xl border-2 transition-all mt-3 ${
+                    selectedPayment === 'telegram'
+                      ? 'border-sky-500 bg-gradient-to-r from-sky-500/10 to-blue-500/10'
+                      : 'border-border hover:border-sky-400/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center">
+                      <Send className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">Telegram Payments</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-400">
+                          Stars
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Оплата через Telegram Stars</p>
+                    </div>
+                    {selectedPayment === 'telegram' && (
+                      <Check className="w-5 h-5 text-sky-500" />
+                    )}
+                  </div>
+                </button>
+              )}
               
               {/* Info about Telegram Payments */}
               {selectedPayment === 'telegram' && isTelegram && (

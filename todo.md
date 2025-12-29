@@ -254,3 +254,6 @@
 - [x] Add sendWelcomeMessage function to telegramBot.ts
 - [x] Integrate welcome message into user registration flow (upsertUser)
 - [x] Test welcome message sending (157 tests passing)
+
+## Payment Methods Reorder
+- [x] Move Telegram Stars payment to bottom, regular methods (Click, Payme, Uzum) at top
