@@ -20,6 +20,7 @@
 - [ ] Create machines management page
 - [ ] Add admin role protection
 - [x] Write vitest tests for admin endpoints (29 tests passed)
+- [x] Write vitest tests for document parsing (21 tests passed)
 
 ## Geolocation Caching
 - [x] Create useGeolocation hook with localStorage caching
@@ -208,10 +209,10 @@
 - [x] Link bunkers to machines
 
 ### Mixers Management
-- [ ] Create mixers table
-- [ ] Build admin mixers page
-- [ ] Track mixer maintenance
-- [ ] Link mixers to machines
+- [x] Create mixers table
+- [x] Build admin mixers page
+- [x] Track mixer maintenance
+- [x] Link mixers to machines
 
 ### Spare Parts Management
 - [x] Create spare parts table
@@ -262,11 +263,11 @@
 - [x] Refill history tracking
 
 ### Mixers Management
-- [ ] Build admin mixers page with CRUD
-- [ ] Link mixers to machines
-- [ ] Track mixer maintenance cycles
-- [ ] Maintenance alerts (cycle-based)
-- [ ] Maintenance history tracking
+- [x] Build admin mixers page with CRUD
+- [x] Link mixers to machines
+- [x] Track mixer maintenance cycles
+- [x] Maintenance alerts (cycle-based)
+- [x] Maintenance history tracking
 
 ### Inventory Reconciliation (Инвентаризация)
 - [x] Create inventory_checks table
@@ -291,3 +292,25 @@
 - [ ] Identify discrepancies
 - [ ] Generate variance reports
 - [ ] Alert on significant variances
+
+
+## Document Parsing Implementation
+- [x] Install xlsx library for Excel parsing
+- [x] Create server endpoint for file upload
+- [x] Implement Excel parser with automatic column detection
+- [x] Implement CSV parser with delimiter detection
+- [x] Auto-detect data structure from uploaded files
+- [x] Map detected columns to database fields
+- [x] Preview parsed data before import
+- [x] Batch import with progress tracking
+- [x] Handle duplicate records detection
+
+## Mixers Management Page
+- [x] Create Mixers admin page with CRUD
+- [x] Link mixers to machines
+- [x] Track mixer types (coffee, milk, syrup, etc.)
+- [x] Track mixer status (active, maintenance, inactive)
+- [x] Implement maintenance cycle tracking
+- [x] Show maintenance alerts (cycle-based)
+- [x] Maintenance history log
+- [x] Add navigation link in admin sidebar

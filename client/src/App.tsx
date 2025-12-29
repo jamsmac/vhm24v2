@@ -50,6 +50,7 @@ import AdminContractors from "./pages/admin/Contractors";
 import AdminSalesImport from "./pages/admin/SalesImport";
 import AdminInventoryCheck from "./pages/admin/InventoryCheck";
 import AdminBunkers from "./pages/admin/Bunkers";
+import AdminMixers from "./pages/admin/Mixers";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -98,6 +99,7 @@ function Router() {
       <Route path="/admin/sales-import" component={AdminSalesImport} />
       <Route path="/admin/inventory-check" component={AdminInventoryCheck} />
       <Route path="/admin/bunkers" component={AdminBunkers} />
+      <Route path="/admin/mixers" component={AdminMixers} />
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

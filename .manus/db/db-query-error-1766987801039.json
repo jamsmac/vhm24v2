@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, product_name, price FROM sales_records LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute SELECT id, product_name, price FROM sales_records LIMIT 10;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'product_name' in 'field list'"
+  ]
+}

@@ -27,7 +27,8 @@ import {
   ChevronDown,
   FileSpreadsheet,
   ClipboardCheck,
-  Package
+  Package,
+  Settings2
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -52,6 +53,7 @@ const businessNavItems = [
   { href: "/admin/employees", icon: UserCog, label: "Сотрудники" },
   { href: "/admin/machines", icon: Cpu, label: "Автоматы" },
   { href: "/admin/bunkers", icon: Package, label: "Бункеры" },
+  { href: "/admin/mixers", icon: Settings2, label: "Миксеры" },
   { href: "/admin/ingredients", icon: Droplets, label: "Ингредиенты" },
   { href: "/admin/cleaning", icon: SprayCan, label: "Чистящие" },
   { href: "/admin/spare-parts", icon: Wrench, label: "Запчасти" },
