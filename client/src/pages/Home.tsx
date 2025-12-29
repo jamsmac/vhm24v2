@@ -33,11 +33,12 @@ interface SectionConfig {
 }
 
 // Default section order and visibility
+// Order: 1. Bonus card, 2. Promo/QR, 3. Catalog/Machines, 4. Stats, 5. Recommendations, 6. Popular
 const defaultSections: SectionConfig[] = [
-  { id: 'quick_actions', visible: true, size: 'normal', order: 1 },
-  { id: 'nearby_machines', visible: true, size: 'normal', order: 2 },
-  { id: 'secondary_actions', visible: true, size: 'normal', order: 3 },
-  { id: 'bonus_card', visible: true, size: 'normal', order: 4 },
+  { id: 'bonus_card', visible: true, size: 'normal', order: 1 },
+  { id: 'secondary_actions', visible: true, size: 'normal', order: 2 },
+  { id: 'quick_actions', visible: true, size: 'normal', order: 3 },
+  { id: 'nearby_machines', visible: true, size: 'normal', order: 4 },
   { id: 'stats', visible: true, size: 'normal', order: 5 },
   { id: 'recommendations', visible: true, size: 'normal', order: 6 },
   { id: 'promo_banner', visible: true, size: 'normal', order: 7 },

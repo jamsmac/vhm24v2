@@ -263,3 +263,9 @@
 - [x] Show machine cards with distance and availability on Home page
 - [x] Add "Show all on map" button for quick access to Locations page
 - [x] Make locations easily accessible without searching (157 tests passing)
+
+## Home Page Section Reorder
+- [x] Move bonus card with level to top (order: 1)
+- [x] Place promotions and QR scan after bonus (order: 2)
+- [x] Place catalog and machines section after that (order: 3-4)
+- [x] Ensure all fits on one screen (157 tests passing)
