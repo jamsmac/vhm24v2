@@ -8,7 +8,10 @@ import {
   InsertCartItem, cartItems,
   InsertOrder, orders, Order,
   InsertPromoCode, promoCodes, PromoCode,
-  InsertNotification, notifications
+  InsertNotification, notifications,
+  InsertPointsTransaction, pointsTransactions, PointsTransaction,
+  InsertDailyQuest, dailyQuests, DailyQuest,
+  InsertUserDailyQuestProgress, userDailyQuestProgress, UserDailyQuestProgress
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -686,4 +689,269 @@ export async function sendAchievementTelegramNotification(
     `${achievement.description}\n\n` +
     `Продолжайте в том же духе! ☕`
   );
+}
+
+
+// ==================== POINTS TRANSACTIONS ====================
+
+export async function getPointsHistory(userId: number, limit: number = 50): Promise<PointsTransaction[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(pointsTransactions)
+    .where(eq(pointsTransactions.userId, userId))
+    .orderBy(desc(pointsTransactions.createdAt))
+    .limit(limit);
+}
+
+export async function createPointsTransaction(transaction: InsertPointsTransaction): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(pointsTransactions).values(transaction);
+}
+
+export async function recordPointsTransaction(
+  userId: number,
+  type: 'earn' | 'spend' | 'bonus' | 'refund' | 'expired',
+  amount: number,
+  description: string,
+  source: 'order' | 'welcome_bonus' | 'first_order' | 'referral' | 'achievement' | 'daily_quest' | 'promo' | 'admin' | 'refund',
+  referenceId?: string
+): Promise<void> {
+  const user = await getUserById(userId);
+  if (!user) return;
+  
+  const balanceAfter = user.pointsBalance + amount;
+  
+  await createPointsTransaction({
+    userId,
+    type,
+    amount,
+    balanceAfter,
+    description,
+    source,
+    referenceId,
+  });
+}
+
+// ==================== DAILY QUESTS ====================
+
+export async function getAllDailyQuests(): Promise<DailyQuest[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(dailyQuests).where(eq(dailyQuests.isActive, true));
+}
+
+export async function getUserDailyQuestProgress(userId: number, questDate: Date): Promise<UserDailyQuestProgress[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get start and end of the day
+  const startOfDay = new Date(questDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(questDate);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  return await db.select().from(userDailyQuestProgress)
+    .where(and(
+      eq(userDailyQuestProgress.userId, userId),
+      sql`${userDailyQuestProgress.questDate} >= ${startOfDay}`,
+      sql`${userDailyQuestProgress.questDate} <= ${endOfDay}`
+    ));
+}
+
+export async function initializeDailyQuestProgress(userId: number, questId: number, questDate: Date): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Check if progress already exists
+  const existing = await db.select().from(userDailyQuestProgress)
+    .where(and(
+      eq(userDailyQuestProgress.userId, userId),
+      eq(userDailyQuestProgress.questId, questId),
+      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+    ))
+    .limit(1);
+  
+  if (existing.length === 0) {
+    await db.insert(userDailyQuestProgress).values({
+      userId,
+      questId,
+      questDate,
+      currentValue: 0,
+      isCompleted: false,
+      rewardClaimed: false,
+    });
+  }
+}
+
+export async function updateDailyQuestProgress(
+  userId: number,
+  questId: number,
+  questDate: Date,
+  currentValue: number,
+  isCompleted: boolean
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  await db.update(userDailyQuestProgress)
+    .set({ 
+      currentValue, 
+      isCompleted,
+      completedAt: isCompleted ? new Date() : null
+    })
+    .where(and(
+      eq(userDailyQuestProgress.userId, userId),
+      eq(userDailyQuestProgress.questId, questId),
+      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+    ));
+}
+
+export async function claimDailyQuestReward(userId: number, questId: number, questDate: Date): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  // Get progress
+  const progress = await db.select().from(userDailyQuestProgress)
+    .where(and(
+      eq(userDailyQuestProgress.userId, userId),
+      eq(userDailyQuestProgress.questId, questId),
+      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+    ))
+    .limit(1);
+  
+  if (progress.length === 0 || !progress[0].isCompleted || progress[0].rewardClaimed) {
+    return false;
+  }
+  
+  // Get quest reward
+  const quest = await db.select().from(dailyQuests).where(eq(dailyQuests.id, questId)).limit(1);
+  if (quest.length === 0) return false;
+  
+  const rewardPoints = quest[0].rewardPoints;
+  
+  // Update user points
+  await db.update(users)
+    .set({ pointsBalance: sql`${users.pointsBalance} + ${rewardPoints}` })
+    .where(eq(users.id, userId));
+  
+  // Mark reward as claimed
+  await db.update(userDailyQuestProgress)
+    .set({ rewardClaimed: true })
+    .where(and(
+      eq(userDailyQuestProgress.userId, userId),
+      eq(userDailyQuestProgress.questId, questId),
+      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+    ));
+  
+  // Record transaction
+  await recordPointsTransaction(
+    userId,
+    'bonus',
+    rewardPoints,
+    `Награда за задание: ${quest[0].title}`,
+    'daily_quest',
+    `quest_${questId}`
+  );
+  
+  return true;
+}
+
+export async function seedDailyQuests(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Check if quests already exist
+  const existing = await db.select().from(dailyQuests).limit(1);
+  if (existing.length > 0) return;
+  
+  const quests: InsertDailyQuest[] = [
+    {
+      questKey: 'daily_order',
+      title: 'Сделай заказ',
+      description: 'Сделайте любой заказ сегодня',
+      type: 'order',
+      targetValue: 1,
+      rewardPoints: 500,
+    },
+    {
+      questKey: 'daily_spend_30k',
+      title: 'Потратьте 30,000 ₸',
+      description: 'Сделайте заказ на сумму от 30,000 ₸',
+      type: 'spend',
+      targetValue: 30000,
+      rewardPoints: 1500,
+    },
+    {
+      questKey: 'daily_visit',
+      title: 'Посетите приложение',
+      description: 'Откройте приложение и просмотрите меню',
+      type: 'visit',
+      targetValue: 1,
+      rewardPoints: 100,
+    },
+  ];
+  
+  await db.insert(dailyQuests).values(quests);
+}
+
+// ==================== LEADERBOARD ====================
+
+export interface LeaderboardEntry {
+  userId: number;
+  name: string | null;
+  telegramUsername: string | null;
+  telegramPhotoUrl: string | null;
+  totalOrders: number;
+  totalSpent: number;
+  pointsBalance: number;
+  loyaltyLevel: string;
+  achievementCount: number;
+}
+
+export async function getLeaderboard(limit: number = 20): Promise<LeaderboardEntry[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.select({
+    userId: users.id,
+    name: users.name,
+    telegramUsername: users.telegramUsername,
+    telegramPhotoUrl: users.telegramPhotoUrl,
+    totalOrders: users.totalOrders,
+    totalSpent: users.totalSpent,
+    pointsBalance: users.pointsBalance,
+    loyaltyLevel: users.loyaltyLevel,
+  })
+    .from(users)
+    .orderBy(desc(users.totalOrders), desc(users.totalSpent))
+    .limit(limit);
+  
+  // Add achievement count (simplified - would need achievement tracking table in production)
+  return result.map(user => ({
+    ...user,
+    achievementCount: calculateAchievementCount(user.totalOrders, user.totalSpent, user.pointsBalance, user.loyaltyLevel),
+  }));
+}
+
+function calculateAchievementCount(totalOrders: number, totalSpent: number, pointsBalance: number, loyaltyLevel: string): number {
+  let count = 1; // Early bird always unlocked
+  
+  // Order achievements
+  if (totalOrders >= 1) count++;
+  if (totalOrders >= 10) count++;
+  if (totalOrders >= 25) count++;
+  if (totalOrders >= 50) count++;
+  if (totalOrders >= 100) count++;
+  
+  // Loyalty achievements
+  if (['silver', 'gold', 'platinum'].includes(loyaltyLevel)) count++;
+  if (['gold', 'platinum'].includes(loyaltyLevel)) count++;
+  if (loyaltyLevel === 'platinum') count++;
+  
+  // Points achievements
+  if (pointsBalance >= 50000) count++;
+  if (pointsBalance >= 100000) count++;
+  
+  return count;
 }

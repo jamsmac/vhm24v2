@@ -94,3 +94,24 @@
 - [x] Send push notification on achievement unlock (in-app + Telegram)
 - [x] Show modal when new achievement is unlocked
 - [x] Add confetti to achievement modal
+
+## Points History Page
+- [x] Create points transactions table in database
+- [x] Build PointsHistoryPage with transaction list
+- [x] Add filtering by transaction type (all, earn, spend, bonus)
+- [x] Show balance changes with icons and colors
+- [x] Link from Profile menu
+
+## Daily Quests System
+- [x] Create daily quests schema in database
+- [x] Build DailyQuestsPage with quest cards
+- [x] Implement quest progress tracking
+- [x] Add quest completion rewards with confetti
+- [x] Reset quests daily (midnight)
+
+## Leaderboard
+- [x] Create leaderboard API endpoint
+- [x] Build LeaderboardPage with rankings
+- [x] Show user avatars and achievement counts
+- [x] Highlight current user position with podium
+- [x] Top 3 podium visualization

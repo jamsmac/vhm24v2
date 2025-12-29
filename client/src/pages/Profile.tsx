@@ -21,7 +21,10 @@ import {
   Sparkles,
   Crown,
   MessageCircle,
-  Trophy
+  Trophy,
+  Coins,
+  Calendar,
+  Medal
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -84,6 +87,24 @@ export default function Profile() {
       label: 'Достижения', 
       href: '/profile/achievements',
       color: 'text-amber-500'
+    },
+    { 
+      icon: Coins, 
+      label: 'История баллов', 
+      href: '/profile/points-history',
+      color: 'text-green-500'
+    },
+    { 
+      icon: Calendar, 
+      label: 'Ежедневные задания', 
+      href: '/profile/daily-quests',
+      color: 'text-purple-500'
+    },
+    { 
+      icon: Medal, 
+      label: 'Таблица лидеров', 
+      href: '/profile/leaderboard',
+      color: 'text-orange-500'
     },
     { 
       icon: Settings, 

@@ -432,6 +432,61 @@ export const appRouter = router({
         
         return { success: true };
       }),
+    
+    // Points history
+    pointsHistory: protectedProcedure
+      .input(z.object({ limit: z.number().optional().default(50) }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getPointsHistory(ctx.user.id, input?.limit || 50);
+      }),
+    
+    // Daily quests
+    dailyQuests: protectedProcedure.query(async ({ ctx }) => {
+      const quests = await db.getAllDailyQuests();
+      const today = new Date();
+      const progress = await db.getUserDailyQuestProgress(ctx.user.id, today);
+      
+      // Initialize progress for new quests
+      for (const quest of quests) {
+        const existingProgress = progress.find(p => p.questId === quest.id);
+        if (!existingProgress) {
+          await db.initializeDailyQuestProgress(ctx.user.id, quest.id, today);
+        }
+      }
+      
+      // Get updated progress
+      const updatedProgress = await db.getUserDailyQuestProgress(ctx.user.id, today);
+      
+      return quests.map(quest => {
+        const questProgress = updatedProgress.find(p => p.questId === quest.id);
+        return {
+          ...quest,
+          currentValue: questProgress?.currentValue || 0,
+          isCompleted: questProgress?.isCompleted || false,
+          rewardClaimed: questProgress?.rewardClaimed || false,
+        };
+      });
+    }),
+    
+    claimQuestReward: protectedProcedure
+      .input(z.object({ questId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const today = new Date();
+        const success = await db.claimDailyQuestReward(ctx.user.id, input.questId, today);
+        return { success };
+      }),
+    
+    // Leaderboard
+    leaderboard: protectedProcedure
+      .input(z.object({ limit: z.number().optional().default(20) }).optional())
+      .query(async ({ ctx, input }) => {
+        const leaderboard = await db.getLeaderboard(input?.limit || 20);
+        const userRank = leaderboard.findIndex(u => u.userId === ctx.user.id) + 1;
+        return {
+          entries: leaderboard,
+          currentUserRank: userRank > 0 ? userRank : null,
+        };
+      }),
   }),
 
   // Admin API

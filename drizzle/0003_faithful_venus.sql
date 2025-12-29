@@ -1,1 +1,0 @@
-ALTER TABLE `notifications` MODIFY COLUMN `type` enum('order','promo','system','bonus','points') NOT NULL DEFAULT 'system';

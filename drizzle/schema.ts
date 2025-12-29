@@ -181,3 +181,58 @@ export const notifications = mysqlTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+
+/**
+ * Points transactions history
+ */
+export const pointsTransactions = mysqlTable("points_transactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: mysqlEnum("type", ["earn", "spend", "bonus", "refund", "expired"]).notNull(),
+  amount: int("amount").notNull(), // Positive for earn, negative for spend
+  balanceAfter: int("balanceAfter").notNull(),
+  description: varchar("description", { length: 256 }).notNull(),
+  source: mysqlEnum("source", ["order", "welcome_bonus", "first_order", "referral", "achievement", "daily_quest", "promo", "admin", "refund"]).notNull(),
+  referenceId: varchar("referenceId", { length: 64 }), // Order ID, promo code, etc.
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PointsTransaction = typeof pointsTransactions.$inferSelect;
+export type InsertPointsTransaction = typeof pointsTransactions.$inferInsert;
+
+/**
+ * Daily quests definitions
+ */
+export const dailyQuests = mysqlTable("daily_quests", {
+  id: int("id").autoincrement().primaryKey(),
+  questKey: varchar("questKey", { length: 64 }).notNull().unique(),
+  title: varchar("title", { length: 128 }).notNull(),
+  description: text("description").notNull(),
+  type: mysqlEnum("type", ["order", "spend", "visit", "share", "review"]).notNull(),
+  targetValue: int("targetValue").notNull(), // e.g., 1 order, 50000 spend
+  rewardPoints: int("rewardPoints").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type DailyQuest = typeof dailyQuests.$inferSelect;
+export type InsertDailyQuest = typeof dailyQuests.$inferInsert;
+
+/**
+ * User daily quest progress
+ */
+export const userDailyQuestProgress = mysqlTable("user_daily_quest_progress", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  questId: int("questId").notNull(),
+  currentValue: int("currentValue").default(0).notNull(),
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  rewardClaimed: boolean("rewardClaimed").default(false).notNull(),
+  questDate: timestamp("questDate").notNull(), // Date for which this progress applies
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type UserDailyQuestProgress = typeof userDailyQuestProgress.$inferSelect;
+export type InsertUserDailyQuestProgress = typeof userDailyQuestProgress.$inferInsert;

@@ -29,6 +29,9 @@ import NotificationSettings from "./pages/NotificationSettings";
 import LevelProgressPage from "./pages/profile/LevelProgressPage";
 import TelegramConnectPage from "./pages/profile/TelegramConnectPage";
 import AchievementsPage from "./pages/profile/AchievementsPage";
+import PointsHistoryPage from "./pages/profile/PointsHistoryPage";
+import DailyQuestsPage from "./pages/profile/DailyQuestsPage";
+import LeaderboardPage from "./pages/profile/LeaderboardPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -59,6 +62,9 @@ function Router() {
       <Route path="/profile/level" component={LevelProgressPage} />
       <Route path="/profile/telegram" component={TelegramConnectPage} />
       <Route path="/profile/achievements" component={AchievementsPage} />
+      <Route path="/profile/points-history" component={PointsHistoryPage} />
+      <Route path="/profile/daily-quests" component={DailyQuestsPage} />
+      <Route path="/profile/leaderboard" component={LeaderboardPage} />
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />
