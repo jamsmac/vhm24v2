@@ -26,23 +26,12 @@ import Favorites from "./pages/Favorites";
 import DrinkDetail from "./pages/DrinkDetail";
 import Promotions from "./pages/Promotions";
 import NotificationSettings from "./pages/NotificationSettings";
-import Tasks from "./pages/Tasks";
-import LinkEmail from "./pages/LinkEmail";
-import HomeSettings from "./pages/HomeSettings";
-import Referral from "./pages/Referral";
-import RewardsStore from "./pages/RewardsStore";
-import PointsHistory from "./pages/PointsHistory";
-import PointsNotificationSettings from "./pages/PointsNotificationSettings";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
 import AdminOrders from "./pages/admin/Orders";
 import AdminPromoCodes from "./pages/admin/PromoCodes";
-import AdminMachines from "./pages/admin/Machines";
-import AdminMachinesMap from "./pages/admin/MachinesMap";
-import AdminTasks from "./pages/admin/Tasks";
-import AdminRewards from "./pages/admin/Rewards";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -64,13 +53,6 @@ function Router() {
       <Route path="/profile/settings" component={Settings} />
       <Route path="/profile/help" component={Help} />
       <Route path="/profile/notifications" component={NotificationSettings} />
-      <Route path="/profile/tasks" component={Tasks} />
-      <Route path="/profile/link-email" component={LinkEmail} />
-      <Route path="/profile/home-settings" component={HomeSettings} />
-      <Route path="/profile/referral" component={Referral} />
-      <Route path="/profile/rewards" component={RewardsStore} />
-      <Route path="/profile/points-history" component={PointsHistory} />
-      <Route path="/profile/points-notifications" component={PointsNotificationSettings} />
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />
@@ -80,10 +62,6 @@ function Router() {
       <Route path="/admin/products" component={AdminProducts} />
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/promo" component={AdminPromoCodes} />
-      <Route path="/admin/machines" component={AdminMachines} />
-      <Route path="/admin/machines/map" component={AdminMachinesMap} />
-      <Route path="/admin/tasks" component={AdminTasks} />
-      <Route path="/admin/rewards" component={AdminRewards} />
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

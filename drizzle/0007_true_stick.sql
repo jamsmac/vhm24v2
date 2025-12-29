@@ -1,1 +1,0 @@
-ALTER TABLE `points_transactions` MODIFY COLUMN `type` enum('task_completion','order_reward','referral_bonus','admin_adjustment','redemption','expiration','reward_claim') NOT NULL;

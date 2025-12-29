@@ -24,8 +24,6 @@ import {
   Vibrate,
   Info,
   CheckCircle2,
-  ChevronRight,
-  Coins,
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -255,24 +253,6 @@ export default function NotificationSettings() {
             </div>
           </div>
         </Card>
-
-        {/* Points Notification Settings Link */}
-        <Link href="/profile/points-notifications">
-          <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
-                  <Coins className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground">Уведомления о баллах</h4>
-                  <p className="text-xs text-muted-foreground">Настроить типы уведомлений о баллах</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            </div>
-          </Card>
-        </Link>
 
         {/* Test notification button */}
         <Button

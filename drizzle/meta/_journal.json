@@ -15,55 +15,6 @@
       "when": 1766937126093,
       "tag": "0001_simple_banshee",
       "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1766951393406,
-      "tag": "0002_useful_tusk",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1766958068995,
-      "tag": "0003_tired_queen_noir",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1766961674497,
-      "tag": "0004_sloppy_warpath",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1766962064918,
-      "tag": "0005_fat_maggott",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "5",
-      "when": 1766963079019,
-      "tag": "0006_unique_nightcrawler",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "5",
-      "when": 1766963405237,
-      "tag": "0007_true_stick",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "5",
-      "when": 1766966009940,
-      "tag": "0008_married_mariko_yashida",
-      "breakpoints": true
     }
   ]
 }

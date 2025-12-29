@@ -18,9 +18,7 @@ import {
   ChevronRight,
   LogOut,
   Star,
-  Sparkles,
-  Users,
-  Coins
+  Sparkles
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -65,30 +63,6 @@ export default function Profile() {
       label: 'Бонусы и акции', 
       href: '/profile/bonuses',
       color: 'text-caramel'
-    },
-    { 
-      icon: Star, 
-      label: 'Задания', 
-      href: '/profile/tasks',
-      color: 'text-amber-500'
-    },
-    { 
-      icon: Users, 
-      label: 'Пригласить друзей', 
-      href: '/profile/referral',
-      color: 'text-green-500'
-    },
-    { 
-      icon: Sparkles, 
-      label: 'Магазин наград', 
-      href: '/profile/rewards',
-      color: 'text-purple-500'
-    },
-    { 
-      icon: Coins, 
-      label: 'История баллов', 
-      href: '/profile/points-history',
-      color: 'text-amber-500'
     },
     { 
       icon: Settings, 
