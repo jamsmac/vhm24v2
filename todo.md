@@ -257,3 +257,9 @@
 
 ## Payment Methods Reorder
 - [x] Move Telegram Stars payment to bottom, regular methods (Click, Payme, Uzum) at top
+
+## Locations Visibility Improvement
+- [x] Add prominent "Nearby Machines" section to Home page
+- [x] Show machine cards with distance and availability on Home page
+- [x] Add "Show all on map" button for quick access to Locations page
+- [x] Make locations easily accessible without searching (157 tests passing)
