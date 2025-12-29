@@ -131,3 +131,31 @@
 - [x] Add weekly/monthly/all-time filter tabs
 - [x] Calculate rankings based on selected period
 - [x] Show period-specific stats in UI
+
+## Data Integration from External Sources
+- [x] Download menu data from Google Drive file (VHInfo.xlsx)
+- [x] Clone vendify-menu-maps repository
+- [x] Extract drinks menu with prices (16 coffee products, 8 energy drinks, 11 soft drinks)
+- [x] Extract vending machines data and groupings (15 machines in 4 groups)
+- [x] Create shared/menuData.ts with all products and machines
+- [x] Create Landing page with app links and admin navigation
+- [x] Add navigation links to iOS/Android apps, Telegram bot, and admin panel
+
+## Daily Quests Seed Data via Admin
+- [x] Create admin endpoint to seed daily quests
+- [x] Add admin UI for managing quests (/admin/quests)
+- [x] CRUD operations for quests (create, update, delete)
+- [x] Toggle quest active status
+
+## Weekly Quests System
+- [x] Add isWeekly field to daily_quests schema
+- [x] Add weekly quests to seed data (5 orders, 100k spend, 7-day streak)
+- [x] Update DailyQuestsPage with tabs for daily/weekly
+- [x] Higher rewards for weekly quests (5,000-10,000 points)
+- [x] Auto-reset weekly quests on Monday
+
+## Streak System
+- [x] Add currentStreak, longestStreak, lastQuestCompletedDate to users table
+- [x] Create updateUserStreak and getUserStreak functions
+- [x] Show streak card in DailyQuestsPage with fire icon
+- [x] Display streak bonus multiplier for 7+ day streaks

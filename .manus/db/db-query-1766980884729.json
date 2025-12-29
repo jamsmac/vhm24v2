@@ -1,0 +1,58 @@
+{
+  "query": "SELECT id, questKey, title, type, isWeekly, isActive FROM daily_quests LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute SELECT id, questKey, title, type, isWeekly, isActive FROM daily_quests LIMIT 10",
+  "rows": [
+    {
+      "id": "1",
+      "questKey": "daily_order",
+      "title": "Сделай заказ",
+      "type": "order",
+      "isWeekly": "0",
+      "isActive": "1"
+    },
+    {
+      "id": "2",
+      "questKey": "daily_spend_30k",
+      "title": "Потратьте 30,000 UZS",
+      "type": "spend",
+      "isWeekly": "0",
+      "isActive": "1"
+    },
+    {
+      "id": "3",
+      "questKey": "daily_visit",
+      "title": "Посетите приложение",
+      "type": "visit",
+      "isWeekly": "0",
+      "isActive": "1"
+    },
+    {
+      "id": "4",
+      "questKey": "weekly_orders_5",
+      "title": "Кофеман недели",
+      "type": "order",
+      "isWeekly": "1",
+      "isActive": "1"
+    },
+    {
+      "id": "5",
+      "questKey": "weekly_spend_100k",
+      "title": "Щедрая неделя",
+      "type": "spend",
+      "isWeekly": "1",
+      "isActive": "1"
+    },
+    {
+      "id": "6",
+      "questKey": "weekly_streak_7",
+      "title": "Серия 7 дней",
+      "type": "visit",
+      "isWeekly": "1",
+      "isActive": "1"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tquestKey\ttitle\ttype\tisWeekly\tisActive\n1\tdaily_order\tСделай заказ\torder\t0\t1\n2\tdaily_spend_30k\tПотратьте 30,000 UZS\tspend\t0\t1\n3\tdaily_visit\tПосетите приложение\tvisit\t0\t1\n4\tweekly_orders_5\tКофеман недели\torder\t1\t1\n5\tweekly_spend_100k\tЩедрая неделя\tspend\t1\t1\n6\tweekly_streak_7\tСерия 7 дней\tvisit\t1\t1\n",
+  "stderr": "",
+  "execution_time_ms": 137
+}

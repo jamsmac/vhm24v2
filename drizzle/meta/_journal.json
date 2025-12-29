@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1766937040099,
-      "tag": "0000_lazy_avengers",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1766937126093,
-      "tag": "0001_simple_banshee",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1766973579736,
-      "tag": "0002_cooing_jack_flag",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1766973863254,
-      "tag": "0003_faithful_venus",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1766978880483,
-      "tag": "0004_acoustic_electro",
+      "when": 1766980446320,
+      "tag": "0000_lethal_kang",
       "breakpoints": true
     }
   ]

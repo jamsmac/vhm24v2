@@ -456,6 +456,8 @@ export const appRouter = router({
         welcomeBonusReceived: (user as any).welcomeBonusReceived ?? false,
         referralCount: (user as any).referralCount ?? 0,
         telegramConnected: !!user.telegramId,
+        currentStreak: (user as any).currentStreak ?? 0,
+        longestStreak: (user as any).longestStreak ?? 0,
       };
     }),
     
@@ -683,6 +685,54 @@ export const appRouter = router({
         .input(z.object({ id: z.number() }))
         .mutation(async ({ input }) => {
           await db.deletePromoCode(input.id);
+          return { success: true };
+        }),
+    }),
+    
+    // Daily Quests management
+    quests: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllDailyQuests();
+      }),
+      
+      seed: adminProcedure.mutation(async () => {
+        await db.seedDailyQuests();
+        return { success: true };
+      }),
+      
+      create: adminProcedure
+        .input(z.object({
+          questKey: z.string(),
+          title: z.string(),
+          description: z.string(),
+          type: z.enum(['order', 'spend', 'visit', 'referral', 'share', 'review']),
+          targetValue: z.number(),
+          rewardPoints: z.number(),
+          isWeekly: z.boolean().default(false),
+          isActive: z.boolean().default(true),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createDailyQuest(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          title: z.string().optional(),
+          description: z.string().optional(),
+          targetValue: z.number().optional(),
+          rewardPoints: z.number().optional(),
+          isActive: z.boolean().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateDailyQuest(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteDailyQuest(input.id);
           return { success: true };
         }),
     }),

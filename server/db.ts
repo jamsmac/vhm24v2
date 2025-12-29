@@ -866,6 +866,7 @@ export async function seedDailyQuests(): Promise<void> {
   if (existing.length > 0) return;
   
   const quests: InsertDailyQuest[] = [
+    // Daily quests
     {
       questKey: 'daily_order',
       title: 'Сделай заказ',
@@ -873,14 +874,16 @@ export async function seedDailyQuests(): Promise<void> {
       type: 'order',
       targetValue: 1,
       rewardPoints: 500,
+      isWeekly: false,
     },
     {
       questKey: 'daily_spend_30k',
-      title: 'Потратьте 30,000 ₸',
-      description: 'Сделайте заказ на сумму от 30,000 ₸',
+      title: 'Потратьте 30,000 UZS',
+      description: 'Сделайте заказ на сумму от 30,000 UZS',
       type: 'spend',
       targetValue: 30000,
       rewardPoints: 1500,
+      isWeekly: false,
     },
     {
       questKey: 'daily_visit',
@@ -889,6 +892,35 @@ export async function seedDailyQuests(): Promise<void> {
       type: 'visit',
       targetValue: 1,
       rewardPoints: 100,
+      isWeekly: false,
+    },
+    // Weekly quests (higher rewards)
+    {
+      questKey: 'weekly_orders_5',
+      title: 'Кофеман недели',
+      description: 'Сделайте 5 заказов за неделю',
+      type: 'order',
+      targetValue: 5,
+      rewardPoints: 5000,
+      isWeekly: true,
+    },
+    {
+      questKey: 'weekly_spend_100k',
+      title: 'Щедрая неделя',
+      description: 'Потратьте 100,000 UZS за неделю',
+      type: 'spend',
+      targetValue: 100000,
+      rewardPoints: 10000,
+      isWeekly: true,
+    },
+    {
+      questKey: 'weekly_streak_7',
+      title: 'Серия 7 дней',
+      description: 'Заходите в приложение 7 дней подряд',
+      type: 'visit',
+      targetValue: 7,
+      rewardPoints: 7000,
+      isWeekly: true,
     },
   ];
   
@@ -969,4 +1001,112 @@ function calculateAchievementCount(totalOrders: number, totalSpent: number, poin
   if (pointsBalance >= 100000) count++;
   
   return count;
+}
+
+
+// ==================== DAILY QUESTS CRUD ====================
+
+export async function createDailyQuest(quest: InsertDailyQuest): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(dailyQuests).values(quest);
+}
+
+export async function updateDailyQuest(id: number, data: Partial<InsertDailyQuest>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(dailyQuests).set(data).where(eq(dailyQuests.id, id));
+}
+
+export async function deleteDailyQuest(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(dailyQuests).where(eq(dailyQuests.id, id));
+}
+
+
+// ==================== STREAK TRACKING ====================
+
+export async function updateUserStreak(userId: number): Promise<{ currentStreak: number; longestStreak: number; isNewDay: boolean }> {
+  const db = await getDb();
+  if (!db) return { currentStreak: 0, longestStreak: 0, isNewDay: false };
+  
+  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (user.length === 0) return { currentStreak: 0, longestStreak: 0, isNewDay: false };
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const lastCompleted = user[0].lastQuestCompletedDate;
+  
+  let currentStreak = user[0].currentStreak || 0;
+  let longestStreak = user[0].longestStreak || 0;
+  let isNewDay = false;
+  
+  if (!lastCompleted) {
+    // First time completing a quest
+    currentStreak = 1;
+    isNewDay = true;
+  } else {
+    const lastDate = new Date(lastCompleted);
+    const lastDay = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate());
+    const daysDiff = Math.floor((today.getTime() - lastDay.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff === 0) {
+      // Same day, no streak change
+      isNewDay = false;
+    } else if (daysDiff === 1) {
+      // Consecutive day, increment streak
+      currentStreak += 1;
+      isNewDay = true;
+    } else {
+      // Streak broken, reset to 1
+      currentStreak = 1;
+      isNewDay = true;
+    }
+  }
+  
+  // Update longest streak if current is higher
+  if (currentStreak > longestStreak) {
+    longestStreak = currentStreak;
+  }
+  
+  // Update user record
+  await db.update(users).set({
+    currentStreak,
+    longestStreak,
+    lastQuestCompletedDate: now,
+  }).where(eq(users.id, userId));
+  
+  return { currentStreak, longestStreak, isNewDay };
+}
+
+export async function getUserStreak(userId: number): Promise<{ currentStreak: number; longestStreak: number }> {
+  const db = await getDb();
+  if (!db) return { currentStreak: 0, longestStreak: 0 };
+  
+  const user = await db.select({
+    currentStreak: users.currentStreak,
+    longestStreak: users.longestStreak,
+  }).from(users).where(eq(users.id, userId)).limit(1);
+  
+  if (user.length === 0) return { currentStreak: 0, longestStreak: 0 };
+  
+  return {
+    currentStreak: user[0].currentStreak || 0,
+    longestStreak: user[0].longestStreak || 0,
+  };
+}
+
+// Get weekly quests separately
+export async function getWeeklyQuests(): Promise<DailyQuest[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(dailyQuests).where(and(eq(dailyQuests.isActive, true), eq(dailyQuests.isWeekly, true)));
+}
+
+// Get daily quests only (not weekly)
+export async function getDailyQuestsOnly(): Promise<DailyQuest[]> {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(dailyQuests).where(and(eq(dailyQuests.isActive, true), eq(dailyQuests.isWeekly, false)));
 }

@@ -32,18 +32,21 @@ import AchievementsPage from "./pages/profile/AchievementsPage";
 import PointsHistoryPage from "./pages/profile/PointsHistoryPage";
 import DailyQuestsPage from "./pages/profile/DailyQuestsPage";
 import LeaderboardPage from "./pages/profile/LeaderboardPage";
+import Landing from "./pages/Landing";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
 import AdminOrders from "./pages/admin/Orders";
 import AdminPromoCodes from "./pages/admin/PromoCodes";
+import AdminQuests from "./pages/admin/Quests";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       {/* Main Routes */}
       <Route path="/" component={Home} />
+      <Route path="/landing" component={Landing} />
       <Route path="/scan" component={Scan} />
       <Route path="/locations" component={Locations} />
       <Route path="/drink/:id" component={DrinkDetail} />
@@ -74,6 +77,7 @@ function Router() {
       <Route path="/admin/products" component={AdminProducts} />
       <Route path="/admin/orders" component={AdminOrders} />
       <Route path="/admin/promo" component={AdminPromoCodes} />
+      <Route path="/admin/quests" component={AdminQuests} />
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

@@ -26,6 +26,11 @@ export const users = mysqlTable("users", {
   totalOrders: int("totalOrders").default(0).notNull(),
   welcomeBonusReceived: boolean("welcomeBonusReceived").default(false).notNull(),
   
+  // Streak tracking
+  currentStreak: int("currentStreak").default(0).notNull(),
+  longestStreak: int("longestStreak").default(0).notNull(),
+  lastQuestCompletedDate: timestamp("lastQuestCompletedDate"),
+  
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -209,9 +214,10 @@ export const dailyQuests = mysqlTable("daily_quests", {
   questKey: varchar("questKey", { length: 64 }).notNull().unique(),
   title: varchar("title", { length: 128 }).notNull(),
   description: text("description").notNull(),
-  type: mysqlEnum("type", ["order", "spend", "visit", "share", "review"]).notNull(),
+  type: mysqlEnum("type", ["order", "spend", "visit", "share", "review", "referral"]).notNull(),
   targetValue: int("targetValue").notNull(), // e.g., 1 order, 50000 spend
   rewardPoints: int("rewardPoints").notNull(),
+  isWeekly: boolean("isWeekly").default(false).notNull(), // Weekly quests have higher rewards
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
