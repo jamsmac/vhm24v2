@@ -519,11 +519,14 @@ export const appRouter = router({
     
     // Daily quests
     dailyQuests: protectedProcedure.query(async ({ ctx }) => {
+      // Auto-seed default quests if none exist (for new installations)
+      await db.seedDailyQuests();
+      
       const quests = await db.getAllDailyQuests();
       const today = new Date();
       const progress = await db.getUserDailyQuestProgress(ctx.user.id, today);
       
-      // Initialize progress for new quests
+      // Initialize progress for ALL quests for this user (auto-creates for new users)
       for (const quest of quests) {
         const existingProgress = progress.find(p => p.questId === quest.id);
         if (!existingProgress) {

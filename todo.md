@@ -159,3 +159,8 @@
 - [x] Create updateUserStreak and getUserStreak functions
 - [x] Show streak card in DailyQuestsPage with fire icon
 - [x] Display streak bonus multiplier for 7+ day streaks
+
+## Auto-seed Quests for New Users
+- [x] Trigger quest seeding on first user login (dailyQuests endpoint)
+- [x] Create user quest progress entries automatically (initializeDailyQuestProgress)
+- [x] Ensure quests are only seeded once per user (seedDailyQuests checks existing)

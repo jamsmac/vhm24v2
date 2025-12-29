@@ -1,0 +1,8 @@
+{
+  "query": "SELECT * FROM daily_quests LIMIT 10",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute SELECT * FROM daily_quests LIMIT 10",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1105 (HY000) at line 1: no available peers, region: {id:1201370 region_epoch:<conf_ver:20 version:213711 > peers:<id:1201371 store_id:1001 > peers:<id:1201372 store_id:1074 > peers:<id:1204835 store_id:1129 > }"
+  ]
+}
