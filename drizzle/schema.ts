@@ -24,6 +24,7 @@ export const users = mysqlTable("users", {
   loyaltyLevel: mysqlEnum("loyaltyLevel", ["bronze", "silver", "gold", "platinum"]).default("bronze").notNull(),
   totalSpent: int("totalSpent").default(0).notNull(),
   totalOrders: int("totalOrders").default(0).notNull(),
+  welcomeBonusReceived: boolean("welcomeBonusReceived").default(false).notNull(),
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -170,7 +171,7 @@ export type InsertPromoCode = typeof promoCodes.$inferInsert;
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["order", "promo", "system", "bonus"]).default("system").notNull(),
+  type: mysqlEnum("type", ["order", "promo", "system", "bonus", "points"]).default("system").notNull(),
   title: varchar("title", { length: 128 }).notNull(),
   message: text("message").notNull(),
   isRead: boolean("isRead").default(false).notNull(),

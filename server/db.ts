@@ -120,6 +120,35 @@ export async function updateUserStats(userId: number, orderTotal: number) {
     .where(eq(users.id, userId));
 }
 
+// Welcome bonus amount (equivalent to espresso price)
+export const WELCOME_BONUS_AMOUNT = 15000;
+
+export async function grantWelcomeBonus(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  
+  // Check if user already received welcome bonus
+  const user = await getUserById(userId);
+  if (!user || user.welcomeBonusReceived) {
+    return false;
+  }
+  
+  // Grant welcome bonus
+  await db.update(users)
+    .set({ 
+      pointsBalance: sql`${users.pointsBalance} + ${WELCOME_BONUS_AMOUNT}`,
+      welcomeBonusReceived: true
+    })
+    .where(eq(users.id, userId));
+  
+  return true;
+}
+
+export async function hasReceivedWelcomeBonus(userId: number): Promise<boolean> {
+  const user = await getUserById(userId);
+  return user?.welcomeBonusReceived ?? false;
+}
+
 // ==================== PRODUCT QUERIES ====================
 
 export async function getAllProducts(): Promise<Product[]> {

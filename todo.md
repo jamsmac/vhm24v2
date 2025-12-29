@@ -29,3 +29,17 @@
 - [x] Update Home page to use cached geolocation
 - [x] Show "обновляется..." indicator when refreshing from cache
 - [x] Test geolocation caching (19 tests passing)
+
+## Welcome Bonus & Loyalty System Enhancement
+- [x] Add welcome bonus for new users (15,000 points = espresso price)
+- [x] Create welcome bonus banner on Home page with claim button
+- [x] Award bonus points via claimWelcomeBonus API endpoint
+- [x] Send welcome notification about bonus points (in-app + Telegram)
+- [x] Enhance loyalty levels with permanent discounts:
+  - Bronze: 0% discount (starting level)
+  - Silver: 3% permanent discount (100k UZS spent)
+  - Gold: 5% permanent discount (500k UZS spent)
+  - Platinum: 10% permanent discount (1M UZS spent)
+- [x] Add level discount helper functions (getLevelDiscount, applyLevelDiscount)
+- [x] Add next level info helper (getNextLevelInfo)
+- [x] All TypeScript errors resolved (19 tests passing)

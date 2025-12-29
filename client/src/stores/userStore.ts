@@ -111,3 +111,59 @@ export function getLoyaltyLevelName(level: LoyaltyInfo['level'], lang: 'ru' | 'u
 export function formatPoints(points: number): string {
   return new Intl.NumberFormat('ru-RU').format(points);
 }
+
+// Loyalty level discounts (permanent discounts based on level)
+export const LEVEL_DISCOUNTS: Record<LoyaltyInfo['level'], number> = {
+  bronze: 0,    // 0% discount
+  silver: 3,    // 3% permanent discount
+  gold: 5,      // 5% permanent discount
+  platinum: 10, // 10% permanent discount
+};
+
+// Get discount percentage for a level
+export function getLevelDiscount(level: LoyaltyInfo['level']): number {
+  return LEVEL_DISCOUNTS[level];
+}
+
+// Calculate discounted price
+export function applyLevelDiscount(price: number, level: LoyaltyInfo['level']): number {
+  const discount = LEVEL_DISCOUNTS[level];
+  return Math.round(price * (1 - discount / 100));
+}
+
+// Get discount amount
+export function getLevelDiscountAmount(price: number, level: LoyaltyInfo['level']): number {
+  const discount = LEVEL_DISCOUNTS[level];
+  return Math.round(price * discount / 100);
+}
+
+// Level thresholds (total spent to reach level)
+export const LEVEL_THRESHOLDS: Record<LoyaltyInfo['level'], number> = {
+  bronze: 0,
+  silver: 100000,    // 100k UZS spent
+  gold: 500000,      // 500k UZS spent
+  platinum: 1000000, // 1M UZS spent
+};
+
+// Get next level info
+export function getNextLevelInfo(currentLevel: LoyaltyInfo['level'], totalSpent: number): {
+  nextLevel: LoyaltyInfo['level'] | null;
+  amountToNext: number;
+  nextDiscount: number;
+} {
+  const levels: LoyaltyInfo['level'][] = ['bronze', 'silver', 'gold', 'platinum'];
+  const currentIndex = levels.indexOf(currentLevel);
+  
+  if (currentIndex >= levels.length - 1) {
+    return { nextLevel: null, amountToNext: 0, nextDiscount: 0 };
+  }
+  
+  const nextLevel = levels[currentIndex + 1];
+  const threshold = LEVEL_THRESHOLDS[nextLevel];
+  
+  return {
+    nextLevel,
+    amountToNext: Math.max(0, threshold - totalSpent),
+    nextDiscount: LEVEL_DISCOUNTS[nextLevel]
+  };
+}

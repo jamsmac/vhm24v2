@@ -351,6 +351,38 @@ export const appRouter = router({
         loyaltyLevel: user.loyaltyLevel,
         totalSpent: user.totalSpent,
         totalOrders: user.totalOrders,
+        welcomeBonusReceived: user.welcomeBonusReceived,
+      };
+    }),
+    
+    claimWelcomeBonus: protectedProcedure.mutation(async ({ ctx }) => {
+      const granted = await db.grantWelcomeBonus(ctx.user.id);
+      
+      if (granted) {
+        // Create notification about welcome bonus
+        await db.createNotification({
+          userId: ctx.user.id,
+          type: 'bonus',
+          title: 'Приветственный бонус!',
+          message: `Вам начислено ${db.WELCOME_BONUS_AMOUNT.toLocaleString('ru-RU')} баллов за регистрацию! Это эквивалент бесплатного эспрессо ☕`,
+          data: { amount: db.WELCOME_BONUS_AMOUNT, type: 'welcome_bonus' }
+        });
+        
+        // Send Telegram notification if enabled
+        const user = await db.getUserById(ctx.user.id);
+        if (user?.telegramId) {
+          const { sendTelegramMessage } = await import('./telegramBot');
+          await sendTelegramMessage(
+            user.telegramId,
+            `🎁 <b>Приветственный бонус!</b>\n\nВам начислено <b>+${db.WELCOME_BONUS_AMOUNT.toLocaleString('ru-RU')} баллов</b> за регистрацию!\n\nЭто эквивалент бесплатного эспрессо ☕\n\nИспользуйте баллы для оплаты заказов!`
+          );
+        }
+      }
+      
+      return { 
+        success: granted, 
+        amount: granted ? db.WELCOME_BONUS_AMOUNT : 0,
+        message: granted ? 'Приветственный бонус начислен!' : 'Бонус уже был получен ранее'
       };
     }),
   }),

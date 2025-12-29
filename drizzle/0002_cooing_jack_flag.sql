@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `welcomeBonusReceived` boolean DEFAULT false NOT NULL;

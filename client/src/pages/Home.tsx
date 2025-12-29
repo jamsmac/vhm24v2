@@ -17,9 +17,11 @@ import Recommendations from "@/components/Recommendations";
 import { Gift, ChevronRight, Sparkles, Bell, Clock, TrendingUp, Coffee, MapPin, QrCode, Percent } from "lucide-react";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useNotificationsStore } from "@/stores/notificationsStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 // Mock user data for demo
 const mockUser = {
@@ -42,6 +44,33 @@ export default function Home() {
   const points = loyalty?.pointsBalance || mockUser.pointsBalance;
   const orderStats = getOrderStats();
   const hasOrderHistory = getCompletedOrders().length > 0;
+  
+  // Welcome bonus state
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+  const [bonusClaimed, setBonusClaimed] = useState(false);
+  const { data: userStats, refetch: refetchStats } = trpc.profile.stats.useQuery();
+  const claimBonusMutation = trpc.profile.claimWelcomeBonus.useMutation({
+    onSuccess: (data) => {
+      if (data.success) {
+        setBonusClaimed(true);
+        toast.success(`🎁 +${data.amount.toLocaleString('ru-RU')} баллов!`, {
+          description: 'Приветственный бонус начислен!'
+        });
+        refetchStats();
+        setTimeout(() => setShowWelcomeBanner(false), 3000);
+      }
+    },
+    onError: () => {
+      toast.error('Не удалось получить бонус');
+    }
+  });
+  
+  // Check if user should see welcome bonus banner
+  useEffect(() => {
+    if (userStats && !userStats.welcomeBonusReceived && !bonusClaimed) {
+      setShowWelcomeBanner(true);
+    }
+  }, [userStats, bonusClaimed]);
 
   const handleRecommendationClick = (itemId: string) => {
     haptic.selection();
@@ -116,6 +145,49 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="px-4 space-y-4">
+        
+        {/* Welcome Bonus Banner */}
+        <AnimatePresence>
+          {showWelcomeBanner && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="relative"
+            >
+              <Card className="relative overflow-hidden border-2 border-green-500/30 bg-gradient-to-br from-green-500/10 via-emerald-500/10 to-teal-500/10 p-4 rounded-2xl">
+                {/* Decorative elements */}
+                <div className="absolute -top-4 -right-4 w-20 h-20 bg-green-500/20 rounded-full blur-2xl" />
+                <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-emerald-500/20 rounded-full blur-xl" />
+                
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-green-500/30 flex-shrink-0">
+                    <Gift className="w-7 h-7 text-white" />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-display font-bold text-foreground">🎉 Приветственный бонус!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Получите <span className="font-bold text-green-600 dark:text-green-400">15 000 баллов</span> — это бесплатный эспрессо!
+                    </p>
+                  </div>
+                  
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white rounded-xl px-4 flex-shrink-0"
+                    onClick={() => {
+                      haptic.impact('medium');
+                      claimBonusMutation.mutate();
+                    }}
+                    disabled={claimBonusMutation.isPending || bonusClaimed}
+                  >
+                    {claimBonusMutation.isPending ? 'Загрузка...' : bonusClaimed ? '✓' : 'Получить'}
+                  </Button>
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* Quick Actions - Prominent buttons for main navigation */}
         <motion.div

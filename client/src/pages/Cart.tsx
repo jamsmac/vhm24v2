@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useTelegramMainButton } from "@/hooks/useTelegramMainButton";
 import { useTelegramBackButton } from "@/hooks/useTelegramBackButton";
 import { useTelegramInvoice } from "@/hooks/useTelegramInvoice";
+import { useUserStore, getLevelDiscount, getLevelDiscountAmount, getLoyaltyLevelName } from "@/stores/userStore";
 
 function formatPrice(price: number): string {
   return new Intl.NumberFormat('ru-RU').format(price);
