@@ -738,6 +738,12 @@ export const appRouter = router({
           await db.deleteDailyQuest(input.id);
           return { success: true };
         }),
+      
+      // Send notification to all users about new quests
+      notifyUsers: adminProcedure.mutation(async () => {
+        await db.notifyAllUsersAboutNewQuests();
+        return { success: true, message: 'Уведомления отправлены всем активным пользователям' };
+      }),
     }),
     
     // Machines management

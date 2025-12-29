@@ -1110,3 +1110,55 @@ export async function getDailyQuestsOnly(): Promise<DailyQuest[]> {
   if (!db) return [];
   return await db.select().from(dailyQuests).where(and(eq(dailyQuests.isActive, true), eq(dailyQuests.isWeekly, false)));
 }
+
+
+// ==================== NEW QUESTS NOTIFICATION ====================
+
+export async function sendNewQuestsNotification(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Create in-app notification
+  await createNotification({
+    userId,
+    type: 'system',
+    title: '🎯 Новые задания доступны!',
+    message: 'Ежедневные задания обновились! Выполняйте задания и получайте бонусные баллы.',
+    data: { type: 'new_quests' }
+  });
+}
+
+export async function sendNewQuestsTelegramNotification(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  const user = await getUserById(userId);
+  if (!user?.telegramId) return;
+  
+  try {
+    const { sendTelegramMessage } = await import('./telegramBot');
+    await sendTelegramMessage(
+      user.telegramId,
+      `🎯 <b>Новые задания доступны!</b>\n\nЕжедневные задания обновились!\n\n📋 Выполняйте задания и получайте бонусные баллы:\n• Сделайте заказ — +500 баллов\n• Потратьте 30,000 UZS — +1,500 баллов\n• Посетите приложение — +100 баллов\n\n🔥 Не забывайте про серию дней!`
+    );
+  } catch (error) {
+    console.error('[Telegram] Failed to send new quests notification:', error);
+  }
+}
+
+export async function notifyAllUsersAboutNewQuests(): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  // Get all users who have been active in the last 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const activeUsers = await db.select().from(users)
+    .where(sql`${users.lastSignedIn} >= ${thirtyDaysAgo}`);
+  
+  for (const user of activeUsers) {
+    await sendNewQuestsNotification(user.id);
+    await sendNewQuestsTelegramNotification(user.id);
+  }
+}

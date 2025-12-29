@@ -164,3 +164,9 @@
 - [x] Trigger quest seeding on first user login (dailyQuests endpoint)
 - [x] Create user quest progress entries automatically (initializeDailyQuestProgress)
 - [x] Ensure quests are only seeded once per user (seedDailyQuests checks existing)
+
+## Push Notification for New Daily Quests
+- [x] Send in-app notification when new quests are available
+- [x] Send Telegram notification about new daily quests
+- [x] Admin button to notify all users about new quests
+- [ ] Trigger notification at midnight when quests reset (requires cron job)

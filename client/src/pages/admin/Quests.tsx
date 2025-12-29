@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Plus, Target, Gift, Trash2, Edit2, Play, Pause, Loader2 } from "lucide-react";
+import { ArrowLeft, Plus, Target, Gift, Trash2, Edit2, Play, Pause, Loader2, Bell } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,6 +75,15 @@ export default function AdminQuests() {
     onSuccess: () => {
       toast.success('Задание удалено');
       utils.admin.quests.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const notifyMutation = trpc.admin.quests.notifyUsers.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message || 'Уведомления отправлены');
     },
     onError: (error) => {
       toast.error(`Ошибка: ${error.message}`);
@@ -181,6 +190,19 @@ export default function AdminQuests() {
                   <Target className="w-4 h-4 mr-2" />
                 )}
                 Создать базовые
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => notifyMutation.mutate()}
+                disabled={notifyMutation.isPending}
+                className="bg-amber-50 hover:bg-amber-100 border-amber-200"
+              >
+                {notifyMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Bell className="w-4 h-4 mr-2" />
+                )}
+                Уведомить всех
               </Button>
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
