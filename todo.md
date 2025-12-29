@@ -169,4 +169,7 @@
 - [x] Send in-app notification when new quests are available
 - [x] Send Telegram notification about new daily quests
 - [x] Admin button to notify all users about new quests
-- [ ] Trigger notification at midnight when quests reset (requires cron job)
+- [x] Trigger notification at midnight when quests reset (cron job)
+- [x] Create scheduled task for midnight notification (node-cron)
+- [x] Reset user quest progress at midnight
+- [x] Admin buttons for manual daily/weekly reset

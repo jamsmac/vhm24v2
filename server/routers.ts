@@ -744,6 +744,20 @@ export const appRouter = router({
         await db.notifyAllUsersAboutNewQuests();
         return { success: true, message: 'Уведомления отправлены всем активным пользователям' };
       }),
+      
+      // Manual reset daily quests (for testing/admin)
+      resetDaily: adminProcedure.mutation(async () => {
+        const { triggerDailyReset } = await import('./scheduledTasks');
+        await triggerDailyReset();
+        return { success: true, message: 'Ежедневные задания сброшены' };
+      }),
+      
+      // Manual reset weekly quests (for testing/admin)
+      resetWeekly: adminProcedure.mutation(async () => {
+        const { triggerWeeklyReset } = await import('./scheduledTasks');
+        await triggerWeeklyReset();
+        return { success: true, message: 'Недельные задания сброшены' };
+      }),
     }),
     
     // Machines management

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Plus, Target, Gift, Trash2, Edit2, Play, Pause, Loader2, Bell } from "lucide-react";
+import { ArrowLeft, Plus, Target, Gift, Trash2, Edit2, Play, Pause, Loader2, Bell, RotateCcw } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,6 +84,24 @@ export default function AdminQuests() {
   const notifyMutation = trpc.admin.quests.notifyUsers.useMutation({
     onSuccess: (data) => {
       toast.success(data.message || 'Уведомления отправлены');
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const resetDailyMutation = trpc.admin.quests.resetDaily.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message || 'Ежедневные задания сброшены');
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const resetWeeklyMutation = trpc.admin.quests.resetWeekly.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.message || 'Недельные задания сброшены');
     },
     onError: (error) => {
       toast.error(`Ошибка: ${error.message}`);
@@ -203,6 +221,32 @@ export default function AdminQuests() {
                   <Bell className="w-4 h-4 mr-2" />
                 )}
                 Уведомить всех
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => resetDailyMutation.mutate()}
+                disabled={resetDailyMutation.isPending}
+                className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+              >
+                {resetDailyMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Сброс дневных
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => resetWeeklyMutation.mutate()}
+                disabled={resetWeeklyMutation.isPending}
+                className="bg-purple-50 hover:bg-purple-100 border-purple-200"
+              >
+                {resetWeeklyMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                )}
+                Сброс недельных
               </Button>
               <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogTrigger asChild>
