@@ -247,6 +247,61 @@ export async function getAllMachines(): Promise<Machine[]> {
   return await db.select().from(machines);
 }
 
+// Haversine formula to calculate distance between two points
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
+// Estimate walk time based on distance (average walking speed ~5 km/h)
+function estimateWalkTime(distanceKm: number): number {
+  return Math.round(distanceKm / 5 * 60); // Time in minutes
+}
+
+export interface NearbyMachine extends Machine {
+  distance: number; // in km
+  walkTime: number; // in minutes
+}
+
+export async function getNearbyMachines(
+  userLat: number,
+  userLng: number,
+  limit: number = 10,
+  maxDistanceKm: number = 50
+): Promise<NearbyMachine[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const allMachines = await db.select().from(machines);
+  
+  // Calculate distance for each machine and filter/sort
+  const machinesWithDistance = allMachines
+    .filter(m => m.latitude && m.longitude)
+    .map(machine => {
+      const lat = parseFloat(machine.latitude as string);
+      const lng = parseFloat(machine.longitude as string);
+      const distance = calculateDistance(userLat, userLng, lat, lng);
+      const walkTime = estimateWalkTime(distance);
+      return {
+        ...machine,
+        distance: Math.round(distance * 100) / 100, // Round to 2 decimal places
+        walkTime
+      };
+    })
+    .filter(m => m.distance <= maxDistanceKm)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, limit);
+  
+  return machinesWithDistance;
+}
+
 export async function getMachineByCode(code: string): Promise<Machine | undefined> {
   const db = await getDb();
   if (!db) return undefined;

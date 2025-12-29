@@ -55,6 +55,22 @@ export const appRouter = router({
       return await db.getAllMachines();
     }),
     
+    nearby: publicProcedure
+      .input(z.object({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+        limit: z.number().min(1).max(50).optional().default(10),
+        maxDistanceKm: z.number().min(1).max(100).optional().default(50),
+      }))
+      .query(async ({ input }) => {
+        return await db.getNearbyMachines(
+          input.latitude,
+          input.longitude,
+          input.limit,
+          input.maxDistanceKm
+        );
+      }),
+    
     getByCode: publicProcedure
       .input(z.object({ code: z.string() }))
       .query(async ({ input }) => {

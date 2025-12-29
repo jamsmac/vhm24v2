@@ -18,7 +18,7 @@ import Recommendations from "@/components/Recommendations";
 import { Gift, ChevronRight, Sparkles, Bell, Clock, TrendingUp, Coffee, MapPin, QrCode, Percent, Loader2, Navigation, Map } from "lucide-react";
 import NotificationCenter from "@/components/NotificationCenter";
 import { useNotificationsStore } from "@/stores/notificationsStore";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc";
@@ -52,6 +52,10 @@ const mockUser = {
   level: "silver" as const,
 };
 
+// Default coordinates for Tashkent (fallback)
+const DEFAULT_LAT = 41.2995;
+const DEFAULT_LNG = 69.2401;
+
 export default function Home() {
   const { user: telegramUser, haptic } = useTelegram();
   const { profile, loyalty } = useUserStore();
@@ -61,6 +65,49 @@ export default function Home() {
   const { unreadCount } = useNotificationsStore();
   const [, navigate] = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
+  
+  // Geolocation state
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  
+  // Request geolocation on mount
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+          setLocationError(null);
+        },
+        (error) => {
+          console.warn('Geolocation error:', error.message);
+          setLocationError(error.message);
+          // Use default Tashkent coordinates as fallback
+          setUserLocation({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      );
+    } else {
+      setLocationError('Geolocation not supported');
+      setUserLocation({ lat: DEFAULT_LAT, lng: DEFAULT_LNG });
+    }
+  }, []);
+  
+  // Fetch nearby machines based on user location
+  const { data: nearbyMachinesData, isLoading: machinesLoading } = trpc.machines.nearby.useQuery(
+    {
+      latitude: userLocation?.lat ?? DEFAULT_LAT,
+      longitude: userLocation?.lng ?? DEFAULT_LNG,
+      limit: 5,
+      maxDistanceKm: 50
+    },
+    {
+      enabled: !!userLocation,
+      staleTime: 2 * 60 * 1000, // Cache for 2 minutes
+    }
+  );
   
   // Fetch user preferences
   const { data: preferences, isLoading: prefsLoading } = trpc.gamification.getPreferences.useQuery(undefined, {
@@ -173,118 +220,163 @@ export default function Home() {
     </motion.div>
   );
 
-  // Nearby machines data
-  const nearbyMachines = [
-    { id: '1', name: 'KIUT Корпус А', distance: '0.3 км', walkTime: '4 мин', isAvailable: true },
-    { id: '2', name: 'IT Park Ташкент', distance: '0.8 км', walkTime: '10 мин', isAvailable: true },
-    { id: '3', name: 'Hilton Tashkent', distance: '1.2 км', walkTime: '15 мин', isAvailable: false },
-  ];
+  // Format distance for display
+  const formatDistance = (distanceKm: number): string => {
+    if (distanceKm < 1) {
+      return `${Math.round(distanceKm * 1000)} м`;
+    }
+    return `${distanceKm.toFixed(1)} км`;
+  };
+  
+  // Format walk time for display
+  const formatWalkTime = (minutes: number): string => {
+    if (minutes < 1) return '< 1 мин';
+    if (minutes >= 60) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return mins > 0 ? `${hours} ч ${mins} мин` : `${hours} ч`;
+    }
+    return `${minutes} мин`;
+  };
 
-  const NearbyMachinesSection = ({ size }: { size: string }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.08 }}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-            <MapPin className="w-4 h-4 text-green-600 dark:text-green-400" />
+  const NearbyMachinesSection = ({ size }: { size: string }) => {
+    // Use real data from API or fallback to empty array
+    const machines = nearbyMachinesData || [];
+    const displayCount = size === 'compact' ? 2 : 3;
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+              <MapPin className="w-4 h-4 text-green-600 dark:text-green-400" />
+            </div>
+            <h3 className="font-display font-semibold text-foreground">Автоматы рядом</h3>
+            {locationError && (
+              <span className="text-xs text-muted-foreground">(примерно)</span>
+            )}
           </div>
-          <h3 className="font-display font-semibold text-foreground">Автоматы рядом</h3>
+          <Link href="/locations">
+            <Button variant="ghost" size="sm" className="text-muted-foreground h-8 gap-1">
+              <Map className="w-4 h-4" />
+              Карта
+            </Button>
+          </Link>
         </div>
-        <Link href="/locations">
-          <Button variant="ghost" size="sm" className="text-muted-foreground h-8 gap-1">
-            <Map className="w-4 h-4" />
-            Карта
-          </Button>
-        </Link>
-      </div>
-      
-      <div className="space-y-2">
-        {nearbyMachines.slice(0, size === 'compact' ? 2 : 3).map((machine, index) => (
-          <motion.div
-            key={machine.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 + index * 0.05 }}
-          >
-            <Card 
-              className={cn(
-                "cursor-pointer transition-all active:scale-[0.98]",
-                machine.isAvailable 
-                  ? "bg-card border border-border hover:border-green-500/50 hover:shadow-md" 
-                  : "bg-muted/50 border border-border opacity-60",
-                size === 'compact' ? 'p-2' : 'p-3'
-              )}
-              onClick={() => {
-                if (machine.isAvailable) {
-                  haptic.selection();
-                  navigate(`/menu/${machine.id}`);
-                } else {
-                  haptic.notification('error');
-                }
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "rounded-xl flex items-center justify-center",
-                    machine.isAvailable 
-                      ? "bg-gradient-to-br from-amber-700 to-amber-800" 
-                      : "bg-muted",
-                    size === 'compact' ? 'w-10 h-10' : 'w-12 h-12'
-                  )}>
-                    <Coffee className={cn(
-                      size === 'compact' ? 'w-5 h-5' : 'w-6 h-6',
-                      machine.isAvailable ? 'text-white' : 'text-muted-foreground'
-                    )} />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm text-foreground">{machine.name}</h4>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-0.5">
-                        <Navigation className="w-3 h-3" />
-                        {machine.distance}
-                      </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-0.5">
-                        <Clock className="w-3 h-3" />
-                        {machine.walkTime}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={cn(
-                    "px-2 py-0.5 rounded-full text-xs font-medium",
-                    machine.isAvailable 
-                      ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400" 
-                      : "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400"
-                  )}>
-                    {machine.isAvailable ? 'Доступен' : 'Недоступен'}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </div>
-              </div>
+        
+        <div className="space-y-2">
+          {machinesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Поиск автоматов...</span>
+            </div>
+          ) : machines.length === 0 ? (
+            <Card className="p-4 text-center">
+              <MapPin className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">Автоматы не найдены поблизости</p>
+              <Link href="/locations">
+                <Button variant="link" size="sm" className="mt-2">
+                  Посмотреть все на карте
+                </Button>
+              </Link>
             </Card>
-          </motion.div>
-        ))}
-      </div>
-      
-      {/* View all button */}
-      <Link href="/locations">
-        <Button 
-          variant="outline" 
-          className="w-full mt-3 border-dashed border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
-          onClick={() => haptic.selection()}
-        >
-          <Map className="w-4 h-4 mr-2" />
-          Показать все на карте
-        </Button>
-      </Link>
-    </motion.div>
-  );
+          ) : (
+            machines.slice(0, displayCount).map((machine, index) => {
+              const isAvailable = machine.status === 'online';
+              return (
+                <motion.div
+                  key={machine.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
+                >
+                  <Card 
+                    className={cn(
+                      "cursor-pointer transition-all active:scale-[0.98]",
+                      isAvailable 
+                        ? "bg-card border border-border hover:border-green-500/50 hover:shadow-md" 
+                        : "bg-muted/50 border border-border opacity-60",
+                      size === 'compact' ? 'p-2' : 'p-3'
+                    )}
+                    onClick={() => {
+                      if (isAvailable) {
+                        haptic.selection();
+                        navigate(`/menu/${machine.machineCode}`);
+                      } else {
+                        haptic.notification('error');
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "rounded-xl flex items-center justify-center",
+                          isAvailable 
+                            ? "bg-gradient-to-br from-amber-700 to-amber-800" 
+                            : "bg-muted",
+                          size === 'compact' ? 'w-10 h-10' : 'w-12 h-12'
+                        )}>
+                          <Coffee className={cn(
+                            size === 'compact' ? 'w-5 h-5' : 'w-6 h-6',
+                            isAvailable ? 'text-white' : 'text-muted-foreground'
+                          )} />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-sm text-foreground">{machine.name}</h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-0.5">
+                              <Navigation className="w-3 h-3" />
+                              {formatDistance(machine.distance)}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-0.5">
+                              <Clock className="w-3 h-3" />
+                              {formatWalkTime(machine.walkTime)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded-full text-xs font-medium",
+                          isAvailable 
+                            ? "bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400" 
+                            : machine.status === 'maintenance'
+                              ? "bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-400"
+                              : "bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400"
+                        )}>
+                          {isAvailable ? 'Доступен' : machine.status === 'maintenance' ? 'Обслуживание' : 'Недоступен'}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+        
+        {/* View all button */}
+        {machines.length > 0 && (
+          <Link href="/locations">
+            <Button 
+              variant="outline" 
+              className="w-full mt-3 border-dashed border-green-500/30 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+              onClick={() => haptic.selection()}
+            >
+              <Map className="w-4 h-4 mr-2" />
+              Показать все на карте
+            </Button>
+          </Link>
+        )}
+      </motion.div>
+    );
+  };
 
   const SecondaryActionsSection = ({ size }: { size: string }) => (
     <motion.div

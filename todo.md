@@ -269,3 +269,12 @@
 - [x] Place promotions and QR scan after bonus (order: 2)
 - [x] Place catalog and machines section after that (order: 3-4)
 - [x] Ensure all fits on one screen (157 tests passing)
+
+## Nearby Machines API Integration
+- [x] Create API endpoint for nearby machines with lat/lng parameters
+- [x] Calculate distance using Haversine formula
+- [x] Sort machines by distance
+- [x] Include walk time estimation (5 km/h average walking speed)
+- [x] Update Home page to use real API data
+- [x] Add geolocation permission request with Tashkent fallback
+- [x] Test nearby machines API (164 tests passing)
