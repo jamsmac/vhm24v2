@@ -240,3 +240,11 @@
 - [x] Create PointsNotificationSettings page UI
 - [x] Add link to settings from NotificationSettings page
 - [x] Test points notification settings (137 tests passing)
+
+## Telegram Bot Notifications
+- [x] Create Telegram Bot notification service (sendTelegramMessage)
+- [x] Add telegramEnabled preference to user settings
+- [x] Update PointsNotificationSettings UI with Telegram toggle
+- [x] Integrate Telegram notifications into addPointsTransaction
+- [x] TELEGRAM_BOT_TOKEN configured (@vendhubbot)
+- [x] Test Telegram Bot notifications (147 tests passing)

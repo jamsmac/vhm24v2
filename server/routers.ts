@@ -744,6 +744,7 @@ export const appRouter = router({
           adminAdjustment: z.boolean(),
           redemption: z.boolean(),
           expiration: z.boolean(),
+          telegramEnabled: z.boolean(),
         }).optional(),
       }))
       .mutation(async ({ ctx, input }) => {

@@ -26,6 +26,8 @@ import {
   Sparkles,
   Save,
   RotateCcw,
+  Send,
+  Bell,
 } from "lucide-react";
 
 // Default preferences (all enabled)
@@ -36,6 +38,7 @@ const defaultPreferences = {
   adminAdjustment: true,
   redemption: true,
   expiration: true,
+  telegramEnabled: true,
 };
 
 type PreferenceKey = keyof typeof defaultPreferences;
@@ -95,7 +98,7 @@ const notificationSettings: NotificationSetting[] = [
 
 export default function PointsNotificationSettings() {
   const [, navigate] = useLocation();
-  const { haptic } = useTelegram();
+  const { haptic, user } = useTelegram();
   const [preferences, setPreferences] = useState(defaultPreferences);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -147,19 +150,24 @@ export default function PointsNotificationSettings() {
     setHasChanges(true);
   };
 
-  const enabledCount = Object.values(preferences).filter(Boolean).length;
-  const allEnabled = enabledCount === notificationSettings.length;
-  const allDisabled = enabledCount === 0;
+  // Count only notification type settings (exclude telegramEnabled)
+  const typeSettings = notificationSettings.filter(s => s.key !== 'telegramEnabled');
+  const enabledCount = typeSettings.filter(s => preferences[s.key]).length;
+  const allEnabled = enabledCount === typeSettings.length;
 
   const handleToggleAll = () => {
     haptic.impact('medium');
     const newValue = !allEnabled;
-    const newPrefs = Object.fromEntries(
-      Object.keys(preferences).map(key => [key, newValue])
-    ) as typeof defaultPreferences;
+    const newPrefs = { ...preferences };
+    typeSettings.forEach(s => {
+      newPrefs[s.key] = newValue;
+    });
     setPreferences(newPrefs);
     setHasChanges(true);
   };
+
+  // Check if user has Telegram linked
+  const hasTelegram = !!user?.id;
 
   return (
     <div className="min-h-screen bg-background safe-top safe-bottom pb-24">
@@ -175,7 +183,7 @@ export default function PointsNotificationSettings() {
             <div>
               <h1 className="font-display text-xl font-bold">Уведомления о баллах</h1>
               <p className="text-xs text-muted-foreground">
-                {enabledCount} из {notificationSettings.length} включено
+                {enabledCount} из {typeSettings.length} включено
               </p>
             </div>
           </div>
@@ -186,19 +194,63 @@ export default function PointsNotificationSettings() {
       </header>
 
       <main className="px-4 py-4 space-y-4">
+        {/* Telegram Notifications Card */}
+        <Card className="coffee-card overflow-hidden">
+          <div className="relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent" />
+            <div className="relative p-1">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg">
+                    <Send className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground flex items-center gap-2">
+                      Telegram-уведомления
+                      {preferences.telegramEnabled && hasTelegram && (
+                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+                          Активно
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasTelegram 
+                        ? 'Получать уведомления в Telegram' 
+                        : 'Откройте приложение через Telegram'}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={preferences.telegramEnabled}
+                  onCheckedChange={(checked) => handleToggle('telegramEnabled', checked)}
+                  disabled={!hasTelegram}
+                />
+              </div>
+              
+              {!hasTelegram && (
+                <div className="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Для получения Telegram-уведомлений откройте приложение через Telegram Mini App
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
+
         {/* Quick Actions */}
         <Card className="coffee-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-muted-foreground" />
+                <Bell className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="font-medium text-foreground">
-                  {allEnabled ? 'Все уведомления включены' : allDisabled ? 'Все уведомления выключены' : 'Частично включены'}
+                  {allEnabled ? 'Все типы включены' : enabledCount === 0 ? 'Все типы выключены' : 'Частично включены'}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Нажмите чтобы {allEnabled ? 'выключить' : 'включить'} все
+                  In-app уведомления по типам
                 </p>
               </div>
             </div>
@@ -255,6 +307,22 @@ export default function PointsNotificationSettings() {
             })}
           </Card>
         )}
+
+        {/* Info Card */}
+        <Card className="coffee-card bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
+              <Send className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">Telegram-уведомления</p>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                При включении Telegram-уведомлений вы будете получать сообщения о баллах прямо в Telegram, 
+                даже когда приложение закрыто.
+              </p>
+            </div>
+          </div>
+        </Card>
 
         {/* Info Card */}
         <Card className="coffee-card bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800">

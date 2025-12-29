@@ -30,6 +30,8 @@ export interface PointsNotificationPreferences {
   adminAdjustment: boolean;
   redemption: boolean;
   expiration: boolean;
+  // Telegram notifications (in addition to in-app)
+  telegramEnabled: boolean;
 }
 
 // Default points notification preferences (all enabled)
@@ -40,6 +42,7 @@ export const defaultPointsNotificationPrefs: PointsNotificationPreferences = {
   adminAdjustment: true,
   redemption: true,
   expiration: true,
+  telegramEnabled: true,
 };
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -955,7 +958,7 @@ export async function addPointsTransaction(
     const pointsNotifPrefs = (userPrefs?.pointsNotifications as PointsNotificationPreferences | null) || defaultPointsNotificationPrefs;
     
     // Map transaction type to preference key
-    const prefKeyMap: Record<string, keyof PointsNotificationPreferences> = {
+    const prefKeyMap: Record<string, keyof Omit<PointsNotificationPreferences, 'telegramEnabled'>> = {
       task_completion: 'taskCompletion',
       order_reward: 'orderReward',
       referral_bonus: 'referralBonus',
@@ -968,6 +971,7 @@ export async function addPointsTransaction(
     const shouldNotify = prefKey ? pointsNotifPrefs[prefKey] : true;
     
     if (shouldNotify) {
+      // In-app notification
       const notification = getPointsNotification(type, amount, newBalance, description);
       await createNotification({
         userId,
@@ -982,6 +986,19 @@ export async function addPointsTransaction(
           referenceId,
         },
       });
+      
+      // Telegram notification (if enabled and user has telegramId)
+      if (pointsNotifPrefs.telegramEnabled) {
+        const user = await db.select({ telegramId: users.telegramId }).from(users).where(eq(users.id, userId)).limit(1);
+        const telegramId = user[0]?.telegramId;
+        
+        if (telegramId) {
+          const { sendPointsNotificationTelegram } = await import('./telegramBot');
+          // Fire and forget - don't block on Telegram API
+          sendPointsNotificationTelegram(telegramId, type, amount, newBalance, description)
+            .catch(err => console.error('[TelegramBot] Failed to send notification:', err));
+        }
+      }
     }
   }
   
