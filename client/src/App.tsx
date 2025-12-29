@@ -28,6 +28,7 @@ import Promotions from "./pages/Promotions";
 import NotificationSettings from "./pages/NotificationSettings";
 import LevelProgressPage from "./pages/profile/LevelProgressPage";
 import TelegramConnectPage from "./pages/profile/TelegramConnectPage";
+import AchievementsPage from "./pages/profile/AchievementsPage";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/profile/notifications" component={NotificationSettings} />
       <Route path="/profile/level" component={LevelProgressPage} />
       <Route path="/profile/telegram" component={TelegramConnectPage} />
+      <Route path="/profile/achievements" component={AchievementsPage} />
       
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />

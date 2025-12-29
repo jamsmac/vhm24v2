@@ -70,3 +70,19 @@
 - [x] Award 10,000 bonus points after first successful order
 - [x] Send in-app notification about first order bonus
 - [x] Send Telegram notification about first order bonus
+
+## Achievements Page
+- [x] Create Achievements page (/profile/achievements)
+- [x] Design badge system with categories (orders, social, loyalty)
+- [x] Implement badge unlocking logic
+- [x] Add badge icons and visual design
+- [x] Show progress towards locked badges
+- [x] Link from Profile menu
+
+## Confetti Animation
+- [x] Install canvas-confetti library
+- [x] Create useConfetti hook with multiple animation types
+- [x] Trigger confetti on welcome bonus claim (Home.tsx)
+- [x] Trigger confetti on first order bonus (OrderSuccess.tsx)
+- [x] Trigger confetti on platinum level view (LevelProgressPage.tsx)
+- [x] Trigger confetti on achievement click (AchievementsPage.tsx)

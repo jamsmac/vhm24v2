@@ -9,6 +9,8 @@ import { ArrowLeft, Crown, Gift, Sparkles, TrendingUp, ChevronRight } from "luci
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { trpc } from "@/lib/trpc";
+import { useConfetti } from "@/hooks/useConfetti";
+import { useEffect, useRef } from "react";
 import { 
   getLevelDiscount, 
   getLoyaltyLevelName, 
@@ -63,6 +65,16 @@ const levelBenefits = {
 export default function LevelProgressPage() {
   const [, navigate] = useLocation();
   const { data: stats, isLoading } = trpc.profile.stats.useQuery();
+  const { fireConfetti } = useConfetti();
+  const hasAnimated = useRef(false);
+  
+  // Fire confetti when viewing platinum level (celebration)
+  useEffect(() => {
+    if (stats?.loyaltyLevel === 'platinum' && !hasAnimated.current) {
+      hasAnimated.current = true;
+      setTimeout(() => fireConfetti('levelUp'), 500);
+    }
+  }, [stats?.loyaltyLevel]);
 
   const currentLevel = (stats?.loyaltyLevel || 'bronze') as keyof typeof levelColors;
   const totalSpent = stats?.totalSpent || 0;

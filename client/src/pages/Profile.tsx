@@ -20,7 +20,8 @@ import {
   Star,
   Sparkles,
   Crown,
-  MessageCircle
+  MessageCircle,
+  Trophy
 } from "lucide-react";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
@@ -77,6 +78,12 @@ export default function Profile() {
       label: 'Telegram уведомления', 
       href: '/profile/telegram',
       color: 'text-sky-500'
+    },
+    { 
+      icon: Trophy, 
+      label: 'Достижения', 
+      href: '/profile/achievements',
+      color: 'text-amber-500'
     },
     { 
       icon: Settings, 

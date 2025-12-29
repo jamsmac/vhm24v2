@@ -22,6 +22,7 @@ import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import { useConfetti } from "@/hooks/useConfetti";
 
 // Mock user data for demo
 const mockUser = {
@@ -49,10 +50,14 @@ export default function Home() {
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const [bonusClaimed, setBonusClaimed] = useState(false);
   const { data: userStats, refetch: refetchStats } = trpc.profile.stats.useQuery();
+  const { fireConfetti } = useConfetti();
+  
   const claimBonusMutation = trpc.profile.claimWelcomeBonus.useMutation({
     onSuccess: (data) => {
       if (data.success) {
         setBonusClaimed(true);
+        // Fire confetti animation!
+        fireConfetti('welcome');
         toast.success(`🎁 +${data.amount.toLocaleString('ru-RU')} баллов!`, {
           description: 'Приветственный бонус начислен!'
         });
