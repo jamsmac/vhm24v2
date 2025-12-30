@@ -28,7 +28,8 @@ import {
   FileSpreadsheet,
   ClipboardCheck,
   Package,
-  Settings2
+  Settings2,
+  ListTodo
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const navItems = [
 ];
 
 const businessNavItems = [
+  { href: "/admin/tasks", icon: ListTodo, label: "Задачи" },
   { href: "/admin/employees", icon: UserCog, label: "Сотрудники" },
   { href: "/admin/machines", icon: Cpu, label: "Автоматы" },
   { href: "/admin/bunkers", icon: Package, label: "Бункеры" },

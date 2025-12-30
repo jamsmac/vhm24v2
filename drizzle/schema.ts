@@ -633,3 +633,52 @@ export const productRecipes = mysqlTable("product_recipes", {
 
 export type ProductRecipe = typeof productRecipes.$inferSelect;
 export type InsertProductRecipe = typeof productRecipes.$inferInsert;
+
+/**
+ * Tasks table for employee work assignments
+ */
+export const tasks = mysqlTable("tasks", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  taskType: mysqlEnum("taskType", ["maintenance", "refill", "cleaning", "repair", "inspection", "inventory", "other"]).default("other").notNull(),
+  priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium").notNull(),
+  status: mysqlEnum("taskStatus", ["pending", "in_progress", "completed", "cancelled"]).default("pending").notNull(),
+  
+  // Assignments
+  assignedTo: int("assignedTo"), // Employee ID
+  createdBy: int("createdBy"), // Employee ID
+  
+  // Related entities
+  machineId: int("machineId"), // Related machine
+  inventoryCheckId: int("inventoryCheckId"), // Related inventory check
+  
+  // Timing
+  dueDate: timestamp("dueDate"),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+  
+  // Results
+  notes: text("notes"),
+  completionNotes: text("completionNotes"),
+  
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = typeof tasks.$inferInsert;
+
+/**
+ * Task comments for communication
+ */
+export const taskComments = mysqlTable("task_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),
+  employeeId: int("employeeId").notNull(),
+  comment: text("comment").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TaskComment = typeof taskComments.$inferSelect;
+export type InsertTaskComment = typeof taskComments.$inferInsert;

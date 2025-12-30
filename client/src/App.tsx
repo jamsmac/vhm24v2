@@ -51,6 +51,8 @@ import AdminSalesImport from "./pages/admin/SalesImport";
 import AdminInventoryCheck from "./pages/admin/InventoryCheck";
 import AdminBunkers from "./pages/admin/Bunkers";
 import AdminMixers from "./pages/admin/Mixers";
+import AdminTasks from "./pages/admin/Tasks";
+import AdminRoute from "./components/AdminRoute";
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -83,23 +85,58 @@ function Router() {
       {/* Order Routes */}
       <Route path="/order/success" component={OrderSuccess} />
       
-      {/* Admin Routes */}
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/products" component={AdminProducts} />
-      <Route path="/admin/orders" component={AdminOrders} />
-      <Route path="/admin/promo" component={AdminPromoCodes} />
-      <Route path="/admin/quests" component={AdminQuests} />
-      <Route path="/admin/employees" component={AdminEmployees} />
-      <Route path="/admin/machines" component={AdminMachines} />
-      <Route path="/admin/ingredients" component={AdminIngredients} />
-      <Route path="/admin/cleaning" component={AdminCleaningSupplies} />
-      <Route path="/admin/spare-parts" component={AdminSpareParts} />
-      <Route path="/admin/warehouse" component={AdminWarehouse} />
-      <Route path="/admin/contractors" component={AdminContractors} />
-      <Route path="/admin/sales-import" component={AdminSalesImport} />
-      <Route path="/admin/inventory-check" component={AdminInventoryCheck} />
-      <Route path="/admin/bunkers" component={AdminBunkers} />
-      <Route path="/admin/mixers" component={AdminMixers} />
+      {/* Admin Routes - Protected */}
+      <Route path="/admin">
+        <AdminRoute><AdminDashboard /></AdminRoute>
+      </Route>
+      <Route path="/admin/products">
+        <AdminRoute><AdminProducts /></AdminRoute>
+      </Route>
+      <Route path="/admin/orders">
+        <AdminRoute><AdminOrders /></AdminRoute>
+      </Route>
+      <Route path="/admin/promo">
+        <AdminRoute><AdminPromoCodes /></AdminRoute>
+      </Route>
+      <Route path="/admin/quests">
+        <AdminRoute><AdminQuests /></AdminRoute>
+      </Route>
+      <Route path="/admin/employees">
+        <AdminRoute><AdminEmployees /></AdminRoute>
+      </Route>
+      <Route path="/admin/machines">
+        <AdminRoute><AdminMachines /></AdminRoute>
+      </Route>
+      <Route path="/admin/ingredients">
+        <AdminRoute><AdminIngredients /></AdminRoute>
+      </Route>
+      <Route path="/admin/cleaning">
+        <AdminRoute><AdminCleaningSupplies /></AdminRoute>
+      </Route>
+      <Route path="/admin/spare-parts">
+        <AdminRoute><AdminSpareParts /></AdminRoute>
+      </Route>
+      <Route path="/admin/warehouse">
+        <AdminRoute><AdminWarehouse /></AdminRoute>
+      </Route>
+      <Route path="/admin/contractors">
+        <AdminRoute><AdminContractors /></AdminRoute>
+      </Route>
+      <Route path="/admin/sales-import">
+        <AdminRoute><AdminSalesImport /></AdminRoute>
+      </Route>
+      <Route path="/admin/inventory-check">
+        <AdminRoute><AdminInventoryCheck /></AdminRoute>
+      </Route>
+      <Route path="/admin/bunkers">
+        <AdminRoute><AdminBunkers /></AdminRoute>
+      </Route>
+      <Route path="/admin/mixers">
+        <AdminRoute><AdminMixers /></AdminRoute>
+      </Route>
+      <Route path="/admin/tasks">
+        <AdminRoute><AdminTasks /></AdminRoute>
+      </Route>
       
       {/* Fallback */}
       <Route path="/404" component={NotFound} />

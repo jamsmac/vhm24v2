@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS tasks (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  title VARCHAR(256) NOT NULL,\n  description TEXT,\n  taskType ENUM('maintenance', 'refill', 'cleaning', 'repair', 'inspection', 'inventory', 'other') DEFAULT 'other' NOT NULL,\n  priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium' NOT NULL,\n  status ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending' NOT NULL,\n  assignedTo INT,\n  createdBy INT,\n  machineId INT,\n  inventoryCheckId INT,\n  dueDate TIMESTAMP NULL,\n  startedAt TIMESTAMP NULL,\n  completedAt TIMESTAMP NULL,\n  notes TEXT,\n  completionNotes TEXT,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n)",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute CREATE TABLE IF NOT EXISTS tasks (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  title VARCHAR(256) NOT NULL,\n  description TEXT,\n  taskType ENUM('maintenance', 'refill', 'cleaning', 'repair', 'inspection', 'inventory', 'other') DEFAULT 'other' NOT NULL,\n  priority ENUM('low', 'medium', 'high', 'urgent') DEFAULT 'medium' NOT NULL,\n  status ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending' NOT NULL,\n  assignedTo INT,\n  createdBy INT,\n  machineId INT,\n  inventoryCheckId INT,\n  dueDate TIMESTAMP NULL,\n  startedAt TIMESTAMP NULL,\n  completedAt TIMESTAMP NULL,\n  notes TEXT,\n  completionNotes TEXT,\n  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,\n  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP NOT NULL\n)",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 188
+}
