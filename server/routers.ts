@@ -872,6 +872,178 @@ export const appRouter = router({
     stats: adminProcedure.query(async () => {
       return await db.getAdminStats();
     }),
+    
+    // Ingredients management
+    ingredients: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllIngredients();
+      }),
+      
+      create: adminProcedure
+        .input(z.object({
+          name: z.string(),
+          category: z.enum(['coffee', 'milk', 'sugar', 'syrup', 'powder', 'water', 'other']).default('other'),
+          unit: z.string().default('g'),
+          costPerUnit: z.number().default(0),
+          minStockLevel: z.number().default(100),
+          description: z.string().optional(),
+          isActive: z.boolean().default(true),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createIngredient(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          name: z.string().optional(),
+          category: z.enum(['coffee', 'milk', 'sugar', 'syrup', 'powder', 'water', 'other']).optional(),
+          unit: z.string().optional(),
+          costPerUnit: z.number().optional(),
+          minStockLevel: z.number().optional(),
+          description: z.string().optional(),
+          isActive: z.boolean().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateIngredient(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteIngredient(input.id);
+          return { success: true };
+        }),
+    }),
+    
+    // Bunkers management
+    bunkers: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllBunkers();
+      }),
+      
+      byMachine: adminProcedure
+        .input(z.object({ machineId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getBunkersByMachineId(input.machineId);
+        }),
+      
+      create: adminProcedure
+        .input(z.object({
+          machineId: z.number(),
+          ingredientId: z.number().nullable().optional(),
+          bunkerNumber: z.number(),
+          capacity: z.number(),
+          currentLevel: z.number().default(0),
+          lowLevelThreshold: z.number().default(20),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createBunker(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          machineId: z.number().optional(),
+          ingredientId: z.number().nullable().optional(),
+          bunkerNumber: z.number().optional(),
+          capacity: z.number().optional(),
+          currentLevel: z.number().optional(),
+          lowLevelThreshold: z.number().optional(),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateBunker(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteBunker(input.id);
+          return { success: true };
+        }),
+      
+      refill: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          newLevel: z.number(),
+          employeeId: z.number(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.refillBunker(input.id, input.newLevel, input.employeeId);
+        }),
+    }),
+    
+    // Mixers management
+    mixers: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllMixers();
+      }),
+      
+      byMachine: adminProcedure
+        .input(z.object({ machineId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getMixersByMachineId(input.machineId);
+        }),
+      
+      create: adminProcedure
+        .input(z.object({
+          machineId: z.number(),
+          mixerNumber: z.number(),
+          mixerType: z.enum(['main', 'secondary', 'whisk', 'grinder']).default('main'),
+          status: z.enum(['operational', 'needs_cleaning', 'needs_repair', 'replaced']).default('operational'),
+          totalCycles: z.number().default(0),
+          maxCyclesBeforeMaintenance: z.number().default(10000),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createMixer(input);
+        }),
+      
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          machineId: z.number().optional(),
+          mixerNumber: z.number().optional(),
+          mixerType: z.enum(['main', 'secondary', 'whisk', 'grinder']).optional(),
+          status: z.enum(['operational', 'needs_cleaning', 'needs_repair', 'replaced']).optional(),
+          totalCycles: z.number().optional(),
+          maxCyclesBeforeMaintenance: z.number().optional(),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...data } = input;
+          return await db.updateMixer(id, data);
+        }),
+      
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteMixer(input.id);
+          return { success: true };
+        }),
+      
+      updateStatus: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          status: z.enum(['operational', 'needs_cleaning', 'needs_repair', 'replaced']),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.updateMixerStatus(input.id, input.status);
+        }),
+      
+      recordMaintenance: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          employeeId: z.number(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.recordMixerMaintenance(input.id, input.employeeId);
+        }),
+    }),
   }),
 });
 

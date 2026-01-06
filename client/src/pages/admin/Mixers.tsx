@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -18,14 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { 
   Plus, 
@@ -33,251 +27,226 @@ import {
   Settings2,
   AlertTriangle,
   CheckCircle,
-  Clock,
   Wrench,
-  RotateCcw,
-  History,
   Coffee,
   Droplets,
   Sparkles,
   Zap,
-  Edit,
+  Pencil,
   Trash2,
-  RefreshCw,
+  MapPin,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 
-type MixerType = 'coffee' | 'milk' | 'syrup' | 'water' | 'powder' | 'sugar';
-type MixerStatus = 'active' | 'maintenance' | 'inactive' | 'warning';
-
-type Mixer = {
-  id: number;
-  name: string;
-  mixerType: MixerType;
-  machineId: number;
-  machineName: string;
-  machineAddress: string;
-  status: MixerStatus;
-  currentCycles: number;
-  maxCycles: number;
-  lastMaintenanceDate: string | null;
-  nextMaintenanceDate: string | null;
-  notes: string | null;
-  createdAt: string;
-};
-
-type MaintenanceLog = {
-  id: number;
-  mixerId: number;
-  mixerName: string;
-  maintenanceType: 'cleaning' | 'replacement' | 'repair' | 'inspection';
-  performedBy: string;
-  cyclesAtMaintenance: number;
-  notes: string | null;
-  performedAt: string;
-};
-
-// Mock data
-const mockMixers: Mixer[] = [
-  {
-    id: 1,
-    name: "Кофемолка #1",
-    mixerType: "coffee",
-    machineId: 1,
-    machineName: "Parus F4",
-    machineAddress: "ТЦ Парус, 4 этаж",
-    status: "active",
-    currentCycles: 4500,
-    maxCycles: 10000,
-    lastMaintenanceDate: "2025-12-15",
-    nextMaintenanceDate: "2026-01-15",
-    notes: null,
-    createdAt: "2025-01-01",
-  },
-  {
-    id: 2,
-    name: "Молочный миксер #1",
-    mixerType: "milk",
-    machineId: 1,
-    machineName: "Parus F4",
-    machineAddress: "ТЦ Парус, 4 этаж",
-    status: "warning",
-    currentCycles: 8500,
-    maxCycles: 10000,
-    lastMaintenanceDate: "2025-11-20",
-    nextMaintenanceDate: "2025-12-30",
-    notes: "Требуется замена уплотнителя",
-    createdAt: "2025-01-01",
-  },
-  {
-    id: 3,
-    name: "Сироп-дозатор #1",
-    mixerType: "syrup",
-    machineId: 1,
-    machineName: "Parus F4",
-    machineAddress: "ТЦ Парус, 4 этаж",
-    status: "active",
-    currentCycles: 2100,
-    maxCycles: 15000,
-    lastMaintenanceDate: "2025-12-01",
-    nextMaintenanceDate: "2026-03-01",
-    notes: null,
-    createdAt: "2025-01-01",
-  },
-  {
-    id: 4,
-    name: "Кофемолка #2",
-    mixerType: "coffee",
-    machineId: 2,
-    machineName: "Mega Planet B1",
-    machineAddress: "ТЦ Мега Планет, 1 этаж",
-    status: "maintenance",
-    currentCycles: 9800,
-    maxCycles: 10000,
-    lastMaintenanceDate: "2025-12-28",
-    nextMaintenanceDate: "2026-01-28",
-    notes: "На обслуживании - замена жерновов",
-    createdAt: "2025-02-15",
-  },
-  {
-    id: 5,
-    name: "Молочный миксер #2",
-    mixerType: "milk",
-    machineId: 2,
-    machineName: "Mega Planet B1",
-    machineAddress: "ТЦ Мега Планет, 1 этаж",
-    status: "active",
-    currentCycles: 3200,
-    maxCycles: 10000,
-    lastMaintenanceDate: "2025-12-10",
-    nextMaintenanceDate: "2026-01-10",
-    notes: null,
-    createdAt: "2025-02-15",
-  },
-  {
-    id: 6,
-    name: "Водяной насос #1",
-    mixerType: "water",
-    machineId: 1,
-    machineName: "Parus F4",
-    machineAddress: "ТЦ Парус, 4 этаж",
-    status: "inactive",
-    currentCycles: 15000,
-    maxCycles: 20000,
-    lastMaintenanceDate: "2025-10-01",
-    nextMaintenanceDate: null,
-    notes: "Выведен из эксплуатации",
-    createdAt: "2025-01-01",
-  },
-];
-
-const mockMaintenanceLogs: MaintenanceLog[] = [
-  {
-    id: 1,
-    mixerId: 4,
-    mixerName: "Кофемолка #2",
-    maintenanceType: "replacement",
-    performedBy: "Петров В.В.",
-    cyclesAtMaintenance: 9800,
-    notes: "Замена жерновов",
-    performedAt: "2025-12-28 10:30:00",
-  },
-  {
-    id: 2,
-    mixerId: 2,
-    mixerName: "Молочный миксер #1",
-    maintenanceType: "inspection",
-    performedBy: "Сидоров К.М.",
-    cyclesAtMaintenance: 8200,
-    notes: "Обнаружен износ уплотнителя",
-    performedAt: "2025-12-25 14:15:00",
-  },
-  {
-    id: 3,
-    mixerId: 1,
-    mixerName: "Кофемолка #1",
-    maintenanceType: "cleaning",
-    performedBy: "Петров В.В.",
-    cyclesAtMaintenance: 4200,
-    notes: "Плановая чистка",
-    performedAt: "2025-12-15 09:00:00",
-  },
-];
+type MixerType = 'main' | 'secondary' | 'whisk' | 'grinder';
+type MixerStatus = 'operational' | 'needs_cleaning' | 'needs_repair' | 'replaced';
 
 const mixerTypeConfig: Record<MixerType, { label: string; icon: React.ReactNode; color: string }> = {
-  coffee: { label: "Кофемолка", icon: <Coffee className="h-4 w-4" />, color: "text-amber-400" },
-  milk: { label: "Молочный", icon: <Droplets className="h-4 w-4" />, color: "text-blue-400" },
-  syrup: { label: "Сироп", icon: <Sparkles className="h-4 w-4" />, color: "text-pink-400" },
-  water: { label: "Водяной", icon: <Droplets className="h-4 w-4" />, color: "text-cyan-400" },
-  powder: { label: "Порошковый", icon: <Zap className="h-4 w-4" />, color: "text-orange-400" },
-  sugar: { label: "Сахарный", icon: <Sparkles className="h-4 w-4" />, color: "text-yellow-400" },
+  main: { label: "Основной", icon: <Coffee className="h-4 w-4" />, color: "text-amber-400" },
+  secondary: { label: "Вторичный", icon: <Droplets className="h-4 w-4" />, color: "text-blue-400" },
+  whisk: { label: "Венчик", icon: <Sparkles className="h-4 w-4" />, color: "text-pink-400" },
+  grinder: { label: "Кофемолка", icon: <Zap className="h-4 w-4" />, color: "text-orange-400" },
 };
 
-const statusConfig: Record<MixerStatus, { label: string; color: string; bgColor: string }> = {
-  active: { label: "Активен", color: "text-green-400", bgColor: "bg-green-500/20" },
-  warning: { label: "Внимание", color: "text-yellow-400", bgColor: "bg-yellow-500/20" },
-  maintenance: { label: "Обслуживание", color: "text-blue-400", bgColor: "bg-blue-500/20" },
-  inactive: { label: "Неактивен", color: "text-gray-400", bgColor: "bg-gray-500/20" },
-};
-
-const maintenanceTypeConfig: Record<string, { label: string; color: string }> = {
-  cleaning: { label: "Чистка", color: "text-blue-400" },
-  replacement: { label: "Замена", color: "text-orange-400" },
-  repair: { label: "Ремонт", color: "text-red-400" },
-  inspection: { label: "Осмотр", color: "text-green-400" },
+const statusConfig: Record<MixerStatus, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
+  operational: { label: "Работает", color: "text-green-400", bgColor: "bg-green-500/20", icon: <CheckCircle className="h-4 w-4" /> },
+  needs_cleaning: { label: "Требует чистки", color: "text-yellow-400", bgColor: "bg-yellow-500/20", icon: <AlertTriangle className="h-4 w-4" /> },
+  needs_repair: { label: "Требует ремонта", color: "text-red-400", bgColor: "bg-red-500/20", icon: <Wrench className="h-4 w-4" /> },
+  replaced: { label: "Заменён", color: "text-gray-400", bgColor: "bg-gray-500/20", icon: <Settings2 className="h-4 w-4" /> },
 };
 
 export default function MixersPage() {
-  const [mixers, setMixers] = useState<Mixer[]>(mockMixers);
-  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>(mockMaintenanceLogs);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [machineFilter, setMachineFilter] = useState("all");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
-  const [selectedMixer, setSelectedMixer] = useState<Mixer | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedMixerId, setSelectedMixerId] = useState<number | null>(null);
 
-  // Form state
   const [formData, setFormData] = useState({
-    name: "",
-    mixerType: "coffee" as MixerType,
-    machineId: 1,
-    maxCycles: 10000,
+    machineId: 0,
+    mixerNumber: 1,
+    mixerType: "main" as MixerType,
+    status: "operational" as MixerStatus,
+    totalCycles: 0,
+    maxCyclesBeforeMaintenance: 10000,
     notes: "",
   });
 
   const [maintenanceForm, setMaintenanceForm] = useState({
-    maintenanceType: "cleaning" as 'cleaning' | 'replacement' | 'repair' | 'inspection',
-    performedBy: "",
-    notes: "",
+    employeeId: 1,
   });
+
+  // Fetch data from API
+  const { data: mixers = [], isLoading, refetch } = trpc.admin.mixers.list.useQuery();
+  const { data: machines = [] } = trpc.admin.machines.list.useQuery();
+
+  // Mutations
+  const createMutation = trpc.admin.mixers.create.useMutation({
+    onSuccess: () => {
+      toast.success("Миксер добавлен");
+      refetch();
+      closeDialog();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const updateMutation = trpc.admin.mixers.update.useMutation({
+    onSuccess: () => {
+      toast.success("Миксер обновлён");
+      refetch();
+      closeDialog();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.admin.mixers.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Миксер удалён");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const updateStatusMutation = trpc.admin.mixers.updateStatus.useMutation({
+    onSuccess: () => {
+      toast.success("Статус обновлён");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const maintenanceMutation = trpc.admin.mixers.recordMaintenance.useMutation({
+    onSuccess: () => {
+      toast.success("Обслуживание записано");
+      refetch();
+      setIsMaintenanceDialogOpen(false);
+      setSelectedMixerId(null);
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const resetForm = () => {
+    setFormData({
+      machineId: machines[0]?.id || 0,
+      mixerNumber: 1,
+      mixerType: "main",
+      status: "operational",
+      totalCycles: 0,
+      maxCyclesBeforeMaintenance: 10000,
+      notes: "",
+    });
+  };
+
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setEditingId(null);
+    resetForm();
+  };
+
+  const handleEdit = (mixer: typeof mixers[0]) => {
+    setEditingId(mixer.id);
+    setFormData({
+      machineId: mixer.machineId,
+      mixerNumber: mixer.mixerNumber,
+      mixerType: mixer.mixerType as MixerType,
+      status: mixer.status as MixerStatus,
+      totalCycles: mixer.totalCycles,
+      maxCyclesBeforeMaintenance: mixer.maxCyclesBeforeMaintenance,
+      notes: mixer.notes || "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.machineId) {
+      toast.error("Выберите автомат");
+      return;
+    }
+
+    if (editingId) {
+      updateMutation.mutate({
+        id: editingId,
+        ...formData,
+        notes: formData.notes || undefined,
+      });
+    } else {
+      createMutation.mutate({
+        ...formData,
+        notes: formData.notes || undefined,
+      });
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Удалить миксер?")) {
+      deleteMutation.mutate({ id });
+    }
+  };
+
+  const handleStatusChange = (id: number, status: MixerStatus) => {
+    updateStatusMutation.mutate({ id, status });
+  };
+
+  const handleMaintenance = () => {
+    if (!selectedMixerId) return;
+    maintenanceMutation.mutate({
+      id: selectedMixerId,
+      employeeId: maintenanceForm.employeeId,
+    });
+  };
 
   // Statistics
   const totalMixers = mixers.length;
-  const activeMixers = mixers.filter(m => m.status === 'active').length;
-  const warningMixers = mixers.filter(m => m.status === 'warning').length;
-  const maintenanceMixers = mixers.filter(m => m.status === 'maintenance').length;
-
-  // Get unique machines for filter
-  const machines = Array.from(new Set(mixers.map(m => m.machineName)));
+  const operationalMixers = mixers.filter(m => m.status === 'operational').length;
+  const needsAttentionMixers = mixers.filter(m => m.status === 'needs_cleaning' || m.status === 'needs_repair').length;
 
   // Filter mixers
   const filteredMixers = mixers.filter(mixer => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      if (!mixer.name.toLowerCase().includes(query) &&
-          !mixer.machineName.toLowerCase().includes(query)) {
+      const machine = machines.find(m => m.id === mixer.machineId);
+      if (!machine?.name.toLowerCase().includes(query) &&
+          !mixer.mixerType.toLowerCase().includes(query)) {
         return false;
       }
     }
     if (typeFilter !== "all" && mixer.mixerType !== typeFilter) return false;
     if (statusFilter !== "all" && mixer.status !== statusFilter) return false;
-    if (machineFilter !== "all" && mixer.machineName !== machineFilter) return false;
+    if (machineFilter !== "all" && mixer.machineId !== parseInt(machineFilter)) return false;
     return true;
   });
+
+  // Group by machine
+  const mixersByMachine = filteredMixers.reduce((acc, mixer) => {
+    const machine = machines.find(m => m.id === mixer.machineId);
+    if (!acc[mixer.machineId]) {
+      acc[mixer.machineId] = {
+        machineName: machine?.name || `Автомат #${mixer.machineId}`,
+        machineAddress: machine?.address || "",
+        mixers: [],
+      };
+    }
+    acc[mixer.machineId].mixers.push(mixer);
+    return acc;
+  }, {} as Record<number, { machineName: string; machineAddress: string; mixers: typeof mixers }>);
 
   const getCyclePercentage = (current: number, max: number) => {
     return Math.min(100, (current / max) * 100);
@@ -289,416 +258,387 @@ export default function MixersPage() {
     return "bg-green-500";
   };
 
-  const handleAddMixer = () => {
-    const newMixer: Mixer = {
-      id: mixers.length + 1,
-      name: formData.name,
-      mixerType: formData.mixerType,
-      machineId: formData.machineId,
-      machineName: formData.machineId === 1 ? "Parus F4" : "Mega Planet B1",
-      machineAddress: formData.machineId === 1 ? "ТЦ Парус, 4 этаж" : "ТЦ Мега Планет, 1 этаж",
-      status: "active",
-      currentCycles: 0,
-      maxCycles: formData.maxCycles,
-      lastMaintenanceDate: null,
-      nextMaintenanceDate: null,
-      notes: formData.notes || null,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
-    setMixers([...mixers, newMixer]);
-    setIsAddDialogOpen(false);
-    setFormData({ name: "", mixerType: "coffee", machineId: 1, maxCycles: 10000, notes: "" });
-    toast.success("Миксер добавлен");
-  };
-
-  const handlePerformMaintenance = () => {
-    if (!selectedMixer) return;
-
-    const newLog: MaintenanceLog = {
-      id: maintenanceLogs.length + 1,
-      mixerId: selectedMixer.id,
-      mixerName: selectedMixer.name,
-      maintenanceType: maintenanceForm.maintenanceType,
-      performedBy: maintenanceForm.performedBy,
-      cyclesAtMaintenance: selectedMixer.currentCycles,
-      notes: maintenanceForm.notes || null,
-      performedAt: new Date().toISOString(),
-    };
-
-    setMaintenanceLogs([newLog, ...maintenanceLogs]);
-
-    // Update mixer
-    setMixers(mixers.map(m => {
-      if (m.id === selectedMixer.id) {
-        return {
-          ...m,
-          currentCycles: maintenanceForm.maintenanceType === 'replacement' ? 0 : m.currentCycles,
-          status: 'active' as MixerStatus,
-          lastMaintenanceDate: new Date().toISOString().split('T')[0],
-          nextMaintenanceDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        };
-      }
-      return m;
-    }));
-
-    setIsMaintenanceDialogOpen(false);
-    setSelectedMixer(null);
-    setMaintenanceForm({ maintenanceType: "cleaning", performedBy: "", notes: "" });
-    toast.success("Обслуживание выполнено");
-  };
-
-  const handleResetCycles = (mixer: Mixer) => {
-    setMixers(mixers.map(m => {
-      if (m.id === mixer.id) {
-        return { ...m, currentCycles: 0, status: 'active' as MixerStatus };
-      }
-      return m;
-    }));
-    toast.success("Счётчик циклов сброшен");
-  };
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('ru-RU');
-  };
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const selectedMixer = mixers.find(m => m.id === selectedMixerId);
 
   return (
-    <AdminLayout title="Миксеры">
-      <div className="space-y-6">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <Settings2 className="h-5 w-5 text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Всего миксеров</p>
-                  <p className="text-2xl font-bold text-blue-400">{totalMixers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-500/20 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Активных</p>
-                  <p className="text-2xl font-bold text-green-400">{activeMixers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-500/20 rounded-lg">
-                  <AlertTriangle className="h-5 w-5 text-yellow-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Требуют внимания</p>
-                  <p className="text-2xl font-bold text-yellow-400">{warningMixers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-500/20 rounded-lg">
-                  <Wrench className="h-5 w-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">На обслуживании</p>
-                  <p className="text-2xl font-bold text-purple-400">{maintenanceMixers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Filters */}
-        <Card>
+    <AdminLayout title="Миксеры" description="Управление миксерами и обслуживанием">
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
           <CardContent className="p-4">
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Поиск по названию..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/20">
+                <Settings2 className="h-5 w-5 text-blue-400" />
               </div>
-              
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Тип" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все типы</SelectItem>
-                  {Object.entries(mixerTypeConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      <span className="flex items-center gap-2">
-                        <span className={config.color}>{config.icon}</span>
-                        {config.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px]">
-                  <SelectValue placeholder="Статус" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все статусы</SelectItem>
-                  {Object.entries(statusConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      <span className={config.color}>{config.label}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={machineFilter} onValueChange={setMachineFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Автомат" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Все автоматы</SelectItem>
-                  {machines.map((machine) => (
-                    <SelectItem key={machine} value={machine}>{machine}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button variant="outline" onClick={() => setIsHistoryDialogOpen(true)}>
-                <History className="h-4 w-4 mr-2" />
-                История
-              </Button>
-
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Добавить
-              </Button>
+              <div>
+                <p className="text-xs text-muted-foreground">Всего миксеров</p>
+                <p className="text-lg font-bold text-blue-400">{totalMixers}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Mixers Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5" />
-              Миксеры ({filteredMixers.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead>Тип</TableHead>
-                    <TableHead>Автомат</TableHead>
-                    <TableHead>Циклы</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Обслуживание</TableHead>
-                    <TableHead className="text-right">Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMixers.map((mixer) => {
-                    const typeConfig = mixerTypeConfig[mixer.mixerType];
-                    const status = statusConfig[mixer.status];
-                    const cyclePercentage = getCyclePercentage(mixer.currentCycles, mixer.maxCycles);
-                    
-                    return (
-                      <TableRow key={mixer.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <span className={typeConfig.color}>{typeConfig.icon}</span>
-                            <div>
-                              <p className="font-medium">{mixer.name}</p>
-                              {mixer.notes && (
-                                <p className="text-xs text-muted-foreground">{mixer.notes}</p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={typeConfig.color}>
-                            {typeConfig.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{mixer.machineName}</p>
-                            <p className="text-xs text-muted-foreground">{mixer.machineAddress}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="w-32">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span>{mixer.currentCycles.toLocaleString()}</span>
-                              <span className="text-muted-foreground">/ {mixer.maxCycles.toLocaleString()}</span>
-                            </div>
-                            <Progress 
-                              value={cyclePercentage} 
-                              className={cn("h-2", getCycleColor(cyclePercentage))}
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {cyclePercentage.toFixed(0)}%
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn("font-normal", status.bgColor, status.color)}>
-                            {status.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <p>Последнее: {formatDate(mixer.lastMaintenanceDate)}</p>
-                            <p className="text-muted-foreground">
-                              Следующее: {formatDate(mixer.nextMaintenanceDate)}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedMixer(mixer);
-                                setIsMaintenanceDialogOpen(true);
-                              }}
-                              title="Обслуживание"
-                            >
-                              <Wrench className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleResetCycles(mixer)}
-                              title="Сбросить циклы"
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Редактировать"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+        
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-500/20">
+                <CheckCircle className="h-5 w-5 text-green-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Работают</p>
+                <p className="text-lg font-bold text-green-400">{operationalMixers}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/20">
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Требуют внимания</p>
+                <p className="text-lg font-bold text-amber-400">{needsAttentionMixers}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/20">
+                <MapPin className="h-5 w-5 text-purple-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Автоматов</p>
+                <p className="text-lg font-bold text-purple-400">{machines.length}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Add Mixer Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Добавить миксер</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Название</label>
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Например: Кофемолка #3"
+                placeholder="Поиск..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
               />
             </div>
+            
+            <Select value={machineFilter} onValueChange={setMachineFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Все автоматы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все автоматы</SelectItem>
+                {machines.map(machine => (
+                  <SelectItem key={machine.id} value={String(machine.id)}>
+                    {machine.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Все типы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все типы</SelectItem>
+                {Object.entries(mixerTypeConfig).map(([key, config]) => (
+                  <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Все статусы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                {Object.entries(statusConfig).map(([key, config]) => (
+                  <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex-1" />
+            
+            <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Добавить миксер
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-            <div>
-              <label className="text-sm font-medium">Тип миксера</label>
+      {/* Content */}
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Loader2 className="h-12 w-12 mx-auto text-muted-foreground mb-4 animate-spin" />
+            <p className="text-muted-foreground">Загрузка...</p>
+          </CardContent>
+        </Card>
+      ) : Object.keys(mixersByMachine).length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Settings2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Нет миксеров</p>
+            <p className="text-sm text-muted-foreground mt-1">Добавьте первый миксер</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(mixersByMachine).map(([machineId, { machineName, machineAddress, mixers: machineMixers }]) => (
+            <Card key={machineId}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{machineName}</CardTitle>
+                    {machineAddress && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {machineAddress}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant="outline">
+                    {machineMixers.length} миксеров
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {machineMixers.map((mixer) => {
+                    const typeConfig = mixerTypeConfig[mixer.mixerType as MixerType] || mixerTypeConfig.main;
+                    const status = statusConfig[mixer.status as MixerStatus] || statusConfig.operational;
+                    const cyclePercentage = getCyclePercentage(mixer.totalCycles, mixer.maxCyclesBeforeMaintenance);
+                    
+                    return (
+                      <div
+                        key={mixer.id}
+                        className={cn(
+                          "p-4 rounded-lg border transition-colors",
+                          status.bgColor
+                        )}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className={typeConfig.color}>{typeConfig.icon}</span>
+                            <div>
+                              <p className="font-medium">{typeConfig.label} #{mixer.mixerNumber}</p>
+                              <p className="text-xs text-muted-foreground">{mixer.mixerType}</p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className={cn("gap-1", status.color)}>
+                            {status.icon}
+                            {status.label}
+                          </Badge>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Циклы</span>
+                            <span className="font-medium">
+                              {mixer.totalCycles.toLocaleString()} / {mixer.maxCyclesBeforeMaintenance.toLocaleString()}
+                            </span>
+                          </div>
+                          
+                          <Progress 
+                            value={cyclePercentage} 
+                            className={cn("h-2", getCycleColor(cyclePercentage))}
+                          />
+                          
+                          {mixer.lastMaintenanceDate && (
+                            <p className="text-xs text-muted-foreground">
+                              Последнее ТО: {new Date(mixer.lastMaintenanceDate).toLocaleDateString('ru-RU')}
+                            </p>
+                          )}
+                          
+                          {mixer.notes && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {mixer.notes}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div className="flex gap-2 mt-3">
+                          <Select
+                            value={mixer.status}
+                            onValueChange={(value) => handleStatusChange(mixer.id, value as MixerStatus)}
+                          >
+                            <SelectTrigger className="flex-1 h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(statusConfig).map(([key, config]) => (
+                                <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2"
+                            onClick={() => {
+                              setSelectedMixerId(mixer.id);
+                              setIsMaintenanceDialogOpen(true);
+                            }}
+                          >
+                            <Wrench className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleEdit(mixer)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleDelete(mixer.id)}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        if (!open) closeDialog();
+        else setIsDialogOpen(true);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? "Редактировать миксер" : "Новый миксер"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Автомат *</Label>
               <Select
-                value={formData.mixerType}
-                onValueChange={(v) => setFormData({ ...formData, mixerType: v as MixerType })}
+                value={formData.machineId ? String(formData.machineId) : ""}
+                onValueChange={(value) => setFormData({ ...formData, machineId: parseInt(value) })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Выберите автомат" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(mixerTypeConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      <span className="flex items-center gap-2">
-                        <span className={config.color}>{config.icon}</span>
-                        {config.label}
-                      </span>
+                  {machines.map(machine => (
+                    <SelectItem key={machine.id} value={String(machine.id)}>
+                      {machine.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-
-            <div>
-              <label className="text-sm font-medium">Автомат</label>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Тип миксера</Label>
+                <Select
+                  value={formData.mixerType}
+                  onValueChange={(value) => setFormData({ ...formData, mixerType: value as MixerType })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(mixerTypeConfig).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Номер миксера</Label>
+                <Input
+                  type="number"
+                  value={formData.mixerNumber}
+                  onChange={(e) => setFormData({ ...formData, mixerNumber: parseInt(e.target.value) || 1 })}
+                  min={1}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Статус</Label>
               <Select
-                value={formData.machineId.toString()}
-                onValueChange={(v) => setFormData({ ...formData, machineId: parseInt(v) })}
+                value={formData.status}
+                onValueChange={(value) => setFormData({ ...formData, status: value as MixerStatus })}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1">Parus F4</SelectItem>
-                  <SelectItem value="2">Mega Planet B1</SelectItem>
+                  {Object.entries(statusConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-
-            <div>
-              <label className="text-sm font-medium">Макс. циклов до обслуживания</label>
-              <Input
-                type="number"
-                value={formData.maxCycles}
-                onChange={(e) => setFormData({ ...formData, maxCycles: parseInt(e.target.value) })}
-              />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Текущие циклы</Label>
+                <Input
+                  type="number"
+                  value={formData.totalCycles}
+                  onChange={(e) => setFormData({ ...formData, totalCycles: parseInt(e.target.value) || 0 })}
+                  min={0}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Макс. циклов до ТО</Label>
+                <Input
+                  type="number"
+                  value={formData.maxCyclesBeforeMaintenance}
+                  onChange={(e) => setFormData({ ...formData, maxCyclesBeforeMaintenance: parseInt(e.target.value) || 10000 })}
+                  min={1}
+                />
+              </div>
             </div>
-
-            <div>
-              <label className="text-sm font-medium">Примечания</label>
-              <Input
+            
+            <div className="space-y-2">
+              <Label>Примечания</Label>
+              <Textarea
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Дополнительная информация..."
+                placeholder="Дополнительная информация"
+                rows={2}
               />
             </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-              Отмена
+            
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingId ? "Сохранить" : "Добавить"}
             </Button>
-            <Button onClick={handleAddMixer} disabled={!formData.name}>
-              Добавить
-            </Button>
-          </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -706,118 +646,42 @@ export default function MixersPage() {
       <Dialog open={isMaintenanceDialogOpen} onOpenChange={setIsMaintenanceDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Выполнить обслуживание</DialogTitle>
+            <DialogTitle>Записать обслуживание</DialogTitle>
           </DialogHeader>
           
           {selectedMixer && (
             <div className="space-y-4">
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <p className="font-medium">{selectedMixer.name}</p>
+              <div className="p-4 rounded-lg bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  {mixerTypeConfig[selectedMixer.mixerType as MixerType]?.icon || <Settings2 className="h-4 w-4" />}
+                  <span className="font-medium">
+                    {mixerTypeConfig[selectedMixer.mixerType as MixerType]?.label || selectedMixer.mixerType} #{selectedMixer.mixerNumber}
+                  </span>
+                </div>
                 <p className="text-sm text-muted-foreground">
-                  {selectedMixer.machineName} • {selectedMixer.currentCycles.toLocaleString()} циклов
+                  {machines.find(m => m.id === selectedMixer.machineId)?.name}
                 </p>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-sm">Текущие циклы:</span>
+                  <span className="font-medium">{selectedMixer.totalCycles.toLocaleString()}</span>
+                </div>
               </div>
-
-              <div>
-                <label className="text-sm font-medium">Тип обслуживания</label>
-                <Select
-                  value={maintenanceForm.maintenanceType}
-                  onValueChange={(v) => setMaintenanceForm({ ...maintenanceForm, maintenanceType: v as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(maintenanceTypeConfig).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>
-                        <span className={config.color}>{config.label}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Выполнил</label>
-                <Input
-                  value={maintenanceForm.performedBy}
-                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, performedBy: e.target.value })}
-                  placeholder="ФИО сотрудника"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium">Примечания</label>
-                <Input
-                  value={maintenanceForm.notes}
-                  onChange={(e) => setMaintenanceForm({ ...maintenanceForm, notes: e.target.value })}
-                  placeholder="Что было сделано..."
-                />
-              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                Обслуживание сбросит счётчик циклов и установит статус "Работает".
+              </p>
             </div>
           )}
-
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsMaintenanceDialogOpen(false)}>
               Отмена
             </Button>
-            <Button onClick={handlePerformMaintenance} disabled={!maintenanceForm.performedBy}>
-              <Wrench className="h-4 w-4 mr-2" />
-              Выполнить
+            <Button onClick={handleMaintenance} disabled={maintenanceMutation.isPending}>
+              {maintenanceMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Записать ТО
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* History Dialog */}
-      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>История обслуживания</DialogTitle>
-          </DialogHeader>
-          
-          <div className="max-h-[400px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Дата</TableHead>
-                  <TableHead>Миксер</TableHead>
-                  <TableHead>Тип</TableHead>
-                  <TableHead>Выполнил</TableHead>
-                  <TableHead>Примечания</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {maintenanceLogs.map((log) => {
-                  const typeConfig = maintenanceTypeConfig[log.maintenanceType];
-                  return (
-                    <TableRow key={log.id}>
-                      <TableCell className="text-sm">
-                        {new Date(log.performedAt).toLocaleString('ru-RU')}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{log.mixerName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {log.cyclesAtMaintenance.toLocaleString()} циклов
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={typeConfig.color}>
-                          {typeConfig.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{log.performedBy}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {log.notes || '-'}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
         </DialogContent>
       </Dialog>
     </AdminLayout>

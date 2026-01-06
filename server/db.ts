@@ -12,7 +12,10 @@ import {
   InsertPointsTransaction, pointsTransactions, PointsTransaction,
   InsertDailyQuest, dailyQuests, DailyQuest,
   InsertUserDailyQuestProgress, userDailyQuestProgress, UserDailyQuestProgress,
-  InsertEmployee, employees, Employee
+  InsertEmployee, employees, Employee,
+  InsertIngredient, ingredients, Ingredient,
+  InsertBunker, bunkers, Bunker,
+  InsertMixer, mixers, Mixer
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1279,5 +1282,282 @@ export async function deleteMachine(id: number): Promise<void> {
     await db.delete(machines).where(eq(machines.id, id));
   } catch (error) {
     console.error("[Database] Error deleting machine:", error);
+  }
+}
+
+
+// ==================== INGREDIENTS CRUD QUERIES ====================
+
+export async function getAllIngredients(): Promise<Ingredient[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    return await db.select().from(ingredients).orderBy(desc(ingredients.createdAt));
+  } catch (error) {
+    console.error("[Database] Error getting ingredients:", error);
+    return [];
+  }
+}
+
+export async function getIngredientById(id: number): Promise<Ingredient | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const [ingredient] = await db.select().from(ingredients).where(eq(ingredients.id, id));
+    return ingredient || null;
+  } catch (error) {
+    console.error("[Database] Error getting ingredient:", error);
+    return null;
+  }
+}
+
+export async function createIngredient(data: Omit<InsertIngredient, 'id' | 'createdAt' | 'updatedAt'>): Promise<Ingredient | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const result = await db.insert(ingredients).values(data as InsertIngredient);
+    const insertId = result[0].insertId;
+    const [ingredient] = await db.select().from(ingredients).where(eq(ingredients.id, insertId));
+    return ingredient || null;
+  } catch (error) {
+    console.error("[Database] Error creating ingredient:", error);
+    return null;
+  }
+}
+
+export async function updateIngredient(id: number, data: Partial<InsertIngredient>): Promise<Ingredient | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(ingredients).set(data).where(eq(ingredients.id, id));
+    const [ingredient] = await db.select().from(ingredients).where(eq(ingredients.id, id));
+    return ingredient || null;
+  } catch (error) {
+    console.error("[Database] Error updating ingredient:", error);
+    return null;
+  }
+}
+
+export async function deleteIngredient(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  try {
+    await db.delete(ingredients).where(eq(ingredients.id, id));
+  } catch (error) {
+    console.error("[Database] Error deleting ingredient:", error);
+  }
+}
+
+// ==================== BUNKERS CRUD QUERIES ====================
+
+export async function getAllBunkers(): Promise<Bunker[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    return await db.select().from(bunkers).orderBy(desc(bunkers.createdAt));
+  } catch (error) {
+    console.error("[Database] Error getting bunkers:", error);
+    return [];
+  }
+}
+
+export async function getBunkerById(id: number): Promise<Bunker | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const [bunker] = await db.select().from(bunkers).where(eq(bunkers.id, id));
+    return bunker || null;
+  } catch (error) {
+    console.error("[Database] Error getting bunker:", error);
+    return null;
+  }
+}
+
+export async function getBunkersByMachineId(machineId: number): Promise<Bunker[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    return await db.select().from(bunkers).where(eq(bunkers.machineId, machineId)).orderBy(bunkers.bunkerNumber);
+  } catch (error) {
+    console.error("[Database] Error getting bunkers by machine:", error);
+    return [];
+  }
+}
+
+export async function createBunker(data: Omit<InsertBunker, 'id' | 'createdAt' | 'updatedAt'>): Promise<Bunker | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const result = await db.insert(bunkers).values(data as InsertBunker);
+    const insertId = result[0].insertId;
+    const [bunker] = await db.select().from(bunkers).where(eq(bunkers.id, insertId));
+    return bunker || null;
+  } catch (error) {
+    console.error("[Database] Error creating bunker:", error);
+    return null;
+  }
+}
+
+export async function updateBunker(id: number, data: Partial<InsertBunker>): Promise<Bunker | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(bunkers).set(data).where(eq(bunkers.id, id));
+    const [bunker] = await db.select().from(bunkers).where(eq(bunkers.id, id));
+    return bunker || null;
+  } catch (error) {
+    console.error("[Database] Error updating bunker:", error);
+    return null;
+  }
+}
+
+export async function deleteBunker(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  try {
+    await db.delete(bunkers).where(eq(bunkers.id, id));
+  } catch (error) {
+    console.error("[Database] Error deleting bunker:", error);
+  }
+}
+
+export async function refillBunker(id: number, newLevel: number, employeeId: number): Promise<Bunker | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(bunkers).set({
+      currentLevel: newLevel,
+      lastRefillDate: new Date(),
+      lastRefillBy: employeeId,
+    }).where(eq(bunkers.id, id));
+    const [bunker] = await db.select().from(bunkers).where(eq(bunkers.id, id));
+    return bunker || null;
+  } catch (error) {
+    console.error("[Database] Error refilling bunker:", error);
+    return null;
+  }
+}
+
+// ==================== MIXERS CRUD QUERIES ====================
+
+export async function getAllMixers(): Promise<Mixer[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    return await db.select().from(mixers).orderBy(desc(mixers.createdAt));
+  } catch (error) {
+    console.error("[Database] Error getting mixers:", error);
+    return [];
+  }
+}
+
+export async function getMixerById(id: number): Promise<Mixer | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const [mixer] = await db.select().from(mixers).where(eq(mixers.id, id));
+    return mixer || null;
+  } catch (error) {
+    console.error("[Database] Error getting mixer:", error);
+    return null;
+  }
+}
+
+export async function getMixersByMachineId(machineId: number): Promise<Mixer[]> {
+  const db = await getDb();
+  if (!db) return [];
+  
+  try {
+    return await db.select().from(mixers).where(eq(mixers.machineId, machineId)).orderBy(mixers.mixerNumber);
+  } catch (error) {
+    console.error("[Database] Error getting mixers by machine:", error);
+    return [];
+  }
+}
+
+export async function createMixer(data: Omit<InsertMixer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Mixer | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    const result = await db.insert(mixers).values(data as InsertMixer);
+    const insertId = result[0].insertId;
+    const [mixer] = await db.select().from(mixers).where(eq(mixers.id, insertId));
+    return mixer || null;
+  } catch (error) {
+    console.error("[Database] Error creating mixer:", error);
+    return null;
+  }
+}
+
+export async function updateMixer(id: number, data: Partial<InsertMixer>): Promise<Mixer | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(mixers).set(data).where(eq(mixers.id, id));
+    const [mixer] = await db.select().from(mixers).where(eq(mixers.id, id));
+    return mixer || null;
+  } catch (error) {
+    console.error("[Database] Error updating mixer:", error);
+    return null;
+  }
+}
+
+export async function deleteMixer(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  
+  try {
+    await db.delete(mixers).where(eq(mixers.id, id));
+  } catch (error) {
+    console.error("[Database] Error deleting mixer:", error);
+  }
+}
+
+export async function updateMixerStatus(id: number, status: Mixer['status']): Promise<Mixer | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(mixers).set({ status }).where(eq(mixers.id, id));
+    const [mixer] = await db.select().from(mixers).where(eq(mixers.id, id));
+    return mixer || null;
+  } catch (error) {
+    console.error("[Database] Error updating mixer status:", error);
+    return null;
+  }
+}
+
+export async function recordMixerMaintenance(id: number, employeeId: number): Promise<Mixer | null> {
+  const db = await getDb();
+  if (!db) return null;
+  
+  try {
+    await db.update(mixers).set({
+      status: 'operational',
+      lastMaintenanceDate: new Date(),
+      lastMaintenanceBy: employeeId,
+      totalCycles: 0, // Reset cycles after maintenance
+    }).where(eq(mixers.id, id));
+    const [mixer] = await db.select().from(mixers).where(eq(mixers.id, id));
+    return mixer || null;
+  } catch (error) {
+    console.error("[Database] Error recording mixer maintenance:", error);
+    return null;
   }
 }

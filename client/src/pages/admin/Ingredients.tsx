@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,21 +20,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, Coffee, Package, AlertTriangle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Plus, Pencil, Trash2, Package, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 
-type Ingredient = {
-  id: number;
-  name: string;
-  category: "coffee" | "milk" | "sugar" | "syrup" | "powder" | "water" | "other";
-  unit: string;
-  currentStock: number;
-  minStock: number;
-  maxStock: number;
-  costPerUnit: number;
-  supplier: string | null;
-};
+type IngredientCategory = "coffee" | "milk" | "sugar" | "syrup" | "powder" | "water" | "other";
 
 const categoryLabels: Record<string, string> = {
   coffee: "Кофе",
@@ -55,89 +47,113 @@ const categoryIcons: Record<string, string> = {
   other: "📦",
 };
 
-// Mock data for now
-const mockIngredients: Ingredient[] = [
-  { id: 1, name: "Арабика 100%", category: "coffee", unit: "кг", currentStock: 15, minStock: 5, maxStock: 50, costPerUnit: 45000, supplier: "CoffeeTrade" },
-  { id: 2, name: "Робуста", category: "coffee", unit: "кг", currentStock: 8, minStock: 5, maxStock: 30, costPerUnit: 35000, supplier: "CoffeeTrade" },
-  { id: 3, name: "Молоко 3.2%", category: "milk", unit: "л", currentStock: 25, minStock: 10, maxStock: 100, costPerUnit: 12000, supplier: "Лактис" },
-  { id: 4, name: "Сливки 10%", category: "milk", unit: "л", currentStock: 5, minStock: 5, maxStock: 30, costPerUnit: 18000, supplier: "Лактис" },
-  { id: 5, name: "Сахар белый", category: "sugar", unit: "кг", currentStock: 20, minStock: 10, maxStock: 50, costPerUnit: 8000, supplier: null },
-  { id: 6, name: "Ванильный сироп", category: "syrup", unit: "л", currentStock: 3, minStock: 2, maxStock: 20, costPerUnit: 25000, supplier: "Monin" },
-  { id: 7, name: "Карамельный сироп", category: "syrup", unit: "л", currentStock: 4, minStock: 2, maxStock: 20, costPerUnit: 25000, supplier: "Monin" },
-  { id: 8, name: "Какао порошок", category: "powder", unit: "кг", currentStock: 2, minStock: 3, maxStock: 15, costPerUnit: 55000, supplier: null },
-];
-
 export default function IngredientsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
-  const [ingredients, setIngredients] = useState<Ingredient[]>(mockIngredients);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [formData, setFormData] = useState({
     name: "",
-    category: "coffee" as Ingredient["category"],
-    unit: "кг",
-    currentStock: 0,
-    minStock: 0,
-    maxStock: 100,
+    category: "coffee" as IngredientCategory,
+    unit: "g",
     costPerUnit: 0,
-    supplier: "",
+    minStockLevel: 100,
+    description: "",
+    isActive: true,
+  });
+
+  // Fetch ingredients from API
+  const { data: ingredients = [], isLoading, refetch } = trpc.admin.ingredients.list.useQuery();
+  
+  // Mutations
+  const createMutation = trpc.admin.ingredients.create.useMutation({
+    onSuccess: () => {
+      toast.success("Ингредиент добавлен");
+      refetch();
+      closeDialog();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const updateMutation = trpc.admin.ingredients.update.useMutation({
+    onSuccess: () => {
+      toast.success("Ингредиент обновлён");
+      refetch();
+      closeDialog();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = trpc.admin.ingredients.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Ингредиент удалён");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
   });
 
   const resetForm = () => {
     setFormData({
       name: "",
       category: "coffee",
-      unit: "кг",
-      currentStock: 0,
-      minStock: 0,
-      maxStock: 100,
+      unit: "g",
       costPerUnit: 0,
-      supplier: "",
+      minStockLevel: 100,
+      description: "",
+      isActive: true,
     });
   };
 
-  const handleEdit = (ingredient: Ingredient) => {
-    setEditingIngredient(ingredient);
+  const closeDialog = () => {
+    setIsDialogOpen(false);
+    setEditingId(null);
+    resetForm();
+  };
+
+  const handleEdit = (ingredient: typeof ingredients[0]) => {
+    setEditingId(ingredient.id);
     setFormData({
       name: ingredient.name,
-      category: ingredient.category,
+      category: ingredient.category as IngredientCategory,
       unit: ingredient.unit,
-      currentStock: ingredient.currentStock,
-      minStock: ingredient.minStock,
-      maxStock: ingredient.maxStock,
       costPerUnit: ingredient.costPerUnit,
-      supplier: ingredient.supplier || "",
+      minStockLevel: ingredient.minStockLevel,
+      description: ingredient.description || "",
+      isActive: ingredient.isActive,
     });
     setIsDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingIngredient) {
-      setIngredients(ingredients.map(i => 
-        i.id === editingIngredient.id 
-          ? { ...i, ...formData, supplier: formData.supplier || null }
-          : i
-      ));
-      toast.success("Ингредиент обновлён");
-    } else {
-      const newIngredient: Ingredient = {
-        id: Math.max(...ingredients.map(i => i.id)) + 1,
-        ...formData,
-        supplier: formData.supplier || null,
-      };
-      setIngredients([...ingredients, newIngredient]);
-      toast.success("Ингредиент добавлен");
+    
+    if (!formData.name.trim()) {
+      toast.error("Введите название ингредиента");
+      return;
     }
-    setIsDialogOpen(false);
-    setEditingIngredient(null);
-    resetForm();
+
+    if (editingId) {
+      updateMutation.mutate({
+        id: editingId,
+        ...formData,
+        description: formData.description || undefined,
+      });
+    } else {
+      createMutation.mutate({
+        ...formData,
+        description: formData.description || undefined,
+      });
+    }
   };
 
   const handleDelete = (id: number) => {
     if (confirm("Удалить ингредиент?")) {
-      setIngredients(ingredients.filter(i => i.id !== id));
-      toast.success("Ингредиент удалён");
+      deleteMutation.mutate({ id });
     }
   };
 
@@ -145,7 +161,8 @@ export default function IngredientsPage() {
     ? ingredients 
     : ingredients.filter(i => i.category === filterCategory);
 
-  const lowStockCount = ingredients.filter(i => i.currentStock <= i.minStock).length;
+  const lowStockCount = ingredients.filter(i => !i.isActive).length;
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
     <AdminLayout title="Ингредиенты" description="Управление запасами ингредиентов">
@@ -168,18 +185,15 @@ export default function IngredientsPage() {
           {lowStockCount > 0 && (
             <Badge variant="destructive" className="gap-1">
               <AlertTriangle className="h-3 w-3" />
-              {lowStockCount} низкий запас
+              {lowStockCount} неактивных
             </Badge>
           )}
 
           <div className="flex-1" />
 
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              setEditingIngredient(null);
-              resetForm();
-            }
+            if (!open) closeDialog();
+            else setIsDialogOpen(true);
           }}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -190,7 +204,7 @@ export default function IngredientsPage() {
             <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingIngredient ? "Редактировать ингредиент" : "Новый ингредиент"}
+                  {editingId ? "Редактировать ингредиент" : "Новый ингредиент"}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -199,6 +213,7 @@ export default function IngredientsPage() {
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Арабика 100%"
                     required
                   />
                 </div>
@@ -207,7 +222,7 @@ export default function IngredientsPage() {
                     <Label>Категория</Label>
                     <Select
                       value={formData.category}
-                      onValueChange={(value) => setFormData({ ...formData, category: value as Ingredient["category"] })}
+                      onValueChange={(value) => setFormData({ ...formData, category: value as IngredientCategory })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -220,7 +235,7 @@ export default function IngredientsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Единица</Label>
+                    <Label>Единица измерения</Label>
                     <Select
                       value={formData.unit}
                       onValueChange={(value) => setFormData({ ...formData, unit: value })}
@@ -229,80 +244,83 @@ export default function IngredientsPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="кг">кг</SelectItem>
-                        <SelectItem value="л">л</SelectItem>
-                        <SelectItem value="шт">шт</SelectItem>
-                        <SelectItem value="г">г</SelectItem>
-                        <SelectItem value="мл">мл</SelectItem>
+                        <SelectItem value="g">грамм (г)</SelectItem>
+                        <SelectItem value="kg">килограмм (кг)</SelectItem>
+                        <SelectItem value="ml">миллилитр (мл)</SelectItem>
+                        <SelectItem value="l">литр (л)</SelectItem>
+                        <SelectItem value="pcs">штук (шт)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Текущий запас</Label>
+                    <Label>Цена за единицу (UZS)</Label>
                     <Input
                       type="number"
-                      value={formData.currentStock}
-                      onChange={(e) => setFormData({ ...formData, currentStock: parseFloat(e.target.value) || 0 })}
+                      value={formData.costPerUnit}
+                      onChange={(e) => setFormData({ ...formData, costPerUnit: parseInt(e.target.value) || 0 })}
+                      min={0}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Мин. запас</Label>
+                    <Label>Мин. уровень запаса</Label>
                     <Input
                       type="number"
-                      value={formData.minStock}
-                      onChange={(e) => setFormData({ ...formData, minStock: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Макс. запас</Label>
-                    <Input
-                      type="number"
-                      value={formData.maxStock}
-                      onChange={(e) => setFormData({ ...formData, maxStock: parseFloat(e.target.value) || 0 })}
+                      value={formData.minStockLevel}
+                      onChange={(e) => setFormData({ ...formData, minStockLevel: parseInt(e.target.value) || 0 })}
+                      min={0}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Цена за единицу (UZS)</Label>
-                  <Input
-                    type="number"
-                    value={formData.costPerUnit}
-                    onChange={(e) => setFormData({ ...formData, costPerUnit: parseInt(e.target.value) || 0 })}
+                  <Label>Описание</Label>
+                  <Textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Дополнительная информация об ингредиенте"
+                    rows={3}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Поставщик</Label>
-                  <Input
-                    value={formData.supplier}
-                    onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                    placeholder="Название поставщика"
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="isActive">Активен</Label>
+                  <Switch
+                    id="isActive"
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
                   />
                 </div>
-                <Button type="submit" className="w-full">
-                  {editingIngredient ? "Сохранить" : "Добавить"}
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingId ? "Сохранить" : "Добавить"}
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
-        {filteredIngredients.length === 0 ? (
+        {isLoading ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Loader2 className="h-12 w-12 mx-auto text-muted-foreground mb-4 animate-spin" />
+              <p className="text-muted-foreground">Загрузка...</p>
+            </CardContent>
+          </Card>
+        ) : filteredIngredients.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground">Нет ингредиентов</p>
+              <p className="text-sm text-muted-foreground mt-1">Добавьте первый ингредиент</p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredIngredients.map((ingredient) => {
-              const isLowStock = ingredient.currentStock <= ingredient.minStock;
-              const stockPercent = Math.min((ingredient.currentStock / ingredient.maxStock) * 100, 100);
+              const isInactive = !ingredient.isActive;
               
               return (
-                <Card key={ingredient.id} className={isLowStock ? "border-destructive" : ""}>
+                <Card key={ingredient.id} className={isInactive ? "border-muted opacity-60" : ""}>
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -316,7 +334,12 @@ export default function IngredientsPage() {
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(ingredient)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(ingredient.id)}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDelete(ingredient.id)}
+                          disabled={deleteMutation.isPending}
+                        >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -324,28 +347,27 @@ export default function IngredientsPage() {
 
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span>Запас</span>
-                        <span className={isLowStock ? "text-destructive font-medium" : ""}>
-                          {ingredient.currentStock} / {ingredient.maxStock} {ingredient.unit}
-                        </span>
+                        <span>Единица</span>
+                        <span>{ingredient.unit}</span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all ${isLowStock ? "bg-destructive" : "bg-primary"}`}
-                          style={{ width: `${stockPercent}%` }}
-                        />
+                      <div className="flex justify-between text-sm">
+                        <span>Мин. запас</span>
+                        <span>{ingredient.minStockLevel}</span>
                       </div>
-                      {isLowStock && (
-                        <div className="flex items-center gap-1 text-xs text-destructive">
-                          <AlertTriangle className="h-3 w-3" />
-                          Низкий запас (мин: {ingredient.minStock} {ingredient.unit})
-                        </div>
+                      {ingredient.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {ingredient.description}
+                        </p>
                       )}
                     </div>
 
-                    <div className="mt-3 pt-3 border-t flex justify-between text-sm text-muted-foreground">
-                      <span>{ingredient.costPerUnit.toLocaleString()} UZS/{ingredient.unit}</span>
-                      {ingredient.supplier && <span>{ingredient.supplier}</span>}
+                    <div className="mt-3 pt-3 border-t flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">
+                        {ingredient.costPerUnit.toLocaleString()} UZS/{ingredient.unit}
+                      </span>
+                      <Badge variant={ingredient.isActive ? "default" : "secondary"}>
+                        {ingredient.isActive ? "Активен" : "Неактивен"}
+                      </Badge>
                     </div>
                   </CardContent>
                 </Card>
