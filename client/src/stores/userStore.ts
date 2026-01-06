@@ -11,6 +11,7 @@ export interface UserProfile {
   email?: string;
   language: 'ru' | 'uz' | 'en';
   isVerified: boolean;
+  role?: 'customer' | 'employee' | 'admin';
 }
 
 export interface LoyaltyInfo {

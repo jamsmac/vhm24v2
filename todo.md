@@ -632,3 +632,21 @@
 - [x] Add status filter (operational, needs_cleaning, needs_repair, replaced)
 - [x] Add machine filter dropdown
 - [x] Implement real-time filtering logic
+
+
+## Admin Access Control & Navigation
+
+### Admin Panel Access
+- [x] Add "Админ-панель" button in profile page for admin/employee users
+- [x] Add role field to UserProfile type in userStore
+- [x] Add role-based route protection (AdminRoute component)
+- [x] Allow both admin and employee roles to access admin panel
+- [x] Redirect non-staff users to home page
+- [x] Hide admin panel link from regular customers
+
+### Back Navigation
+- [x] AdminLayout has "Перейти на сайт" button to return to main app
+- [x] All profile pages use useTelegramBackButton hook
+- [x] DrinkDetail page has back button
+- [x] Leaderboard, Achievements, DailyQuests, PointsHistory pages have back buttons
+- [x] Navigation flows work correctly

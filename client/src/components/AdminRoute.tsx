@@ -17,12 +17,14 @@ export default function AdminRoute({ children }: AdminRouteProps) {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
+  const isStaff = user && ((user as any).role === 'admin' || (user as any).role === 'employee');
+
   useEffect(() => {
-    if (!loading && (!user || user.role !== 'admin')) {
-      // Redirect non-admin users to home
+    if (!loading && !isStaff) {
+      // Redirect non-staff users to home with toast message
       setLocation('/');
     }
-  }, [user, loading, setLocation]);
+  }, [user, loading, isStaff, setLocation]);
 
   // Show loading while checking auth
   if (loading) {
@@ -33,8 +35,8 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     );
   }
 
-  // Show nothing if not admin (will redirect)
-  if (!user || user.role !== 'admin') {
+  // Show nothing if not staff (will redirect)
+  if (!isStaff) {
     return null;
   }
 

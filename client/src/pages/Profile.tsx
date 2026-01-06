@@ -49,7 +49,18 @@ export default function Profile() {
   const points = loyalty?.pointsBalance || mockUser.pointsBalance;
   const orderStats = getOrderStats();
 
+  // Check if user is admin or employee
+  const isStaff = profile?.role === 'admin' || profile?.role === 'employee';
+
   const menuItems = [
+    // Admin panel button (only for staff)
+    ...(isStaff ? [{
+      icon: Settings,
+      label: 'Админ-панель',
+      href: '/admin',
+      color: 'text-purple-600',
+      highlight: true
+    }] : []),
     { 
       icon: Heart, 
       label: 'Избранное', 
