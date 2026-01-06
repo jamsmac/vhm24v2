@@ -16,7 +16,10 @@ import {
   InsertIngredient, ingredients, Ingredient,
   InsertBunker, bunkers, Bunker,
   InsertMixer, mixers, Mixer,
-  stockMovements
+  stockMovements,
+  InsertMachineAssignment, machineAssignments, MachineAssignment,
+  InsertWorkLog, workLogs, WorkLog,
+  InsertEmployeePerformance, employeePerformance, EmployeePerformance
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1650,4 +1653,339 @@ export async function bulkUpdateMixerStatus(ids: number[], status: Mixer['status
   } catch (error) {
     console.error("[Database] Error bulk updating mixer status:", error);
   }
+}
+
+
+// ==================== MACHINE ASSIGNMENT QUERIES ====================
+
+export async function createMachineAssignment(assignment: InsertMachineAssignment): Promise<MachineAssignment | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [result] = await db.insert(machineAssignments).values(assignment);
+  if (!result.insertId) return null;
+
+  return await getMachineAssignmentById(Number(result.insertId));
+}
+
+export async function getMachineAssignmentById(id: number): Promise<MachineAssignment | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [assignment] = await db.select().from(machineAssignments).where(eq(machineAssignments.id, id));
+  return assignment || null;
+}
+
+export async function getAllMachineAssignments(): Promise<MachineAssignment[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(machineAssignments).orderBy(desc(machineAssignments.createdAt));
+}
+
+export async function getActiveMachineAssignments(): Promise<MachineAssignment[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(machineAssignments)
+    .where(eq(machineAssignments.status, 'active'))
+    .orderBy(desc(machineAssignments.startDate));
+}
+
+export async function getMachineAssignmentsByEmployee(employeeId: number): Promise<MachineAssignment[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(machineAssignments)
+    .where(eq(machineAssignments.employeeId, employeeId))
+    .orderBy(desc(machineAssignments.startDate));
+}
+
+export async function getActiveMachineAssignmentsByEmployee(employeeId: number): Promise<MachineAssignment[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(machineAssignments)
+    .where(and(
+      eq(machineAssignments.employeeId, employeeId),
+      eq(machineAssignments.status, 'active')
+    ))
+    .orderBy(desc(machineAssignments.startDate));
+}
+
+export async function getMachineAssignmentsByMachine(machineId: number): Promise<MachineAssignment[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(machineAssignments)
+    .where(eq(machineAssignments.machineId, machineId))
+    .orderBy(desc(machineAssignments.startDate));
+}
+
+export async function getActiveMachineAssignmentsByMachine(machineId: number): Promise<MachineAssignment[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(machineAssignments)
+    .where(and(
+      eq(machineAssignments.machineId, machineId),
+      eq(machineAssignments.status, 'active')
+    ))
+    .orderBy(desc(machineAssignments.startDate));
+}
+
+export async function updateMachineAssignment(id: number, updates: Partial<InsertMachineAssignment>): Promise<MachineAssignment | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  await db.update(machineAssignments).set(updates).where(eq(machineAssignments.id, id));
+  return await getMachineAssignmentById(id);
+}
+
+export async function deactivateMachineAssignment(id: number): Promise<MachineAssignment | null> {
+  return await updateMachineAssignment(id, { 
+    status: 'inactive',
+    endDate: new Date()
+  });
+}
+
+export async function deleteMachineAssignment(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.delete(machineAssignments).where(eq(machineAssignments.id, id));
+}
+
+// ==================== WORK LOG QUERIES ====================
+
+export async function createWorkLog(workLog: InsertWorkLog): Promise<WorkLog | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [result] = await db.insert(workLogs).values(workLog);
+  if (!result.insertId) return null;
+
+  return await getWorkLogById(Number(result.insertId));
+}
+
+export async function getWorkLogById(id: number): Promise<WorkLog | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [log] = await db.select().from(workLogs).where(eq(workLogs.id, id));
+  return log || null;
+}
+
+export async function getAllWorkLogs(): Promise<WorkLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(workLogs).orderBy(desc(workLogs.startTime));
+}
+
+export async function getWorkLogsByEmployee(employeeId: number): Promise<WorkLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(workLogs)
+    .where(eq(workLogs.employeeId, employeeId))
+    .orderBy(desc(workLogs.startTime));
+}
+
+export async function getWorkLogsByMachine(machineId: number): Promise<WorkLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(workLogs)
+    .where(eq(workLogs.machineId, machineId))
+    .orderBy(desc(workLogs.startTime));
+}
+
+export async function getWorkLogsByDateRange(startDate: Date, endDate: Date): Promise<WorkLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(workLogs)
+    .where(and(
+      gte(workLogs.startTime, startDate),
+      lte(workLogs.startTime, endDate)
+    ))
+    .orderBy(desc(workLogs.startTime));
+}
+
+export async function getInProgressWorkLogs(): Promise<WorkLog[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(workLogs)
+    .where(eq(workLogs.status, 'in_progress'))
+    .orderBy(desc(workLogs.startTime));
+}
+
+export async function completeWorkLog(id: number, endTime: Date, notes?: string, rating?: number): Promise<WorkLog | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const log = await getWorkLogById(id);
+  if (!log) return null;
+
+  const duration = Math.floor((endTime.getTime() - new Date(log.startTime).getTime()) / 60000); // minutes
+
+  await db.update(workLogs).set({
+    status: 'completed',
+    endTime,
+    duration,
+    notes: notes || log.notes,
+    rating: rating || log.rating
+  }).where(eq(workLogs.id, id));
+
+  // Update employee performance metrics
+  await updateEmployeePerformanceOnWorkComplete(log.employeeId);
+
+  return await getWorkLogById(id);
+}
+
+export async function cancelWorkLog(id: number, notes?: string): Promise<WorkLog | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  await db.update(workLogs).set({
+    status: 'cancelled',
+    endTime: new Date(),
+    notes
+  }).where(eq(workLogs.id, id));
+
+  return await getWorkLogById(id);
+}
+
+export async function updateWorkLog(id: number, updates: Partial<InsertWorkLog>): Promise<WorkLog | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  await db.update(workLogs).set(updates).where(eq(workLogs.id, id));
+  return await getWorkLogById(id);
+}
+
+export async function deleteWorkLog(id: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db.delete(workLogs).where(eq(workLogs.id, id));
+}
+
+// ==================== EMPLOYEE PERFORMANCE QUERIES ====================
+
+export async function getEmployeePerformance(employeeId: number): Promise<EmployeePerformance | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [performance] = await db.select().from(employeePerformance)
+    .where(eq(employeePerformance.employeeId, employeeId));
+  
+  return performance || null;
+}
+
+export async function getAllEmployeePerformance(): Promise<EmployeePerformance[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  return await db.select().from(employeePerformance)
+    .orderBy(desc(employeePerformance.totalWorkHours));
+}
+
+export async function initializeEmployeePerformance(employeeId: number): Promise<EmployeePerformance | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const existing = await getEmployeePerformance(employeeId);
+  if (existing) return existing;
+
+  const [result] = await db.insert(employeePerformance).values({
+    employeeId,
+    totalWorkLogs: 0,
+    totalWorkHours: 0,
+    completedTasks: 0,
+    cancelledTasks: 0,
+    averageRating: "0.00",
+    issuesReported: 0,
+    issuesResolved: 0,
+    activeMachines: 0,
+    totalMachinesAssigned: 0
+  });
+
+  if (!result.insertId) return null;
+  return await getEmployeePerformance(employeeId);
+}
+
+export async function updateEmployeePerformanceOnWorkComplete(employeeId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  // Ensure performance record exists
+  await initializeEmployeePerformance(employeeId);
+
+  // Get all completed work logs for this employee
+  const completedLogs = await db.select().from(workLogs)
+    .where(and(
+      eq(workLogs.employeeId, employeeId),
+      eq(workLogs.status, 'completed')
+    ));
+
+  const cancelledLogs = await db.select().from(workLogs)
+    .where(and(
+      eq(workLogs.employeeId, employeeId),
+      eq(workLogs.status, 'cancelled')
+    ));
+
+  const totalWorkLogs = completedLogs.length;
+  const totalWorkHours = completedLogs.reduce((sum, log) => sum + (log.duration || 0), 0);
+  
+  const ratedLogs = completedLogs.filter(log => log.rating !== null && log.rating !== undefined);
+  const averageRating = ratedLogs.length > 0
+    ? (ratedLogs.reduce((sum, log) => sum + (log.rating || 0), 0) / ratedLogs.length).toFixed(2)
+    : "0.00";
+
+  const issuesReported = completedLogs.filter(log => {
+    try {
+      const issues = log.issuesFound ? JSON.parse(log.issuesFound) : [];
+      return Array.isArray(issues) && issues.length > 0;
+    } catch {
+      return false;
+    }
+  }).length;
+
+  // Get active machine assignments
+  const activeAssignments = await getActiveMachineAssignmentsByEmployee(employeeId);
+  const allAssignments = await getMachineAssignmentsByEmployee(employeeId);
+
+  const lastLog = completedLogs[0]; // Already ordered by desc
+
+  await db.update(employeePerformance).set({
+    totalWorkLogs,
+    totalWorkHours,
+    completedTasks: completedLogs.length,
+    cancelledTasks: cancelledLogs.length,
+    averageRating,
+    issuesReported,
+    activeMachines: activeAssignments.length,
+    totalMachinesAssigned: allAssignments.length,
+    lastWorkDate: lastLog ? lastLog.endTime : null,
+    lastUpdated: new Date()
+  }).where(eq(employeePerformance.employeeId, employeeId));
+}
+
+export async function updateEmployeePerformanceOnAssignment(employeeId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await initializeEmployeePerformance(employeeId);
+
+  const activeAssignments = await getActiveMachineAssignmentsByEmployee(employeeId);
+  const allAssignments = await getMachineAssignmentsByEmployee(employeeId);
+
+  await db.update(employeePerformance).set({
+    activeMachines: activeAssignments.length,
+    totalMachinesAssigned: allAssignments.length,
+    lastUpdated: new Date()
+  }).where(eq(employeePerformance.employeeId, employeeId));
 }

@@ -29,7 +29,10 @@ import {
   ClipboardCheck,
   Package,
   Settings2,
-  ListTodo
+  ListTodo,
+  UserCheck,
+  ClipboardList,
+  TrendingUp
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +56,9 @@ const navItems = [
 const businessNavItems = [
   { href: "/admin/tasks", icon: ListTodo, label: "Задачи" },
   { href: "/admin/employees", icon: UserCog, label: "Сотрудники" },
+  { href: "/admin/assignments", icon: UserCheck, label: "Назначения" },
+  { href: "/admin/work-logs", icon: ClipboardList, label: "Журнал работ" },
+  { href: "/admin/performance", icon: TrendingUp, label: "Производительность" },
   { href: "/admin/machines", icon: Cpu, label: "Автоматы" },
   { href: "/admin/bunkers", icon: Package, label: "Бункеры" },
   { href: "/admin/mixers", icon: Settings2, label: "Миксеры" },

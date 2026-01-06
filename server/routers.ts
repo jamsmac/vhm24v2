@@ -1096,6 +1096,203 @@ export const appRouter = router({
           return { success: true, count: input.ids.length };
         }),
     }),
+
+    // Machine Assignments
+    machineAssignments: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllMachineAssignments();
+      }),
+
+      active: adminProcedure.query(async () => {
+        return await db.getActiveMachineAssignments();
+      }),
+
+      byEmployee: adminProcedure
+        .input(z.object({ employeeId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getMachineAssignmentsByEmployee(input.employeeId);
+        }),
+
+      activeByEmployee: adminProcedure
+        .input(z.object({ employeeId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getActiveMachineAssignmentsByEmployee(input.employeeId);
+        }),
+
+      byMachine: adminProcedure
+        .input(z.object({ machineId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getMachineAssignmentsByMachine(input.machineId);
+        }),
+
+      activeByMachine: adminProcedure
+        .input(z.object({ machineId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getActiveMachineAssignmentsByMachine(input.machineId);
+        }),
+
+      create: adminProcedure
+        .input(z.object({
+          machineId: z.number(),
+          employeeId: z.number(),
+          assignmentType: z.enum(['primary', 'secondary', 'temporary']).default('primary'),
+          status: z.enum(['active', 'inactive', 'pending']).default('active'),
+          startDate: z.date().optional(),
+          endDate: z.date().optional(),
+          responsibilities: z.string().optional(),
+          notes: z.string().optional(),
+          assignedBy: z.number().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const assignment = await db.createMachineAssignment(input);
+          if (assignment) {
+            await db.updateEmployeePerformanceOnAssignment(input.employeeId);
+          }
+          return assignment;
+        }),
+
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          machineId: z.number().optional(),
+          employeeId: z.number().optional(),
+          assignmentType: z.enum(['primary', 'secondary', 'temporary']).optional(),
+          status: z.enum(['active', 'inactive', 'pending']).optional(),
+          endDate: z.date().optional(),
+          responsibilities: z.string().optional(),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...updates } = input;
+          const assignment = await db.updateMachineAssignment(id, updates);
+          if (assignment && updates.employeeId) {
+            await db.updateEmployeePerformanceOnAssignment(updates.employeeId);
+          }
+          return assignment;
+        }),
+
+      deactivate: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          return await db.deactivateMachineAssignment(input.id);
+        }),
+
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteMachineAssignment(input.id);
+          return { success: true };
+        }),
+    }),
+
+    // Work Logs
+    workLogs: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllWorkLogs();
+      }),
+
+      byEmployee: adminProcedure
+        .input(z.object({ employeeId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getWorkLogsByEmployee(input.employeeId);
+        }),
+
+      byMachine: adminProcedure
+        .input(z.object({ machineId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getWorkLogsByMachine(input.machineId);
+        }),
+
+      byDateRange: adminProcedure
+        .input(z.object({
+          startDate: z.date(),
+          endDate: z.date(),
+        }))
+        .query(async ({ input }) => {
+          return await db.getWorkLogsByDateRange(input.startDate, input.endDate);
+        }),
+
+      inProgress: adminProcedure.query(async () => {
+        return await db.getInProgressWorkLogs();
+      }),
+
+      create: adminProcedure
+        .input(z.object({
+          employeeId: z.number(),
+          machineId: z.number().optional(),
+          workType: z.enum(['maintenance', 'refill', 'cleaning', 'repair', 'inspection', 'installation', 'other']),
+          description: z.string().optional(),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.createWorkLog({
+            ...input,
+            status: 'in_progress',
+            startTime: new Date(),
+          });
+        }),
+
+      complete: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          notes: z.string().optional(),
+          rating: z.number().min(1).max(5).optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.completeWorkLog(input.id, new Date(), input.notes, input.rating);
+        }),
+
+      cancel: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          notes: z.string().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          return await db.cancelWorkLog(input.id, input.notes);
+        }),
+
+      update: adminProcedure
+        .input(z.object({
+          id: z.number(),
+          workType: z.enum(['maintenance', 'refill', 'cleaning', 'repair', 'inspection', 'installation', 'other']).optional(),
+          description: z.string().optional(),
+          notes: z.string().optional(),
+          issuesFound: z.string().optional(),
+          partsUsed: z.string().optional(),
+          photoUrls: z.string().optional(),
+          rating: z.number().min(1).max(5).optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const { id, ...updates } = input;
+          return await db.updateWorkLog(id, updates);
+        }),
+
+      delete: adminProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ input }) => {
+          await db.deleteWorkLog(input.id);
+          return { success: true };
+        }),
+    }),
+
+    // Employee Performance
+    employeePerformance: router({
+      list: adminProcedure.query(async () => {
+        return await db.getAllEmployeePerformance();
+      }),
+
+      byEmployee: adminProcedure
+        .input(z.object({ employeeId: z.number() }))
+        .query(async ({ input }) => {
+          return await db.getEmployeePerformance(input.employeeId);
+        }),
+
+      initialize: adminProcedure
+        .input(z.object({ employeeId: z.number() }))
+        .mutation(async ({ input }) => {
+          return await db.initializeEmployeePerformance(input.employeeId);
+        }),
+    }),
   }),
 });
 

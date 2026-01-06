@@ -52,6 +52,9 @@ import AdminInventoryCheck from "./pages/admin/InventoryCheck";
 import AdminBunkers from "./pages/admin/Bunkers";
 import AdminMixers from "./pages/admin/Mixers";
 import AdminTasks from "./pages/admin/Tasks";
+import AdminAssignments from "./pages/admin/Assignments";
+import AdminWorkLogs from "./pages/admin/WorkLogs";
+import AdminPerformance from "./pages/admin/Performance";
 import AdminRoute from "./components/AdminRoute";
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -136,6 +139,15 @@ function Router() {
       </Route>
       <Route path="/admin/tasks">
         <AdminRoute><AdminTasks /></AdminRoute>
+      </Route>
+      <Route path="/admin/assignments">
+        <AdminRoute><AdminAssignments /></AdminRoute>
+      </Route>
+      <Route path="/admin/work-logs">
+        <AdminRoute><AdminWorkLogs /></AdminRoute>
+      </Route>
+      <Route path="/admin/performance">
+        <AdminRoute><AdminPerformance /></AdminRoute>
       </Route>
       
       {/* Fallback */}

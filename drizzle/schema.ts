@@ -682,3 +682,73 @@ export const taskComments = mysqlTable("task_comments", {
 
 export type TaskComment = typeof taskComments.$inferSelect;
 export type InsertTaskComment = typeof taskComments.$inferInsert;
+
+
+/**
+ * Machine assignments - track which employees are assigned to which machines
+ */
+export const machineAssignments = mysqlTable("machine_assignments", {
+  id: int("id").autoincrement().primaryKey(),
+  machineId: int("machineId").notNull(),
+  employeeId: int("employeeId").notNull(),
+  assignmentType: mysqlEnum("assignmentType", ["primary", "secondary", "temporary"]).default("primary").notNull(),
+  status: mysqlEnum("status", ["active", "inactive", "pending"]).default("active").notNull(),
+  startDate: timestamp("startDate").defaultNow().notNull(),
+  endDate: timestamp("endDate"),
+  responsibilities: text("responsibilities"), // JSON array of responsibilities
+  notes: text("notes"),
+  assignedBy: int("assignedBy"), // Employee ID who made the assignment
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MachineAssignment = typeof machineAssignments.$inferSelect;
+export type InsertMachineAssignment = typeof machineAssignments.$inferInsert;
+
+/**
+ * Work logs - track employee work activities and sessions
+ */
+export const workLogs = mysqlTable("work_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").notNull(),
+  machineId: int("machineId"),
+  workType: mysqlEnum("workType", ["maintenance", "refill", "cleaning", "repair", "inspection", "installation", "other"]).notNull(),
+  status: mysqlEnum("status", ["in_progress", "completed", "cancelled"]).default("in_progress").notNull(),
+  startTime: timestamp("startTime").defaultNow().notNull(),
+  endTime: timestamp("endTime"),
+  duration: int("duration"), // in minutes, calculated on completion
+  description: text("description"),
+  notes: text("notes"),
+  issuesFound: text("issuesFound"), // JSON array of issues
+  partsUsed: text("partsUsed"), // JSON array of parts
+  photoUrls: text("photoUrls"), // JSON array of photo URLs
+  rating: int("rating"), // 1-5 rating of work quality
+  verifiedBy: int("verifiedBy"), // Employee ID who verified the work
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WorkLog = typeof workLogs.$inferSelect;
+export type InsertWorkLog = typeof workLogs.$inferInsert;
+
+/**
+ * Employee performance metrics
+ */
+export const employeePerformance = mysqlTable("employee_performance", {
+  id: int("id").autoincrement().primaryKey(),
+  employeeId: int("employeeId").notNull().unique(),
+  totalWorkLogs: int("totalWorkLogs").default(0).notNull(),
+  totalWorkHours: int("totalWorkHours").default(0).notNull(), // in minutes
+  completedTasks: int("completedTasks").default(0).notNull(),
+  cancelledTasks: int("cancelledTasks").default(0).notNull(),
+  averageRating: decimal("averageRating", { precision: 3, scale: 2 }), // Average work rating
+  issuesReported: int("issuesReported").default(0).notNull(),
+  issuesResolved: int("issuesResolved").default(0).notNull(),
+  activeMachines: int("activeMachines").default(0).notNull(), // Currently assigned machines
+  totalMachinesAssigned: int("totalMachinesAssigned").default(0).notNull(), // All-time assigned machines
+  lastWorkDate: timestamp("lastWorkDate"),
+  lastUpdated: timestamp("lastUpdated").defaultNow().onUpdateNow().notNull(),
+});
+
+export type EmployeePerformance = typeof employeePerformance.$inferSelect;
+export type InsertEmployeePerformance = typeof employeePerformance.$inferInsert;

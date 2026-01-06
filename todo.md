@@ -667,3 +667,59 @@
 - [x] Test role updates when changed in database (getUserById returns latest role)
 - [x] Created test users: admin@vendhub.uz, employee@vendhub.uz, customer@vendhub.uz
 - [x] All 9 vitest tests passing for role-based access control
+
+
+## Employee Assignment System
+
+### Database Schema
+- [ ] Create machine_assignments table (employee-machine assignments)
+- [ ] Create work_logs table (track work sessions and activities)
+- [ ] Create employee_performance table (aggregate performance metrics)
+- [ ] Add assignment status (active, inactive, temporary)
+- [ ] Add work log types (maintenance, refill, cleaning, repair, inspection)
+
+### API Endpoints
+- [ ] Create assignment CRUD endpoints (create, read, update, delete)
+- [ ] Create work log endpoints (log work, get history, get by employee)
+- [ ] Create performance metrics endpoint (calculate stats)
+- [ ] Create employee workload endpoint (current assignments)
+- [ ] Create machine assignment history endpoint
+
+### Admin UI - Assignments Page
+- [ ] Build employee assignments list with filters
+- [ ] Add assign employee to machine dialog
+- [ ] Add bulk assignment operations
+- [ ] Show current workload per employee
+- [ ] Show machines without assigned employees
+- [ ] Add assignment calendar view
+
+### Work History & Performance
+- [ ] Build work history page with timeline view
+- [ ] Add work log entry form for employees
+- [ ] Show performance metrics dashboard
+- [ ] Add employee performance comparison
+- [ ] Generate work reports (daily, weekly, monthly)
+- [ ] Add charts for work activity trends
+
+### Testing
+- [ ] Write vitest tests for assignment endpoints
+- [ ] Write vitest tests for work log endpoints
+- [ ] Test assignment validation (prevent conflicts)
+- [ ] Test performance metric calculations
+
+## Employee Assignment System
+- [x] Design database schema for assignments, work logs, and performance
+- [x] Create machine_assignments table
+- [x] Create work_logs table
+- [x] Create employee_performance table
+- [x] Add database functions for assignments
+- [x] Add database functions for work logs
+- [x] Add database functions for performance tracking
+- [x] Create API endpoints for assignments
+- [x] Create API endpoints for work logs
+- [x] Create API endpoints for performance
+- [x] Build Assignments admin page UI
+- [x] Build Work Logs admin page UI
+- [x] Build Performance admin page UI
+- [x] Add navigation menu items
+- [x] Write and pass all vitest tests (23/23)
