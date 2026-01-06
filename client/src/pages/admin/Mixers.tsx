@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { 
@@ -36,6 +47,8 @@ import {
   Trash2,
   MapPin,
   Loader2,
+  CheckSquare,
+  XSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -65,8 +78,12 @@ export default function MixersPage() {
   const [machineFilter, setMachineFilter] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
+  const [isBulkStatusDialogOpen, setIsBulkStatusDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedMixerId, setSelectedMixerId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<MixerStatus>("operational");
 
   const [formData, setFormData] = useState({
     machineId: 0,
@@ -135,6 +152,29 @@ export default function MixersPage() {
       refetch();
       setIsMaintenanceDialogOpen(false);
       setSelectedMixerId(null);
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const bulkDeleteMutation = trpc.admin.mixers.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Удалено ${data.count} миксеров`);
+      setSelectedIds(new Set());
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const bulkUpdateStatusMutation = trpc.admin.mixers.bulkUpdateStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Обновлено ${data.count} миксеров`);
+      setSelectedIds(new Set());
+      setIsBulkStatusDialogOpen(false);
+      refetch();
     },
     onError: (error) => {
       toast.error(`Ошибка: ${error.message}`);
@@ -213,6 +253,37 @@ export default function MixersPage() {
     });
   };
 
+  // Bulk selection handlers
+  const toggleSelect = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredMixers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredMixers.map(m => m.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) });
+    setShowDeleteConfirm(false);
+  };
+
+  const handleBulkStatusUpdate = () => {
+    bulkUpdateStatusMutation.mutate({
+      ids: Array.from(selectedIds),
+      status: bulkStatus,
+    });
+  };
+
   // Statistics
   const totalMixers = mixers.length;
   const operationalMixers = mixers.filter(m => m.status === 'operational').length;
@@ -259,10 +330,59 @@ export default function MixersPage() {
   };
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isBulkProcessing = bulkDeleteMutation.isPending || bulkUpdateStatusMutation.isPending;
+  const hasSelection = selectedIds.size > 0;
+  const allSelected = filteredMixers.length > 0 && selectedIds.size === filteredMixers.length;
   const selectedMixer = mixers.find(m => m.id === selectedMixerId);
 
   return (
     <AdminLayout title="Миксеры" description="Управление миксерами и обслуживанием">
+      {/* Bulk Action Toolbar */}
+      {hasSelection && (
+        <Card className="border-primary/50 bg-primary/5 mb-6">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5 text-primary" />
+                <span className="font-medium">Выбрано: {selectedIds.size}</span>
+              </div>
+              <div className="flex-1" />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBulkStatusDialogOpen(true)}
+                  disabled={isBulkProcessing}
+                  className="gap-1"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Изменить статус
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isBulkProcessing}
+                  className="gap-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Удалить
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="gap-1"
+                >
+                  <XSquare className="h-4 w-4" />
+                  Отменить
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
@@ -326,6 +446,20 @@ export default function MixersPage() {
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-4">
+            {/* Select All Checkbox */}
+            {filteredMixers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="selectAll"
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <Label htmlFor="selectAll" className="text-sm cursor-pointer">
+                  Выбрать все
+                </Label>
+              </div>
+            )}
+
             <div className="relative flex-1 min-w-[200px] max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -426,17 +560,23 @@ export default function MixersPage() {
                     const typeConfig = mixerTypeConfig[mixer.mixerType as MixerType] || mixerTypeConfig.main;
                     const status = statusConfig[mixer.status as MixerStatus] || statusConfig.operational;
                     const cyclePercentage = getCyclePercentage(mixer.totalCycles, mixer.maxCyclesBeforeMaintenance);
+                    const isSelected = selectedIds.has(mixer.id);
                     
                     return (
                       <div
                         key={mixer.id}
                         className={cn(
-                          "p-4 rounded-lg border transition-colors",
-                          status.bgColor
+                          "p-4 rounded-lg border transition-all",
+                          status.bgColor,
+                          isSelected && "ring-2 ring-primary"
                         )}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelect(mixer.id)}
+                            />
                             <span className={typeConfig.color}>{typeConfig.icon}</span>
                             <div>
                               <p className="font-medium">{typeConfig.label} #{mixer.mixerNumber}</p>
@@ -684,6 +824,72 @@ export default function MixersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Status Update Dialog */}
+      <Dialog open={isBulkStatusDialogOpen} onOpenChange={setIsBulkStatusDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Массовое изменение статуса</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Выбрано {selectedIds.size} миксеров для изменения статуса
+            </p>
+            
+            <div className="space-y-2">
+              <Label>Новый статус</Label>
+              <Select
+                value={bulkStatus}
+                onValueChange={(value) => setBulkStatus(value as MixerStatus)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(statusConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>
+                      <div className="flex items-center gap-2">
+                        {config.icon}
+                        {config.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkStatusDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleBulkStatusUpdate} disabled={bulkUpdateStatusMutation.isPending}>
+              {bulkUpdateStatusMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Применить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выбранные миксеры?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы собираетесь удалить {selectedIds.size} миксеров. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {bulkDeleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

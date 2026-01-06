@@ -5,12 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -19,11 +21,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Package, AlertTriangle, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Package, AlertTriangle, Loader2, CheckSquare, XSquare, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 
 type IngredientCategory = "coffee" | "milk" | "sugar" | "syrup" | "powder" | "water" | "other";
 
@@ -51,6 +64,8 @@ export default function IngredientsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     category: "coffee" as IngredientCategory,
@@ -90,6 +105,28 @@ export default function IngredientsPage() {
   const deleteMutation = trpc.admin.ingredients.delete.useMutation({
     onSuccess: () => {
       toast.success("Ингредиент удалён");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const bulkDeleteMutation = trpc.admin.ingredients.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Удалено ${data.count} ингредиентов`);
+      setSelectedIds(new Set());
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const bulkStatusMutation = trpc.admin.ingredients.bulkUpdateStatus.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Обновлено ${data.count} ингредиентов`);
+      setSelectedIds(new Set());
       refetch();
     },
     onError: (error) => {
@@ -157,17 +194,122 @@ export default function IngredientsPage() {
     }
   };
 
+  // Bulk selection handlers
+  const toggleSelect = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredIngredients.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredIngredients.map(i => i.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) });
+    setShowDeleteConfirm(false);
+  };
+
+  const handleBulkActivate = () => {
+    bulkStatusMutation.mutate({ ids: Array.from(selectedIds), isActive: true });
+  };
+
+  const handleBulkDeactivate = () => {
+    bulkStatusMutation.mutate({ ids: Array.from(selectedIds), isActive: false });
+  };
+
   const filteredIngredients = filterCategory === "all" 
     ? ingredients 
     : ingredients.filter(i => i.category === filterCategory);
 
   const lowStockCount = ingredients.filter(i => !i.isActive).length;
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isBulkProcessing = bulkDeleteMutation.isPending || bulkStatusMutation.isPending;
+  const hasSelection = selectedIds.size > 0;
+  const allSelected = filteredIngredients.length > 0 && selectedIds.size === filteredIngredients.length;
 
   return (
     <AdminLayout title="Ингредиенты" description="Управление запасами ингредиентов">
       <div className="space-y-6">
+        {/* Bulk Action Toolbar */}
+        {hasSelection && (
+          <Card className="border-primary/50 bg-primary/5">
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <CheckSquare className="h-5 w-5 text-primary" />
+                  <span className="font-medium">Выбрано: {selectedIds.size}</span>
+                </div>
+                <div className="flex-1" />
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBulkActivate}
+                    disabled={isBulkProcessing}
+                    className="gap-1"
+                  >
+                    <Power className="h-4 w-4" />
+                    Активировать
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBulkDeactivate}
+                    disabled={isBulkProcessing}
+                    className="gap-1"
+                  >
+                    <PowerOff className="h-4 w-4" />
+                    Деактивировать
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isBulkProcessing}
+                    className="gap-1"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Удалить
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="gap-1"
+                  >
+                    <XSquare className="h-4 w-4" />
+                    Отменить
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex flex-wrap items-center gap-4">
+          {/* Select All Checkbox */}
+          {filteredIngredients.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="selectAll"
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+              />
+              <Label htmlFor="selectAll" className="text-sm cursor-pointer">
+                Выбрать все
+              </Label>
+            </div>
+          )}
+
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Все категории" />
@@ -318,12 +460,24 @@ export default function IngredientsPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredIngredients.map((ingredient) => {
               const isInactive = !ingredient.isActive;
+              const isSelected = selectedIds.has(ingredient.id);
               
               return (
-                <Card key={ingredient.id} className={isInactive ? "border-muted opacity-60" : ""}>
+                <Card 
+                  key={ingredient.id} 
+                  className={cn(
+                    "transition-all",
+                    isInactive && "border-muted opacity-60",
+                    isSelected && "ring-2 ring-primary border-primary"
+                  )}
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelect(ingredient.id)}
+                        />
                         <span className="text-2xl">{categoryIcons[ingredient.category]}</span>
                         <div>
                           <h3 className="font-semibold">{ingredient.name}</h3>
@@ -376,6 +530,25 @@ export default function IngredientsPage() {
           </div>
         )}
       </div>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выбранные ингредиенты?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы собираетесь удалить {selectedIds.size} ингредиентов. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {bulkDeleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

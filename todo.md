@@ -564,3 +564,37 @@
 - [x] Add machines CRUD endpoints to admin router (create, update, delete)
 - [x] Fixed duplicate router definition
 - [x] All TypeScript errors resolved
+
+
+## Bulk Operations for Admin Pages
+
+### Server Endpoints
+- [x] Add bulkDelete endpoint for ingredients
+- [x] Add bulkUpdateStatus endpoint for ingredients
+- [x] Add bulkDelete endpoint for bunkers
+- [x] Add bulkRefill endpoint for bunkers
+- [x] Add bulkDelete endpoint for mixers
+- [x] Add bulkUpdateStatus endpoint for mixers
+
+### Ingredients Page
+- [x] Add checkbox selection column
+- [x] Add select all checkbox
+- [x] Add bulk action toolbar (delete, activate, deactivate)
+- [x] Add confirmation dialog for bulk delete
+- [x] Show selected count
+
+### Bunkers Page
+- [x] Add checkbox selection column
+- [x] Add select all checkbox
+- [x] Add bulk action toolbar (delete, refill)
+- [x] Add bulk refill dialog with percentage slider
+- [x] Add confirmation dialog for bulk delete
+- [x] Show selected count
+
+### Mixers Page
+- [x] Add checkbox selection column
+- [x] Add select all checkbox
+- [x] Add bulk action toolbar (delete, status update)
+- [x] Add bulk status change dialog
+- [x] Add confirmation dialog for bulk delete
+- [x] Show selected count

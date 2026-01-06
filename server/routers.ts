@@ -915,6 +915,23 @@ export const appRouter = router({
           await db.deleteIngredient(input.id);
           return { success: true };
         }),
+      
+      bulkDelete: adminProcedure
+        .input(z.object({ ids: z.array(z.number()) }))
+        .mutation(async ({ input }) => {
+          await db.bulkDeleteIngredients(input.ids);
+          return { success: true, count: input.ids.length };
+        }),
+      
+      bulkUpdateStatus: adminProcedure
+        .input(z.object({
+          ids: z.array(z.number()),
+          isActive: z.boolean(),
+        }))
+        .mutation(async ({ input }) => {
+          await db.bulkUpdateIngredientStatus(input.ids, input.isActive);
+          return { success: true, count: input.ids.length };
+        }),
     }),
     
     // Bunkers management
@@ -974,6 +991,24 @@ export const appRouter = router({
         }))
         .mutation(async ({ input }) => {
           return await db.refillBunker(input.id, input.newLevel, input.employeeId);
+        }),
+      
+      bulkDelete: adminProcedure
+        .input(z.object({ ids: z.array(z.number()) }))
+        .mutation(async ({ input }) => {
+          await db.bulkDeleteBunkers(input.ids);
+          return { success: true, count: input.ids.length };
+        }),
+      
+      bulkRefill: adminProcedure
+        .input(z.object({
+          ids: z.array(z.number()),
+          fillPercentage: z.number().min(0).max(100),
+          employeeId: z.number(),
+        }))
+        .mutation(async ({ input }) => {
+          await db.bulkRefillBunkers(input.ids, input.fillPercentage, input.employeeId);
+          return { success: true, count: input.ids.length };
         }),
     }),
     
@@ -1042,6 +1077,23 @@ export const appRouter = router({
         }))
         .mutation(async ({ input }) => {
           return await db.recordMixerMaintenance(input.id, input.employeeId);
+        }),
+      
+      bulkDelete: adminProcedure
+        .input(z.object({ ids: z.array(z.number()) }))
+        .mutation(async ({ input }) => {
+          await db.bulkDeleteMixers(input.ids);
+          return { success: true, count: input.ids.length };
+        }),
+      
+      bulkUpdateStatus: adminProcedure
+        .input(z.object({
+          ids: z.array(z.number()),
+          status: z.enum(['operational', 'needs_cleaning', 'needs_repair', 'replaced']),
+        }))
+        .mutation(async ({ input }) => {
+          await db.bulkUpdateMixerStatus(input.ids, input.status);
+          return { success: true, count: input.ids.length };
         }),
     }),
   }),

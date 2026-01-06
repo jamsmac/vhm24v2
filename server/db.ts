@@ -1,4 +1,4 @@
-import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users, User,
@@ -15,7 +15,8 @@ import {
   InsertEmployee, employees, Employee,
   InsertIngredient, ingredients, Ingredient,
   InsertBunker, bunkers, Bunker,
-  InsertMixer, mixers, Mixer
+  InsertMixer, mixers, Mixer,
+  stockMovements
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -1559,5 +1560,94 @@ export async function recordMixerMaintenance(id: number, employeeId: number): Pr
   } catch (error) {
     console.error("[Database] Error recording mixer maintenance:", error);
     return null;
+  }
+}
+
+
+// ==================== BULK OPERATIONS ====================
+
+// Ingredients bulk operations
+export async function bulkDeleteIngredients(ids: number[]): Promise<void> {
+  const db = await getDb();
+  if (!db || ids.length === 0) return;
+  
+  try {
+    await db.delete(ingredients).where(inArray(ingredients.id, ids));
+  } catch (error) {
+    console.error("[Database] Error bulk deleting ingredients:", error);
+  }
+}
+
+export async function bulkUpdateIngredientStatus(ids: number[], isActive: boolean): Promise<void> {
+  const db = await getDb();
+  if (!db || ids.length === 0) return;
+  
+  try {
+    await db.update(ingredients)
+      .set({ isActive, updatedAt: new Date() })
+      .where(inArray(ingredients.id, ids));
+  } catch (error) {
+    console.error("[Database] Error bulk updating ingredient status:", error);
+  }
+}
+
+// Bunkers bulk operations
+export async function bulkDeleteBunkers(ids: number[]): Promise<void> {
+  const db = await getDb();
+  if (!db || ids.length === 0) return;
+  
+  try {
+    await db.delete(bunkers).where(inArray(bunkers.id, ids));
+  } catch (error) {
+    console.error("[Database] Error bulk deleting bunkers:", error);
+  }
+}
+
+export async function bulkRefillBunkers(ids: number[], fillPercentage: number, employeeId: number): Promise<void> {
+  const db = await getDb();
+  if (!db || ids.length === 0) return;
+  
+  try {
+    // Get all bunkers to calculate new levels
+    const bunkerList = await db.select().from(bunkers).where(inArray(bunkers.id, ids));
+    
+    for (const bunker of bunkerList) {
+      const newLevel = Math.round((bunker.capacity * fillPercentage) / 100);
+      await db.update(bunkers)
+        .set({ 
+          currentLevel: newLevel, 
+          lastRefillDate: new Date(),
+          lastRefillBy: employeeId,
+          updatedAt: new Date() 
+        })
+        .where(eq(bunkers.id, bunker.id));
+    }
+  } catch (error) {
+    console.error("[Database] Error bulk refilling bunkers:", error);
+  }
+}
+
+// Mixers bulk operations
+export async function bulkDeleteMixers(ids: number[]): Promise<void> {
+  const db = await getDb();
+  if (!db || ids.length === 0) return;
+  
+  try {
+    await db.delete(mixers).where(inArray(mixers.id, ids));
+  } catch (error) {
+    console.error("[Database] Error bulk deleting mixers:", error);
+  }
+}
+
+export async function bulkUpdateMixerStatus(ids: number[], status: Mixer['status']): Promise<void> {
+  const db = await getDb();
+  if (!db || ids.length === 0) return;
+  
+  try {
+    await db.update(mixers)
+      .set({ status, updatedAt: new Date() })
+      .where(inArray(mixers.id, ids));
+  } catch (error) {
+    console.error("[Database] Error bulk updating mixer status:", error);
   }
 }

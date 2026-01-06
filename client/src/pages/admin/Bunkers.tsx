@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -19,8 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { 
   Plus, 
   RefreshCw,
@@ -33,6 +45,8 @@ import {
   Trash2,
   TrendingDown,
   Loader2,
+  CheckSquare,
+  XSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,10 +65,14 @@ const categoryIcons: Record<string, React.ReactNode> = {
 export default function BunkersPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRefillDialogOpen, setIsRefillDialogOpen] = useState(false);
+  const [isBulkRefillDialogOpen, setIsBulkRefillDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedBunkerId, setSelectedBunkerId] = useState<number | null>(null);
   const [filterMachine, setFilterMachine] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [bulkRefillPercentage, setBulkRefillPercentage] = useState(100);
   
   const [formData, setFormData] = useState({
     machineId: 0,
@@ -68,7 +86,7 @@ export default function BunkersPage() {
 
   const [refillForm, setRefillForm] = useState({
     amount: "",
-    employeeId: 1, // Default employee ID
+    employeeId: 1,
   });
 
   // Fetch data from API
@@ -116,6 +134,30 @@ export default function BunkersPage() {
       setIsRefillDialogOpen(false);
       setSelectedBunkerId(null);
       setRefillForm({ amount: "", employeeId: 1 });
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const bulkDeleteMutation = trpc.admin.bunkers.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Удалено ${data.count} бункеров`);
+      setSelectedIds(new Set());
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(`Ошибка: ${error.message}`);
+    },
+  });
+
+  const bulkRefillMutation = trpc.admin.bunkers.bulkRefill.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Пополнено ${data.count} бункеров`);
+      setSelectedIds(new Set());
+      setIsBulkRefillDialogOpen(false);
+      setBulkRefillPercentage(100);
+      refetch();
     },
     onError: (error) => {
       toast.error(`Ошибка: ${error.message}`);
@@ -203,6 +245,38 @@ export default function BunkersPage() {
     }
   };
 
+  // Bulk selection handlers
+  const toggleSelect = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredBunkers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredBunkers.map(b => b.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    bulkDeleteMutation.mutate({ ids: Array.from(selectedIds) });
+    setShowDeleteConfirm(false);
+  };
+
+  const handleBulkRefill = () => {
+    bulkRefillMutation.mutate({
+      ids: Array.from(selectedIds),
+      fillPercentage: bulkRefillPercentage,
+      employeeId: 1,
+    });
+  };
+
   // Statistics
   const lowLevelBunkers = bunkers.filter(b => (b.currentLevel / b.capacity) * 100 <= b.lowLevelThreshold);
   const criticalBunkers = bunkers.filter(b => (b.currentLevel / b.capacity) * 100 <= 10);
@@ -245,10 +319,59 @@ export default function BunkersPage() {
   }, {} as Record<number, { machineName: string; machineAddress: string; bunkers: typeof bunkers }>);
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isBulkProcessing = bulkDeleteMutation.isPending || bulkRefillMutation.isPending;
+  const hasSelection = selectedIds.size > 0;
+  const allSelected = filteredBunkers.length > 0 && selectedIds.size === filteredBunkers.length;
   const selectedBunker = bunkers.find(b => b.id === selectedBunkerId);
 
   return (
     <AdminLayout title="Бункеры" description="Управление ингредиентами в автоматах">
+      {/* Bulk Action Toolbar */}
+      {hasSelection && (
+        <Card className="border-primary/50 bg-primary/5 mb-6">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5 text-primary" />
+                <span className="font-medium">Выбрано: {selectedIds.size}</span>
+              </div>
+              <div className="flex-1" />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsBulkRefillDialogOpen(true)}
+                  disabled={isBulkProcessing}
+                  className="gap-1"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Пополнить все
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isBulkProcessing}
+                  className="gap-1"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Удалить
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="gap-1"
+                >
+                  <XSquare className="h-4 w-4" />
+                  Отменить
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
@@ -312,6 +435,20 @@ export default function BunkersPage() {
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-4">
+            {/* Select All Checkbox */}
+            {filteredBunkers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="selectAll"
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <Label htmlFor="selectAll" className="text-sm cursor-pointer">
+                  Выбрать все
+                </Label>
+              </div>
+            )}
+
             <Select value={filterMachine} onValueChange={setFilterMachine}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Все автоматы" />
@@ -389,20 +526,26 @@ export default function BunkersPage() {
                     const levelStatus = getLevelStatus(bunker);
                     const percentage = Math.round((bunker.currentLevel / bunker.capacity) * 100);
                     const ingredient = ingredients.find(i => i.id === bunker.ingredientId);
+                    const isSelected = selectedIds.has(bunker.id);
                     
                     return (
                       <div
                         key={bunker.id}
                         className={cn(
-                          "p-4 rounded-lg border transition-colors",
+                          "p-4 rounded-lg border transition-all",
                           levelStatus.status === "critical" && "border-red-500/50 bg-red-500/5",
                           levelStatus.status === "low" && "border-amber-500/50 bg-amber-500/5",
                           levelStatus.status === "medium" && "border-yellow-500/30 bg-yellow-500/5",
                           levelStatus.status === "good" && "border-green-500/30 bg-green-500/5",
+                          isSelected && "ring-2 ring-primary"
                         )}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelect(bunker.id)}
+                            />
                             {ingredient ? categoryIcons[ingredient.category] || categoryIcons.other : categoryIcons.other}
                             <div>
                               <p className="font-medium">{ingredient?.name || "Не назначен"}</p>
@@ -564,7 +707,6 @@ export default function BunkersPage() {
                   value={formData.currentLevel}
                   onChange={(e) => setFormData({ ...formData, currentLevel: parseInt(e.target.value) || 0 })}
                   min={0}
-                  max={formData.capacity}
                 />
               </div>
               <div className="space-y-2">
@@ -654,6 +796,67 @@ export default function BunkersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Refill Dialog */}
+      <Dialog open={isBulkRefillDialogOpen} onOpenChange={setIsBulkRefillDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Массовое пополнение бункеров</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Выбрано {selectedIds.size} бункеров для пополнения
+            </p>
+            
+            <div className="space-y-4">
+              <Label>Уровень заполнения: {bulkRefillPercentage}%</Label>
+              <Slider
+                value={[bulkRefillPercentage]}
+                onValueChange={([value]) => setBulkRefillPercentage(value)}
+                min={10}
+                max={100}
+                step={10}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>10%</span>
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkRefillDialogOpen(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleBulkRefill} disabled={bulkRefillMutation.isPending}>
+              {bulkRefillMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Пополнить все
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выбранные бункеры?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы собираетесь удалить {selectedIds.size} бункеров. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {bulkDeleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }
