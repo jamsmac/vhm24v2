@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `user_daily_quest_progress` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `questId` int NOT NULL,\n  `currentValue` int NOT NULL DEFAULT 0,\n  `isCompleted` boolean NOT NULL DEFAULT false,\n  `rewardClaimed` boolean NOT NULL DEFAULT false,\n  `questDate` timestamp NOT NULL,\n  `completedAt` timestamp NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  INDEX `idx_user_quest_date` (`userId`, `questId`, `questDate`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute CREATE TABLE IF NOT EXISTS `user_daily_quest_progress` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `userId` int NOT NULL,\n  `questId` int NOT NULL,\n  `currentValue` int NOT NULL DEFAULT 0,\n  `isCompleted` boolean NOT NULL DEFAULT false,\n  `rewardClaimed` boolean NOT NULL DEFAULT false,\n  `questDate` timestamp NOT NULL,\n  `completedAt` timestamp NULL,\n  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  PRIMARY KEY (`id`),\n  INDEX `idx_user_quest_date` (`userId`, `questId`, `questDate`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 173
+}

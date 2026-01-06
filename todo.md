@@ -534,6 +534,7 @@
 - [x] Replaced DATE() function with date range comparison (gte/lte)
 - [x] Calculate start and end of day for accurate date matching
 - [x] Fixed in initializeDailyQuestProgress, updateDailyQuestProgress, and claimDailyQuestReward functions
+- [x] Created missing user_daily_quest_progress table in database
 - [x] Error on /cart page resolved
 - [x] Error on /profile page resolved
 - [x] Error on / (home) page resolved
