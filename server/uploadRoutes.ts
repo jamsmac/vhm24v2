@@ -107,7 +107,7 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
       recordCount: records.length,
       successCount: 0,
       errorCount: 0,
-      importStatus: 'processing',
+      status: 'processing',
       importedBy: req.body.uploadedBy ? parseInt(req.body.uploadedBy) : null,
     }).$returningId();
 
@@ -161,7 +161,7 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
       .set({
         successCount: successCount,
         errorCount: failCount,
-        importStatus: failCount === 0 ? 'completed' : 'failed',
+        status: failCount === 0 ? 'completed' : 'failed',
         errors: errors.length > 0 ? errors : null,
         completedAt: new Date(),
       })

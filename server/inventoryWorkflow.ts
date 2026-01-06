@@ -3,7 +3,9 @@
  * Handles state transitions and validations for inventory checks
  */
 
-import { db } from './_core/db';
+import { getDb } from './db';
+import { eq } from 'drizzle-orm';
+import { inventoryChecks, inventoryCheckItems } from '../drizzle/schema';
 
 export type InventoryCheckStatus = 'draft' | 'in_progress' | 'completed' | 'approved';
 
@@ -29,17 +31,19 @@ export async function validateTransition(
   isAdmin: boolean
 ): Promise<{ valid: boolean; error?: string }> {
   // Get current check
-  const check = await db.execute(
-    `SELECT * FROM inventory_checks WHERE id = ?`,
-    [checkId]
-  );
+  const database = await getDb();
+  if (!database) {
+    return { valid: false, error: 'Database connection failed' };
+  }
+  
+  const checks = await database.select().from(inventoryChecks).where(eq(inventoryChecks.id, checkId)).limit(1);
+  const check = checks[0];
 
-  if (!check || check.length === 0) {
+  if (!check) {
     return { valid: false, error: 'Inventory check not found' };
   }
 
-  const currentCheck = check[0] as any;
-  const fromStatus = currentCheck.status;
+  const fromStatus = check.status as InventoryCheckStatus;
 
   // Find valid transition
   const transition = validTransitions.find(
@@ -56,7 +60,8 @@ export async function validateTransition(
   // Check required fields
   if (transition.requiredFields) {
     for (const field of transition.requiredFields) {
-      if (!currentCheck[field]) {
+      const value = check[field as keyof typeof check];
+      if (!value) {
         return {
           valid: false,
           error: `Missing required field: ${field}`,
@@ -110,23 +115,18 @@ export async function transitionInventoryCheck(
     Object.assign(updateData, additionalData);
   }
 
-  // Update check
-  const setClause = Object.keys(updateData)
-    .map(k => `${k} = ?`)
-    .join(', ');
-  const values = [...Object.values(updateData), checkId];
-
   try {
-    await db.execute(
-      `UPDATE inventory_checks SET ${setClause}, updatedAt = NOW() WHERE id = ?`,
-      values
-    );
+    const database = await getDb();
+    if (!database) {
+      return { success: false, error: 'Database connection failed' };
+    }
+
+    await database.update(inventoryChecks)
+      .set(updateData)
+      .where(eq(inventoryChecks.id, checkId));
 
     // Fetch updated check
-    const result = await db.execute(
-      `SELECT * FROM inventory_checks WHERE id = ?`,
-      [checkId]
-    );
+    const result = await database.select().from(inventoryChecks).where(eq(inventoryChecks.id, checkId)).limit(1);
 
     return {
       success: true,
@@ -141,10 +141,9 @@ export async function transitionInventoryCheck(
 }
 
 export async function getInventoryCheckItems(checkId: number) {
-  return await db.execute(
-    `SELECT * FROM inventory_check_items WHERE checkId = ? ORDER BY itemType, itemId`,
-    [checkId]
-  );
+  const database = await getDb();
+  if (!database) return [];
+  return await database.select().from(inventoryCheckItems).where(eq(inventoryCheckItems.checkId, checkId));
 }
 
 export async function updateInventoryCheckItem(
@@ -153,16 +152,16 @@ export async function updateInventoryCheckItem(
   discrepancyReason?: string,
   countedBy?: number
 ) {
-  const expectedResult = await db.execute(
-    `SELECT expectedQuantity FROM inventory_check_items WHERE id = ?`,
-    [itemId]
-  );
+  const database = await getDb();
+  if (!database) throw new Error('Database connection failed');
+  
+  const items = await database.select().from(inventoryCheckItems).where(eq(inventoryCheckItems.id, itemId)).limit(1);
 
-  if (!expectedResult || expectedResult.length === 0) {
+  if (!items || items.length === 0) {
     throw new Error('Inventory check item not found');
   }
 
-  const expectedQuantity = (expectedResult[0] as any).expectedQuantity;
+  const expectedQuantity = items[0].expectedQuantity;
   const discrepancy = actualQuantity - expectedQuantity;
 
   const updateData = {
@@ -173,15 +172,9 @@ export async function updateInventoryCheckItem(
     countedAt: new Date(),
   };
 
-  const setClause = Object.keys(updateData)
-    .map(k => `${k} = ?`)
-    .join(', ');
-  const values = [...Object.values(updateData), itemId];
-
-  await db.execute(
-    `UPDATE inventory_check_items SET ${setClause} WHERE id = ?`,
-    values
-  );
+  await database.update(inventoryCheckItems)
+    .set(updateData)
+    .where(eq(inventoryCheckItems.id, itemId));
 
   return { actualQuantity, discrepancy, discrepancyReason };
 }
@@ -196,7 +189,7 @@ export async function getInventoryCheckSummary(checkId: number) {
     totalDiscrepancyValue: 0,
   };
 
-  for (const item of items as any[]) {
+  for (const item of items) {
     if (item.discrepancy !== 0 && item.discrepancy !== null) {
       summary.itemsWithDiscrepancies++;
       summary.totalDiscrepancy += item.discrepancy;

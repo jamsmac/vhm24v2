@@ -1,0 +1,1 @@
+ALTER TABLE `points_transactions` MODIFY COLUMN `type` enum('earn','spend','bonus','points','refund','expired') NOT NULL;

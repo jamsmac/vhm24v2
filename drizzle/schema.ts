@@ -201,7 +201,7 @@ export type InsertNotification = typeof notifications.$inferInsert;
 export const pointsTransactions = mysqlTable("points_transactions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  type: mysqlEnum("type", ["earn", "spend", "bonus", "refund", "expired"]).notNull(),
+  type: mysqlEnum("type", ["earn", "spend", "bonus", "points", "refund", "expired"]).notNull(),
   amount: int("amount").notNull(), // Positive for earn, negative for spend
   balanceAfter: int("balanceAfter").notNull(),
   description: varchar("description", { length: 256 }).notNull(),

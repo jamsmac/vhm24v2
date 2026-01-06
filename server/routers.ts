@@ -362,7 +362,7 @@ export const appRouter = router({
               type: 'bonus',
               title: '🎉 Бонус за первый заказ!',
               message: `Поздравляем с первым заказом! Вам начислено ${db.FIRST_ORDER_BONUS_AMOUNT.toLocaleString('ru-RU')} бонусных баллов!`,
-              data: { amount: db.FIRST_ORDER_BONUS_AMOUNT, type: 'first_order_bonus' }
+              data: JSON.stringify({ amount: db.FIRST_ORDER_BONUS_AMOUNT, source: 'first_order_bonus' })
             });
             
             // Send Telegram notification if enabled

@@ -187,7 +187,7 @@ export default function BunkersPage() {
   // Statistics
   const lowLevelBunkers = bunkers.filter(b => (b.currentLevel / b.capacity) * 100 <= b.lowLevelThreshold);
   const criticalBunkers = bunkers.filter(b => (b.currentLevel / b.capacity) * 100 <= 10);
-  const uniqueMachines = [...new Set(bunkers.map(b => b.machineId))].length;
+  const uniqueMachines = Array.from(new Set(bunkers.map(b => b.machineId))).length;
 
   const getLevelStatus = (bunker: Bunker) => {
     const percentage = (bunker.currentLevel / bunker.capacity) * 100;
@@ -267,7 +267,7 @@ export default function BunkersPage() {
   }, {} as Record<number, { machineName: string; machineAddress: string; bunkers: Bunker[] }>);
 
   return (
-    <AdminLayout title="Бункеры" subtitle="Управление ингредиентами в автоматах">
+    <AdminLayout title="Бункеры" description="Управление ингредиентами в автоматах">
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
@@ -337,7 +337,7 @@ export default function BunkersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Все автоматы</SelectItem>
-                {[...new Set(bunkers.map(b => b.machineId))].map(machineId => {
+                {Array.from(new Set(bunkers.map(b => b.machineId))).map(machineId => {
                   const machine = bunkers.find(b => b.machineId === machineId);
                   return (
                     <SelectItem key={machineId} value={String(machineId)}>

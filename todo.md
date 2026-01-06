@@ -435,3 +435,93 @@
 - [ ] Create employee performance reports
 - [ ] Add export functionality for all reports
 - [ ] Add date range filtering for all reports
+
+
+## Step-by-Step Enhancements (New)
+
+### Step 1: Fix TypeScript Errors
+- [ ] Add welcomeBonusReceived field to users schema
+- [ ] Update pointsTransactionType enum to include "points" type
+- [ ] Run pnpm db:push to sync schema
+- [ ] Verify all TypeScript errors resolved
+
+### Step 2: Implement CRUD Edit Operations
+- [ ] Add edit dialog for ingredients (update name, category, price)
+- [ ] Add edit dialog for bunkers (update capacity, machine link)
+- [ ] Add edit dialog for mixers (update type, maintenance cycle)
+- [ ] Add edit endpoints to server/routers.ts
+- [ ] Add update mutations to tRPC procedures
+- [ ] Test all edit operations
+
+### Step 3: Real-Time Sync Between Admin & Mobile
+- [ ] Implement WebSocket server for real-time updates
+- [ ] Add event emitters for machine/menu changes
+- [ ] Create sync procedures in tRPC
+- [ ] Add client-side listeners for updates
+- [ ] Test sync when admin updates machines
+- [ ] Test sync when admin updates menu items
+
+### Step 4: Workflow Enhancements
+- [ ] Add approval workflow for inventory checks
+- [ ] Add audit trail logging for all operations
+- [ ] Add notifications for workflow state changes
+- [ ] Add approval buttons to inventory check page
+- [ ] Add audit log viewer to admin dashboard
+- [ ] Test workflow transitions and notifications
+
+### Step 5: OCR Integration
+- [ ] Integrate Tesseract.js for OCR processing
+- [ ] Add photo upload to sales import
+- [ ] Extract text from images
+- [ ] Parse extracted text for sales data
+- [ ] Add OCR preview to import dialog
+- [ ] Test with sample photos
+
+### Step 6: Final Testing & Deployment
+- [ ] Run all vitest tests
+- [ ] Verify no TypeScript errors
+- [ ] Test all new features in browser
+- [ ] Save final checkpoint
+- [ ] Document all changes
+
+
+## Step-by-Step Enhancements
+
+### Step 1: Fix TypeScript Errors
+- [x] Fix AdminRoute.tsx to use 'loading' instead of 'isLoading'
+- [x] Fix Bunkers.tsx and InventoryCheck.tsx to use 'description' instead of 'subtitle'
+- [x] Fix uploadRoutes.ts to use 'status' instead of 'importStatus'
+- [x] Fix inventoryWorkflow.ts import path and rewrite to use Drizzle ORM
+- [x] Fix maintenanceWorkflow.ts import path and rewrite to use Drizzle ORM
+- [x] Add downlevelIteration to tsconfig.json
+- [x] Fix Set iteration in Bunkers.tsx using Array.from()
+- [x] All TypeScript errors resolved - project compiles successfully
+
+### Step 2: Implement CRUD Edit Operations
+- [ ] Add edit dialog for ingredients (currently only view/add)
+- [ ] Add edit dialog for bunkers (currently only view/add)
+- [ ] Add edit dialog for mixers (currently only view/add)
+- [ ] Create edit endpoints in routers.ts
+- [ ] Add form validation for edit operations
+- [ ] Write vitest tests for edit endpoints
+
+### Step 3: Real-Time Sync Between Admin & Mobile App
+- [ ] Implement WebSocket connection for real-time updates
+- [ ] Sync machine status changes to mobile app
+- [ ] Sync menu item updates to mobile app
+- [ ] Sync ingredient availability to mobile app
+- [ ] Add polling fallback for browsers without WebSocket support
+
+### Step 4: Workflow Enhancements
+- [ ] Add approval workflows for inventory checks
+- [ ] Add approval workflows for maintenance tasks
+- [ ] Create audit trail for all admin operations
+- [ ] Add email/Telegram notifications for approvals
+- [ ] Track who made changes and when
+
+### Step 5: OCR Integration for Document Processing
+- [ ] Integrate Tesseract.js for image OCR
+- [ ] Extract text from receipt images
+- [ ] Parse receipt data (date, items, amounts)
+- [ ] Auto-populate sales import from receipt photos
+- [ ] Add confidence score for OCR results

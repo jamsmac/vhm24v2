@@ -276,7 +276,7 @@ export default function InventoryCheckPage() {
     : inventoryChecks.filter(c => c.status === activeTab);
 
   return (
-    <AdminLayout title="Инвентаризация" subtitle="Учет и сверка остатков">
+    <AdminLayout title="Инвентаризация" description="Учет и сверка остатков">
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">

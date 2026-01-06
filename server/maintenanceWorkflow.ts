@@ -3,7 +3,9 @@
  * Handles maintenance cycles for mixers and machines
  */
 
-import { db } from './_core/db';
+import { getDb } from './db';
+import { eq } from 'drizzle-orm';
+import { mixers, maintenanceHistory, bunkers, stockMovements } from '../drizzle/schema';
 
 export type MaintenanceStatus = 'operational' | 'needs_cleaning' | 'needs_repair' | 'replaced';
 
@@ -14,16 +16,16 @@ export async function recordMaintenance(
   notes?: string
 ) {
   // Get mixer info
-  const mixerResult = await db.execute(
-    `SELECT * FROM mixers WHERE id = ?`,
-    [mixerId]
-  );
+  const database = await getDb();
+  if (!database) throw new Error('Database connection failed');
+  
+  const mixerResult = await database.select().from(mixers).where(eq(mixers.id, mixerId)).limit(1);
 
   if (!mixerResult || mixerResult.length === 0) {
     throw new Error('Mixer not found');
   }
 
-  const mixer = mixerResult[0] as any;
+  const mixer = mixerResult[0];
 
   // Determine new status
   let newStatus: MaintenanceStatus = 'operational';
@@ -36,93 +38,94 @@ export async function recordMaintenance(
   }
 
   // Update mixer
-  await db.execute(
-    `UPDATE mixers SET 
-      status = ?, 
-      lastMaintenanceDate = NOW(), 
-      lastMaintenanceBy = ?,
-      notes = ?,
-      updatedAt = NOW()
-     WHERE id = ?`,
-    [newStatus, employeeId, notes || null, mixerId]
-  );
+  await database.update(mixers)
+    .set({
+      status: newStatus,
+      lastMaintenanceDate: new Date(),
+      lastMaintenanceBy: employeeId,
+      notes: notes || null,
+    })
+    .where(eq(mixers.id, mixerId));
 
   // Log maintenance action
-  await db.execute(
-    `INSERT INTO maintenance_logs (mixerId, maintenanceType, performedBy, notes, createdAt)
-     VALUES (?, ?, ?, ?, NOW())`,
-    [mixerId, maintenanceType, employeeId, notes || null]
-  );
+  await database.insert(maintenanceHistory).values({
+    machineId: mixer.machineId,
+    employeeId,
+    maintenanceType: maintenanceType as any,
+    notes: notes || null,
+  });
 
   return { success: true, newStatus };
 }
 
 export async function resetMixerCycles(mixerId: number, employeeId: number) {
   // Get mixer
-  const mixerResult = await db.execute(
-    `SELECT * FROM mixers WHERE id = ?`,
-    [mixerId]
-  );
+  const database = await getDb();
+  if (!database) throw new Error('Database connection failed');
+  
+  const mixerResult = await database.select().from(mixers).where(eq(mixers.id, mixerId)).limit(1);
 
   if (!mixerResult || mixerResult.length === 0) {
     throw new Error('Mixer not found');
   }
+  
+  const mixer = mixerResult[0];
 
   // Reset cycles
-  await db.execute(
-    `UPDATE mixers SET 
-      totalCycles = 0,
-      status = 'operational',
-      lastMaintenanceDate = NOW(),
-      lastMaintenanceBy = ?,
-      updatedAt = NOW()
-     WHERE id = ?`,
-    [employeeId, mixerId]
-  );
+  await database.update(mixers)
+    .set({
+      totalCycles: 0,
+      status: 'operational',
+      lastMaintenanceDate: new Date(),
+      lastMaintenanceBy: employeeId,
+    })
+    .where(eq(mixers.id, mixerId));
 
   // Log reset
-  await db.execute(
-    `INSERT INTO maintenance_logs (mixerId, maintenanceType, performedBy, notes, createdAt)
-     VALUES (?, 'reset', ?, 'Cycles reset', NOW())`,
-    [mixerId, employeeId]
-  );
+  await database.insert(maintenanceHistory).values({
+    machineId: mixer.machineId,
+    employeeId,
+    maintenanceType: 'inspection',
+    notes: 'Cycles reset',
+  });
 
   return { success: true };
 }
 
 export async function checkMaintenanceAlerts() {
   // Get mixers that need maintenance
-  const mixers = await db.execute(
-    `SELECT * FROM mixers 
-     WHERE totalCycles >= (maxCyclesBeforeMaintenance * 0.8)
-     AND status = 'operational'`
-  );
+  const database = await getDb();
+  if (!database) return [];
+  
+  const mixersList = await database.select().from(mixers);
 
   const alerts = [];
-  for (const mixer of mixers as any[]) {
-    const percentUsed = (mixer.totalCycles / mixer.maxCyclesBeforeMaintenance) * 100;
-    alerts.push({
-      mixerId: mixer.id,
-      machineId: mixer.machineId,
-      mixerType: mixer.mixerType,
-      percentUsed,
-      cyclesUsed: mixer.totalCycles,
-      maxCycles: mixer.maxCyclesBeforeMaintenance,
-      severity: percentUsed >= 95 ? 'critical' : percentUsed >= 80 ? 'warning' : 'info',
-    });
+  for (const mixer of mixersList) {
+    const percentUsed = (mixer.totalCycles / (mixer.maxCyclesBeforeMaintenance || 1)) * 100;
+    if (percentUsed >= 80 && mixer.status === 'operational') {
+      alerts.push({
+        mixerId: mixer.id,
+        machineId: mixer.machineId,
+        mixerType: mixer.mixerType,
+        percentUsed,
+        cyclesUsed: mixer.totalCycles,
+        maxCycles: mixer.maxCyclesBeforeMaintenance,
+        severity: percentUsed >= 95 ? 'critical' : percentUsed >= 80 ? 'warning' : 'info',
+      });
+    }
   }
 
   return alerts;
 }
 
-export async function getMaintenanceHistory(mixerId: number, limit = 50) {
-  return await db.execute(
-    `SELECT * FROM maintenance_logs 
-     WHERE mixerId = ? 
-     ORDER BY createdAt DESC 
-     LIMIT ?`,
-    [mixerId, limit]
-  );
+export async function getMaintenanceHistory(machineId: number, limit = 50) {
+  const database = await getDb();
+  if (!database) return [];
+  
+  return await database.select()
+    .from(maintenanceHistory)
+    .where(eq(maintenanceHistory.machineId, machineId))
+    .limit(limit);
 }
 
 export async function recordBunkerRefill(
@@ -132,39 +135,41 @@ export async function recordBunkerRefill(
   notes?: string
 ) {
   // Get bunker
-  const bunkerResult = await db.execute(
-    `SELECT * FROM bunkers WHERE id = ?`,
-    [bunkerId]
-  );
+  const database = await getDb();
+  if (!database) throw new Error('Database connection failed');
+  
+  const bunkerResult = await database.select().from(bunkers).where(eq(bunkers.id, bunkerId)).limit(1);
 
   if (!bunkerResult || bunkerResult.length === 0) {
     throw new Error('Bunker not found');
   }
 
-  const bunker = bunkerResult[0] as any;
-  const newLevel = Math.min(bunker.currentLevel + refillAmount, bunker.capacity);
+  const bunker = bunkerResult[0];
+  const newLevel = Math.min((bunker.currentLevel || 0) + refillAmount, bunker.capacity);
 
   // Update bunker
-  await db.execute(
-    `UPDATE bunkers SET 
-      currentLevel = ?,
-      lastRefillDate = NOW(),
-      lastRefillBy = ?,
-      updatedAt = NOW()
-     WHERE id = ?`,
-    [newLevel, employeeId, bunkerId]
-  );
+  await database.update(bunkers)
+    .set({
+      currentLevel: newLevel,
+      lastRefillDate: new Date(),
+      lastRefillBy: employeeId,
+    })
+    .where(eq(bunkers.id, bunkerId));
 
   // Log refill
-  await db.execute(
-    `INSERT INTO stock_movements (bunkerOrMachineId, movementType, quantity, performedBy, notes, createdAt)
-     VALUES (?, 'refill', ?, ?, ?, NOW())`,
-    [bunkerId, refillAmount, employeeId, notes || null]
-  );
+  await database.insert(stockMovements).values({
+    itemType: 'ingredient',
+    itemId: bunker.ingredientId || 0,
+    movementType: 'in',
+    quantity: refillAmount,
+    machineId: bunker.machineId,
+    employeeId,
+    notes: notes || null,
+  });
 
   return {
     success: true,
-    previousLevel: bunker.currentLevel,
+    previousLevel: bunker.currentLevel || 0,
     newLevel,
     refillAmount,
   };
@@ -172,27 +177,24 @@ export async function recordBunkerRefill(
 
 export async function checkBunkerAlerts() {
   // Get bunkers with low levels
-  const bunkers = await db.execute(
-    `SELECT b.*, i.name as ingredientName, m.name as machineName
-     FROM bunkers b
-     LEFT JOIN ingredients i ON b.ingredientId = i.id
-     LEFT JOIN machines m ON b.machineId = m.id
-     WHERE (b.currentLevel / b.capacity * 100) <= b.lowLevelThreshold`
-  );
+  const database = await getDb();
+  if (!database) return [];
+  
+  const bunkersList = await database.select().from(bunkers);
 
   const alerts = [];
-  for (const bunker of bunkers as any[]) {
-    const percentFull = (bunker.currentLevel / bunker.capacity) * 100;
-    alerts.push({
-      bunkerId: bunker.id,
-      machineId: bunker.machineId,
-      machineName: bunker.machineName,
-      ingredientName: bunker.ingredientName,
-      currentLevel: bunker.currentLevel,
-      capacity: bunker.capacity,
-      percentFull,
-      severity: percentFull <= 10 ? 'critical' : percentFull <= 30 ? 'warning' : 'info',
-    });
+  for (const bunker of bunkersList) {
+    const percentFull = ((bunker.currentLevel || 0) / bunker.capacity) * 100;
+    if (percentFull <= (bunker.lowLevelThreshold || 30)) {
+      alerts.push({
+        bunkerId: bunker.id,
+        machineId: bunker.machineId,
+        currentLevel: bunker.currentLevel || 0,
+        capacity: bunker.capacity,
+        percentFull,
+        severity: percentFull <= 10 ? 'critical' : percentFull <= 30 ? 'warning' : 'info',
+      });
+    }
   }
 
   return alerts;

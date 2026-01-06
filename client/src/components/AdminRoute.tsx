@@ -14,18 +14,18 @@ interface AdminRouteProps {
 }
 
 export default function AdminRoute({ children }: AdminRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'admin')) {
+    if (!loading && (!user || user.role !== 'admin')) {
       // Redirect non-admin users to home
       setLocation('/');
     }
-  }, [user, isLoading, setLocation]);
+  }, [user, loading, setLocation]);
 
   // Show loading while checking auth
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
