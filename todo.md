@@ -533,4 +533,6 @@
 - [x] Fixed DATE() function error in daily quest progress queries
 - [x] Convert JavaScript Date objects to YYYY-MM-DD format before SQL comparison
 - [x] Fixed in initializeDailyQuestProgress, updateDailyQuestProgress, and claimDailyQuestReward functions
+- [x] Added CAST(dateStr AS DATE) for proper MySQL type comparison
 - [x] Error on /cart page resolved
+- [x] Error on /profile page resolved

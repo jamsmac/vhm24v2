@@ -768,7 +768,7 @@ export async function initializeDailyQuestProgress(userId: number, questId: numb
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
+      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
     ))
     .limit(1);
   
@@ -806,7 +806,7 @@ export async function updateDailyQuestProgress(
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
+      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
     ));
 }
 
@@ -822,7 +822,7 @@ export async function claimDailyQuestReward(userId: number, questId: number, que
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
+      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
     ))
     .limit(1);
   
@@ -847,7 +847,7 @@ export async function claimDailyQuestReward(userId: number, questId: number, que
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
+      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
     ));
   
   // Record transaction
