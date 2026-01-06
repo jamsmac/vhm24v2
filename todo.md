@@ -525,3 +525,12 @@
 - [ ] Parse receipt data (date, items, amounts)
 - [ ] Auto-populate sales import from receipt photos
 - [ ] Add confidence score for OCR results
+
+
+## Bug Fixes
+
+### Quest Progress DATE() Query Error
+- [x] Fixed DATE() function error in daily quest progress queries
+- [x] Convert JavaScript Date objects to YYYY-MM-DD format before SQL comparison
+- [x] Fixed in initializeDailyQuestProgress, updateDailyQuestProgress, and claimDailyQuestReward functions
+- [x] Error on /cart page resolved

@@ -760,12 +760,15 @@ export async function initializeDailyQuestProgress(userId: number, questId: numb
   const db = await getDb();
   if (!db) return;
   
+  // Convert date to YYYY-MM-DD format for comparison
+  const dateStr = questDate.toISOString().split('T')[0];
+  
   // Check if progress already exists
   const existing = await db.select().from(userDailyQuestProgress)
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
     ))
     .limit(1);
   
@@ -791,6 +794,9 @@ export async function updateDailyQuestProgress(
   const db = await getDb();
   if (!db) return;
   
+  // Convert date to YYYY-MM-DD format for comparison
+  const dateStr = questDate.toISOString().split('T')[0];
+  
   await db.update(userDailyQuestProgress)
     .set({ 
       currentValue, 
@@ -800,7 +806,7 @@ export async function updateDailyQuestProgress(
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
     ));
 }
 
@@ -808,12 +814,15 @@ export async function claimDailyQuestReward(userId: number, questId: number, que
   const db = await getDb();
   if (!db) return false;
   
+  // Convert date to YYYY-MM-DD format for comparison
+  const dateStr = questDate.toISOString().split('T')[0];
+  
   // Get progress
   const progress = await db.select().from(userDailyQuestProgress)
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
     ))
     .limit(1);
   
@@ -838,7 +847,7 @@ export async function claimDailyQuestReward(userId: number, questId: number, que
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = DATE(${questDate})`
+      sql`DATE(${userDailyQuestProgress.questDate}) = ${dateStr}`
     ));
   
   // Record transaction
