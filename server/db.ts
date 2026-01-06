@@ -1,4 +1,4 @@
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { 
   InsertUser, users, User,
@@ -760,15 +760,19 @@ export async function initializeDailyQuestProgress(userId: number, questId: numb
   const db = await getDb();
   if (!db) return;
   
-  // Convert date to YYYY-MM-DD format for comparison
-  const dateStr = questDate.toISOString().split('T')[0];
+  // Calculate start and end of day for date range comparison
+  const startOfDay = new Date(questDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(questDate);
+  endOfDay.setHours(23, 59, 59, 999);
   
   // Check if progress already exists
   const existing = await db.select().from(userDailyQuestProgress)
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
+      gte(userDailyQuestProgress.questDate, startOfDay),
+      lte(userDailyQuestProgress.questDate, endOfDay)
     ))
     .limit(1);
   
@@ -794,8 +798,11 @@ export async function updateDailyQuestProgress(
   const db = await getDb();
   if (!db) return;
   
-  // Convert date to YYYY-MM-DD format for comparison
-  const dateStr = questDate.toISOString().split('T')[0];
+  // Calculate start and end of day for date range comparison
+  const startOfDay = new Date(questDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(questDate);
+  endOfDay.setHours(23, 59, 59, 999);
   
   await db.update(userDailyQuestProgress)
     .set({ 
@@ -806,7 +813,8 @@ export async function updateDailyQuestProgress(
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
+      gte(userDailyQuestProgress.questDate, startOfDay),
+      lte(userDailyQuestProgress.questDate, endOfDay)
     ));
 }
 
@@ -814,15 +822,19 @@ export async function claimDailyQuestReward(userId: number, questId: number, que
   const db = await getDb();
   if (!db) return false;
   
-  // Convert date to YYYY-MM-DD format for comparison
-  const dateStr = questDate.toISOString().split('T')[0];
+  // Calculate start and end of day for date range comparison
+  const startOfDay = new Date(questDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(questDate);
+  endOfDay.setHours(23, 59, 59, 999);
   
   // Get progress
   const progress = await db.select().from(userDailyQuestProgress)
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
+      gte(userDailyQuestProgress.questDate, startOfDay),
+      lte(userDailyQuestProgress.questDate, endOfDay)
     ))
     .limit(1);
   
@@ -847,7 +859,8 @@ export async function claimDailyQuestReward(userId: number, questId: number, que
     .where(and(
       eq(userDailyQuestProgress.userId, userId),
       eq(userDailyQuestProgress.questId, questId),
-      sql`DATE(${userDailyQuestProgress.questDate}) = CAST(${dateStr} AS DATE)`
+      gte(userDailyQuestProgress.questDate, startOfDay),
+      lte(userDailyQuestProgress.questDate, endOfDay)
     ));
   
   // Record transaction
