@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE machines ADD COLUMN IF NOT EXISTS groupId INT;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute ALTER TABLE machines ADD COLUMN IF NOT EXISTS groupId INT;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 431
+}

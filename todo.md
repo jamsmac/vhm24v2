@@ -598,3 +598,15 @@
 - [x] Add bulk status change dialog
 - [x] Add confirmation dialog for bulk delete
 - [x] Show selected count
+
+
+## Sample Data Seeding
+
+- [x] Create seed script for ingredients (coffee, milk, sugar, syrups, powders)
+- [x] Create seed script for bunkers (link to machines and ingredients)
+- [x] Create seed script for mixers (link to machines with different types)
+- [x] Run seed script and verify data insertion
+- [x] Added missing database columns (ingredientCategory, costPerUnit, minStockLevel, description, isActive, groupId)
+- [x] Seeded 15 ingredients, 3 machines, 15 bunkers, 8 mixers
+- [x] Test CRUD operations with seeded data
+- [x] Test bulk operations (delete, status update) with seeded data
