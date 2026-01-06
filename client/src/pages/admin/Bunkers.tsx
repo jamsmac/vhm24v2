@@ -68,8 +68,10 @@ export default function BunkersPage() {
   const [isBulkRefillDialogOpen, setIsBulkRefillDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedBunkerId, setSelectedBunkerId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterMachine, setFilterMachine] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterLowStock, setFilterLowStock] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [bulkRefillPercentage, setBulkRefillPercentage] = useState(100);
@@ -292,15 +294,27 @@ export default function BunkersPage() {
 
   // Filter bunkers
   const filteredBunkers = bunkers.filter(bunker => {
+    // Search filter (search in machine name and ingredient name)
+    if (searchQuery) {
+      const machine = machines.find(m => m.id === bunker.machineId);
+      const ingredient = ingredients.find(i => i.id === bunker.ingredientId);
+      const searchLower = searchQuery.toLowerCase();
+      const matchesMachine = machine?.name.toLowerCase().includes(searchLower);
+      const matchesIngredient = ingredient?.name.toLowerCase().includes(searchLower);
+      if (!matchesMachine && !matchesIngredient) return false;
+    }
+    
+    // Machine filter
     if (filterMachine !== "all" && bunker.machineId !== parseInt(filterMachine)) return false;
-    if (filterStatus === "low") {
-      const percentage = (bunker.currentLevel / bunker.capacity) * 100;
-      return percentage <= bunker.lowLevelThreshold;
-    }
-    if (filterStatus === "critical") {
-      const percentage = (bunker.currentLevel / bunker.capacity) * 100;
-      return percentage <= 10;
-    }
+    
+    // Status filter
+    const percentage = (bunker.currentLevel / bunker.capacity) * 100;
+    if (filterStatus === "low" && percentage > bunker.lowLevelThreshold) return false;
+    if (filterStatus === "critical" && percentage > 10) return false;
+    
+    // Low stock filter
+    if (filterLowStock && percentage > bunker.lowLevelThreshold) return false;
+    
     return true;
   });
 
@@ -431,24 +445,21 @@ export default function BunkersPage() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <Card className="mb-6">
         <CardContent className="p-4">
           <div className="flex flex-wrap items-center gap-4">
-            {/* Select All Checkbox */}
-            {filteredBunkers.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="selectAll"
-                  checked={allSelected}
-                  onCheckedChange={toggleSelectAll}
-                />
-                <Label htmlFor="selectAll" className="text-sm cursor-pointer">
-                  Выбрать все
-                </Label>
-              </div>
-            )}
+            {/* Search Input */}
+            <div className="flex-1 min-w-[200px] max-w-md">
+              <Input
+                placeholder="Поиск по автомату или ингредиенту..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+              />
+            </div>
 
+            {/* Machine Filter */}
             <Select value={filterMachine} onValueChange={setFilterMachine}>
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="Все автоматы" />
@@ -463,6 +474,7 @@ export default function BunkersPage() {
               </SelectContent>
             </Select>
             
+            {/* Status Filter */}
             <Select value={filterStatus} onValueChange={setFilterStatus}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Все статусы" />
@@ -473,6 +485,32 @@ export default function BunkersPage() {
                 <SelectItem value="critical">🔴 Критический</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Low Stock Toggle */}
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="lowStock"
+                checked={filterLowStock}
+                onCheckedChange={(checked) => setFilterLowStock(checked as boolean)}
+              />
+              <Label htmlFor="lowStock" className="text-sm cursor-pointer">
+                Только низкий запас
+              </Label>
+            </div>
+
+            {/* Select All Checkbox */}
+            {filteredBunkers.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="selectAll"
+                  checked={allSelected}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <Label htmlFor="selectAll" className="text-sm cursor-pointer">
+                  Выбрать все
+                </Label>
+              </div>
+            )}
             
             <div className="flex-1" />
             

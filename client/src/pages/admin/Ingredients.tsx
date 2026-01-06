@@ -63,7 +63,9 @@ const categoryIcons: Record<string, string> = {
 export default function IngredientsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
@@ -226,9 +228,28 @@ export default function IngredientsPage() {
     bulkStatusMutation.mutate({ ids: Array.from(selectedIds), isActive: false });
   };
 
-  const filteredIngredients = filterCategory === "all" 
-    ? ingredients 
-    : ingredients.filter(i => i.category === filterCategory);
+  // Apply all filters
+  const filteredIngredients = ingredients.filter(ingredient => {
+    // Search filter
+    if (searchQuery && !ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    // Category filter
+    if (filterCategory !== "all" && ingredient.category !== filterCategory) {
+      return false;
+    }
+    
+    // Status filter
+    if (filterStatus === "active" && !ingredient.isActive) {
+      return false;
+    }
+    if (filterStatus === "inactive" && ingredient.isActive) {
+      return false;
+    }
+    
+    return true;
+  });
 
   const lowStockCount = ingredients.filter(i => !i.isActive).length;
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
@@ -295,21 +316,19 @@ export default function IngredientsPage() {
           </Card>
         )}
 
+        {/* Search and Filters */}
         <div className="flex flex-wrap items-center gap-4">
-          {/* Select All Checkbox */}
-          {filteredIngredients.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="selectAll"
-                checked={allSelected}
-                onCheckedChange={toggleSelectAll}
-              />
-              <Label htmlFor="selectAll" className="text-sm cursor-pointer">
-                Выбрать все
-              </Label>
-            </div>
-          )}
+          {/* Search Input */}
+          <div className="flex-1 min-w-[200px] max-w-md">
+            <Input
+              placeholder="Поиск по названию..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full"
+            />
+          </div>
 
+          {/* Category Filter */}
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Все категории" />
@@ -323,6 +342,32 @@ export default function IngredientsPage() {
               ))}
             </SelectContent>
           </Select>
+
+          {/* Status Filter */}
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Все статусы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              <SelectItem value="active">Активные</SelectItem>
+              <SelectItem value="inactive">Неактивные</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Select All Checkbox */}
+          {filteredIngredients.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="selectAll"
+                checked={allSelected}
+                onCheckedChange={toggleSelectAll}
+              />
+              <Label htmlFor="selectAll" className="text-sm cursor-pointer">
+                Выбрать все
+              </Label>
+            </div>
+          )}
 
           {lowStockCount > 0 && (
             <Badge variant="destructive" className="gap-1">

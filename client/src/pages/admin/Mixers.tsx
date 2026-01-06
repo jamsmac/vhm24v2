@@ -291,17 +291,26 @@ export default function MixersPage() {
 
   // Filter mixers
   const filteredMixers = mixers.filter(mixer => {
+    // Search filter (search in machine name and mixer type)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const machine = machines.find(m => m.id === mixer.machineId);
-      if (!machine?.name.toLowerCase().includes(query) &&
-          !mixer.mixerType.toLowerCase().includes(query)) {
+      const matchesMachine = machine?.name.toLowerCase().includes(query);
+      const matchesType = mixerTypeConfig[mixer.mixerType as MixerType]?.label.toLowerCase().includes(query);
+      if (!matchesMachine && !matchesType) {
         return false;
       }
     }
+    
+    // Type filter
     if (typeFilter !== "all" && mixer.mixerType !== typeFilter) return false;
+    
+    // Status filter
     if (statusFilter !== "all" && mixer.status !== statusFilter) return false;
+    
+    // Machine filter
     if (machineFilter !== "all" && mixer.machineId !== parseInt(machineFilter)) return false;
+    
     return true;
   });
 

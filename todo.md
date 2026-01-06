@@ -610,3 +610,25 @@
 - [x] Seeded 15 ingredients, 3 machines, 15 bunkers, 8 mixers
 - [x] Test CRUD operations with seeded data
 - [x] Test bulk operations (delete, status update) with seeded data
+
+
+## Search and Filtering
+
+### Ingredients Page
+- [x] Add search input for ingredient name
+- [x] Add category filter dropdown (coffee, milk, sugar, syrup, powder, water, other)
+- [x] Add status filter (active/inactive)
+- [x] Implement real-time filtering logic
+
+### Bunkers Page
+- [x] Add search input for bunker/machine name
+- [x] Add machine filter dropdown
+- [x] Add low level alert filter (show only low stock)
+- [x] Implement real-time filtering logic
+
+### Mixers Page
+- [x] Add search input for mixer/machine name
+- [x] Add mixer type filter (main, secondary, whisk, grinder)
+- [x] Add status filter (operational, needs_cleaning, needs_repair, replaced)
+- [x] Add machine filter dropdown
+- [x] Implement real-time filtering logic
