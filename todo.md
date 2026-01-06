@@ -644,9 +644,26 @@
 - [x] Redirect non-staff users to home page
 - [x] Hide admin panel link from regular customers
 
-### Back Navigation
-- [x] AdminLayout has "Перейти на сайт" button to return to main app
-- [x] All profile pages use useTelegramBackButton hook
-- [x] DrinkDetail page has back button
-- [x] Leaderboard, Achievements, DailyQuests, PointsHistory pages have back buttons
-- [x] Navigation flows work correctly
+## Server-Side Role Verification
+
+### Database & API
+- [x] Review users table schema for role field
+- [x] Update auth.me endpoint to return user role from database
+- [x] Update profile.getProfile endpoint to return role
+- [x] Ensure upsertUser function properly stores role field
+- [x] Add 'employee' role to users table enum
+
+### Frontend Integration
+- [x] Update useAuth hook to include role from server
+- [x] Update Profile page to use server-provided role for admin button
+- [x] AdminRoute already uses server-provided role from useAuth
+- [x] Remove hardcoded role values from frontend
+
+### Testing
+- [x] Test admin user can access admin panel (via role-access.test.ts)
+- [x] Test employee user can access admin panel (via role-access.test.ts)
+- [x] Test customer user cannot access admin panel (via role-access.test.ts)
+- [x] Verify role persists across page refreshes (role from database)
+- [x] Test role updates when changed in database (getUserById returns latest role)
+- [x] Created test users: admin@vendhub.uz, employee@vendhub.uz, customer@vendhub.uz
+- [x] All 9 vitest tests passing for role-based access control

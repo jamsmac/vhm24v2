@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useTelegram } from "@/contexts/TelegramContext";
 import { useUserStore, formatPoints, getLoyaltyLevelName } from "@/stores/userStore";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useFavoritesStore } from "@/stores/favoritesStore";
 import { useOrderHistoryStore } from "@/stores/orderHistoryStore";
 import { 
@@ -43,14 +44,15 @@ export default function Profile() {
   const { profile, loyalty, logout } = useUserStore();
   const { favorites } = useFavoritesStore();
   const { getOrderStats } = useOrderHistoryStore();
+  const { user: authUser } = useAuth(); // Get user from server with role
   
   const displayName = user?.first_name || profile?.firstName || mockUser.firstName;
   const lastName = user?.last_name || profile?.lastName || mockUser.lastName;
   const points = loyalty?.pointsBalance || mockUser.pointsBalance;
   const orderStats = getOrderStats();
 
-  // Check if user is admin or employee
-  const isStaff = profile?.role === 'admin' || profile?.role === 'employee';
+  // Check if user is admin or employee (from server-provided role)
+  const isStaff = authUser?.role === 'admin' || authUser?.role === 'employee';
 
   const menuItems = [
     // Admin panel button (only for staff)
