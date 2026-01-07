@@ -7,72 +7,20 @@ import { nanoid } from "nanoid";
 import * as db from "./db";
 
 // Helper function to update quest progress on order
+// Optimized: Uses batch operations to eliminate N+1 queries
 async function updateQuestProgressOnOrder(userId: number, orderAmount: number) {
-  const today = new Date();
-  const quests = await db.getAllDailyQuests();
-  
-  for (const quest of quests) {
-    // Initialize progress if not exists
-    await db.initializeDailyQuestProgress(userId, quest.id, today);
-    
-    // Get current progress
-    const progressList = await db.getUserDailyQuestProgress(userId, today);
-    const progress = progressList.find(p => p.questId === quest.id);
-    
-    if (!progress || progress.isCompleted) continue;
-    
-    let newValue = progress.currentValue;
-    let isCompleted = false;
-    
-    if (quest.type === 'order') {
-      newValue = progress.currentValue + 1;
-      isCompleted = newValue >= quest.targetValue;
-    } else if (quest.type === 'spend') {
-      newValue = progress.currentValue + orderAmount;
-      isCompleted = newValue >= quest.targetValue;
-    }
-    
-    if (newValue !== progress.currentValue) {
-      await db.updateDailyQuestProgress(userId, quest.id, today, newValue, isCompleted);
-      
-      // Send notification if quest completed
-      if (isCompleted && !progress.isCompleted) {
-        await db.createNotification({
-          userId,
-          type: 'bonus',
-          title: '✅ Задание выполнено!',
-          message: `Вы выполнили задание "${quest.title}". Нажмите, чтобы получить награду!`,
-          data: { questId: quest.id, reward: quest.rewardPoints }
-        });
-      }
-    }
-  }
+  // This now uses the optimized batch function that:
+  // - Fetches all quests in 1 query
+  // - Fetches all progress in 1 query
+  // - Batch inserts missing progress records
+  // - Batch inserts notifications
+  await db.updateQuestProgressOnOrderBatch(userId, orderAmount);
 }
 
 // Helper function to update visit quest on app open
+// Optimized: Reduced from 5+ queries to 3-4 queries
 async function updateVisitQuestProgress(userId: number) {
-  const today = new Date();
-  const quests = await db.getAllDailyQuests();
-  
-  const visitQuest = quests.find(q => q.type === 'visit');
-  if (!visitQuest) return;
-  
-  await db.initializeDailyQuestProgress(userId, visitQuest.id, today);
-  
-  const progressList = await db.getUserDailyQuestProgress(userId, today);
-  const progress = progressList.find(p => p.questId === visitQuest.id);
-  
-  if (!progress || progress.isCompleted) return;
-  
-  await db.updateDailyQuestProgress(userId, visitQuest.id, today, 1, true);
-  
-  await db.createNotification({
-    userId,
-    type: 'bonus',
-    title: '✅ Задание выполнено!',
-    message: `Вы выполнили задание "${visitQuest.title}". Нажмите, чтобы получить награду!`,
-    data: { questId: visitQuest.id, reward: visitQuest.rewardPoints }
-  });
+  await db.updateVisitQuestProgressBatch(userId);
 }
 
 export const appRouter = router({

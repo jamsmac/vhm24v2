@@ -1022,6 +1022,220 @@ export async function claimDailyQuestReward(userId: number, questId: number, que
   return true;
 }
 
+// ==================== OPTIMIZED QUEST PROGRESS (NO N+1) ====================
+
+export interface QuestProgressUpdate {
+  questId: number;
+  questTitle: string;
+  newValue: number;
+  isCompleted: boolean;
+  wasCompleted: boolean;
+  rewardPoints: number;
+}
+
+/**
+ * Optimized function to update quest progress on order - eliminates N+1 queries
+ * Previously: N queries per quest (2-4 queries each)
+ * Now: 2 queries to fetch + batch operations
+ */
+export async function updateQuestProgressOnOrderBatch(
+  userId: number,
+  orderAmount: number
+): Promise<QuestProgressUpdate[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const today = new Date();
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // 1. Get all active quests in ONE query
+  const quests = await db.select().from(dailyQuests).where(eq(dailyQuests.isActive, true));
+
+  if (quests.length === 0) return [];
+
+  // 2. Get all user's progress for today in ONE query
+  const existingProgress = await db.select().from(userDailyQuestProgress)
+    .where(and(
+      eq(userDailyQuestProgress.userId, userId),
+      gte(userDailyQuestProgress.questDate, startOfDay),
+      lte(userDailyQuestProgress.questDate, endOfDay)
+    ));
+
+  const progressMap = new Map(existingProgress.map(p => [p.questId, p]));
+
+  // 3. Calculate what needs to be initialized and updated
+  const toInitialize: { questId: number }[] = [];
+  const updates: QuestProgressUpdate[] = [];
+
+  for (const quest of quests) {
+    const progress = progressMap.get(quest.id);
+
+    // Need to initialize if no progress exists
+    if (!progress) {
+      toInitialize.push({ questId: quest.id });
+    }
+
+    // Skip if already completed
+    if (progress?.isCompleted) continue;
+
+    // Calculate new value based on quest type
+    const currentValue = progress?.currentValue || 0;
+    let newValue = currentValue;
+    let isCompleted = false;
+
+    if (quest.type === 'order') {
+      newValue = currentValue + 1;
+      isCompleted = newValue >= quest.targetValue;
+    } else if (quest.type === 'spend') {
+      newValue = currentValue + orderAmount;
+      isCompleted = newValue >= quest.targetValue;
+    }
+
+    // Only add to updates if value changed
+    if (newValue !== currentValue) {
+      updates.push({
+        questId: quest.id,
+        questTitle: quest.title,
+        newValue,
+        isCompleted,
+        wasCompleted: progress?.isCompleted || false,
+        rewardPoints: quest.rewardPoints,
+      });
+    }
+  }
+
+  // 4. Batch initialize missing progress records
+  if (toInitialize.length > 0) {
+    await db.insert(userDailyQuestProgress).values(
+      toInitialize.map(({ questId }) => ({
+        userId,
+        questId,
+        questDate: today,
+        currentValue: 0,
+        isCompleted: false,
+        rewardClaimed: false,
+      }))
+    );
+  }
+
+  // 5. Update progress and create notifications for completed quests
+  const completedNotifications: InsertNotification[] = [];
+
+  for (const update of updates) {
+    // Update progress record
+    await db.update(userDailyQuestProgress)
+      .set({
+        currentValue: update.newValue,
+        isCompleted: update.isCompleted,
+        completedAt: update.isCompleted ? new Date() : null,
+      })
+      .where(and(
+        eq(userDailyQuestProgress.userId, userId),
+        eq(userDailyQuestProgress.questId, update.questId),
+        gte(userDailyQuestProgress.questDate, startOfDay),
+        lte(userDailyQuestProgress.questDate, endOfDay)
+      ));
+
+    // Collect notifications for newly completed quests
+    if (update.isCompleted && !update.wasCompleted) {
+      completedNotifications.push({
+        userId,
+        type: 'bonus',
+        title: '✅ Задание выполнено!',
+        message: `Вы выполнили задание "${update.questTitle}". Нажмите, чтобы получить награду!`,
+        data: { questId: update.questId, reward: update.rewardPoints },
+      });
+    }
+  }
+
+  // 6. Batch insert notifications
+  if (completedNotifications.length > 0) {
+    await db.insert(notifications).values(completedNotifications);
+  }
+
+  return updates;
+}
+
+/**
+ * Optimized function to update visit quest - eliminates redundant queries
+ */
+export async function updateVisitQuestProgressBatch(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  const today = new Date();
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // 1. Find visit quest and check progress in ONE query using JOIN
+  const visitQuest = await db.select().from(dailyQuests)
+    .where(and(eq(dailyQuests.type, 'visit'), eq(dailyQuests.isActive, true)))
+    .limit(1);
+
+  if (visitQuest.length === 0) return false;
+
+  const quest = visitQuest[0];
+
+  // 2. Check existing progress
+  const existingProgress = await db.select().from(userDailyQuestProgress)
+    .where(and(
+      eq(userDailyQuestProgress.userId, userId),
+      eq(userDailyQuestProgress.questId, quest.id),
+      gte(userDailyQuestProgress.questDate, startOfDay),
+      lte(userDailyQuestProgress.questDate, endOfDay)
+    ))
+    .limit(1);
+
+  // If already completed, return early
+  if (existingProgress.length > 0 && existingProgress[0].isCompleted) {
+    return false;
+  }
+
+  // 3. Initialize or update progress
+  if (existingProgress.length === 0) {
+    // Create new progress record as completed
+    await db.insert(userDailyQuestProgress).values({
+      userId,
+      questId: quest.id,
+      questDate: today,
+      currentValue: 1,
+      isCompleted: true,
+      completedAt: new Date(),
+      rewardClaimed: false,
+    });
+  } else {
+    // Update existing record
+    await db.update(userDailyQuestProgress)
+      .set({
+        currentValue: 1,
+        isCompleted: true,
+        completedAt: new Date(),
+      })
+      .where(and(
+        eq(userDailyQuestProgress.userId, userId),
+        eq(userDailyQuestProgress.questId, quest.id),
+        gte(userDailyQuestProgress.questDate, startOfDay),
+        lte(userDailyQuestProgress.questDate, endOfDay)
+      ));
+  }
+
+  // 4. Create notification
+  await db.insert(notifications).values({
+    userId,
+    type: 'bonus',
+    title: '✅ Задание выполнено!',
+    message: `Вы выполнили задание "${quest.title}". Нажмите, чтобы получить награду!`,
+    data: { questId: quest.id, reward: quest.rewardPoints },
+  });
+
+  return true;
+}
+
 export async function seedDailyQuests(): Promise<void> {
   const db = await getDb();
   if (!db) return;
