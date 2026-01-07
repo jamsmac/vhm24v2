@@ -1,10 +1,85 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { parseExcel, parseCSV, validateParsedData, convertToSalesRecords, ParsedData } from './utils/documentParser';
 import { getDb } from './db';
 import { salesRecords, importBatches } from '../drizzle/schema';
+import { sdk } from './_core/sdk';
+import type { User } from '../drizzle/schema';
 
 const router = Router();
+
+// Extend Express Request to include authenticated user
+interface AuthenticatedRequest extends Request {
+  user: User;
+}
+
+// Rate limiting state (simple in-memory implementation)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 30; // 30 requests per minute
+
+/**
+ * Rate limiting middleware to prevent abuse
+ */
+function rateLimiter(req: Request, res: Response, next: NextFunction) {
+  const clientId = req.headers.cookie || req.ip || 'unknown';
+  const now = Date.now();
+
+  const clientData = rateLimitMap.get(clientId);
+
+  if (!clientData || now > clientData.resetTime) {
+    rateLimitMap.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return next();
+  }
+
+  if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return res.status(429).json({
+      error: 'Слишком много запросов. Попробуйте позже.',
+      retryAfter: Math.ceil((clientData.resetTime - now) / 1000)
+    });
+  }
+
+  clientData.count++;
+  next();
+}
+
+/**
+ * Authentication middleware - verifies user is logged in
+ */
+async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const user = await sdk.authenticateRequest(req);
+    (req as AuthenticatedRequest).user = user;
+    next();
+  } catch (error) {
+    console.error('[Upload] Authentication failed:', error);
+    return res.status(401).json({ error: 'Необходима авторизация' });
+  }
+}
+
+/**
+ * Admin authorization middleware - verifies user has admin or employee role
+ */
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = (req as AuthenticatedRequest).user;
+
+  if (!user) {
+    return res.status(401).json({ error: 'Необходима авторизация' });
+  }
+
+  // Allow admin and employee roles to access upload functionality
+  if (user.role !== 'admin' && user.role !== 'employee') {
+    console.warn(`[Upload] Unauthorized access attempt by user ${user.id} with role ${user.role}`);
+    return res.status(403).json({ error: 'Недостаточно прав для выполнения операции' });
+  }
+
+  next();
+}
+
+// Apply rate limiting and authentication to all routes
+router.use(rateLimiter);
+router.use(requireAuth);
+router.use(requireAdmin);
 
 // Configure multer for memory storage
 const upload = multer({
@@ -64,25 +139,45 @@ router.post('/parse', upload.single('file'), async (req: Request, res: Response)
       }
     });
   } catch (error: any) {
-    console.error('Error parsing file:', error);
-    res.status(500).json({ error: error.message || 'Ошибка при парсинге файла' });
+    console.error('[Upload] Error parsing file:', error);
+    // Don't expose internal error details in production
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.status(500).json({
+      error: isProduction ? 'Ошибка при парсинге файла' : (error.message || 'Ошибка при парсинге файла')
+    });
   }
 });
 
 // Import parsed data to database
 router.post('/import', upload.single('file'), async (req: Request, res: Response) => {
   try {
+    const authReq = req as AuthenticatedRequest;
+
     if (!req.file) {
       return res.status(400).json({ error: 'Файл не загружен' });
     }
 
-    const columnMapping = JSON.parse(req.body.columnMapping || '{}');
-    console.log('Column mapping received:', columnMapping);
+    // Safely parse column mapping with validation
+    let columnMapping: Record<string, string> = {};
+    try {
+      const mappingInput = req.body.columnMapping || '{}';
+      columnMapping = JSON.parse(mappingInput);
+
+      // Validate that all values are strings (prevent injection)
+      for (const [key, value] of Object.entries(columnMapping)) {
+        if (typeof key !== 'string' || typeof value !== 'string') {
+          throw new Error('Invalid mapping format');
+        }
+      }
+    } catch (parseError) {
+      return res.status(400).json({ error: 'Неверный формат маппинга колонок' });
+    }
+
     const fileName = req.file.originalname;
     const ext = fileName.toLowerCase().slice(fileName.lastIndexOf('.'));
-    
+
     let parsedData: ParsedData;
-    
+
     if (ext === '.csv') {
       const content = req.file.buffer.toString('utf-8');
       parsedData = parseCSV(content, fileName);
@@ -92,13 +187,13 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
 
     // Convert to sales records format
     const records = convertToSalesRecords(parsedData, columnMapping);
-    
+
     const db = await getDb();
     if (!db) {
       return res.status(500).json({ error: 'Ошибка подключения к базе данных' });
     }
 
-    // Create import batch record
+    // Create import batch record - use authenticated user ID
     const batchId = `BATCH-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const [batch] = await db.insert(importBatches).values({
       batchId,
@@ -108,8 +203,10 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
       successCount: 0,
       errorCount: 0,
       status: 'processing',
-      importedBy: req.body.uploadedBy ? parseInt(req.body.uploadedBy) : null,
+      importedBy: authReq.user.id, // Use authenticated user ID instead of untrusted input
     }).$returningId();
+
+    console.log(`[Upload] User ${authReq.user.id} (${authReq.user.name}) started import of ${fileName}`);
 
     let successCount = 0;
     let failCount = 0;
@@ -178,8 +275,11 @@ router.post('/import', upload.single('file'), async (req: Request, res: Response
       }
     });
   } catch (error: any) {
-    console.error('Error importing file:', error);
-    res.status(500).json({ error: error.message || 'Ошибка при импорте данных' });
+    console.error('[Upload] Error importing file:', error);
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.status(500).json({
+      error: isProduction ? 'Ошибка при импорте данных' : (error.message || 'Ошибка при импорте данных')
+    });
   }
 });
 
@@ -197,8 +297,11 @@ router.get('/history', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: batches });
   } catch (error: any) {
-    console.error('Error fetching import history:', error);
-    res.status(500).json({ error: error.message || 'Ошибка при получении истории импорта' });
+    console.error('[Upload] Error fetching import history:', error);
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.status(500).json({
+      error: isProduction ? 'Ошибка при получении истории импорта' : (error.message || 'Ошибка при получении истории импорта')
+    });
   }
 });
 
@@ -211,35 +314,48 @@ router.get('/sales', async (req: Request, res: Response) => {
     }
 
     const { paymentType, dateFrom, dateTo, search, page = '1', limit = '50' } = req.query;
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
+
+    // Validate and sanitize pagination parameters
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.min(500, Math.max(1, parseInt(limit as string) || 50)); // Max 500 records
     const offset = (pageNum - 1) * limitNum;
+
+    // Validate search parameter length
+    const searchQuery = typeof search === 'string' ? search.slice(0, 100) : undefined;
+
+    // Validate date formats
+    const validDateFrom = dateFrom && typeof dateFrom === 'string' && !isNaN(Date.parse(dateFrom)) ? dateFrom : undefined;
+    const validDateTo = dateTo && typeof dateTo === 'string' && !isNaN(Date.parse(dateTo)) ? dateTo : undefined;
+
+    // Validate payment type against allowed values
+    const allowedPaymentTypes = ['all', 'cash', 'qr', 'vip', 'card'];
+    const validPaymentType = typeof paymentType === 'string' && allowedPaymentTypes.includes(paymentType) ? paymentType : undefined;
 
     // Build query with filters
     let query = db.select().from(salesRecords);
-    
+
     // For now, get all and filter in memory (can be optimized with proper where clauses)
     const allRecords = await query.orderBy((await import('drizzle-orm')).desc(salesRecords.createdAt));
-    
+
     let filtered = allRecords;
-    
-    if (paymentType && paymentType !== 'all') {
-      filtered = filtered.filter(r => r.orderResource === paymentType);
+
+    if (validPaymentType && validPaymentType !== 'all') {
+      filtered = filtered.filter(r => r.orderResource === validPaymentType);
     }
-    
-    if (dateFrom) {
-      const from = new Date(dateFrom as string);
+
+    if (validDateFrom) {
+      const from = new Date(validDateFrom);
       filtered = filtered.filter(r => r.createdAt && new Date(r.createdAt) >= from);
     }
-    
-    if (dateTo) {
-      const to = new Date(dateTo as string);
+
+    if (validDateTo) {
+      const to = new Date(validDateTo);
       filtered = filtered.filter(r => r.createdAt && new Date(r.createdAt) <= to);
     }
-    
-    if (search) {
-      const searchLower = (search as string).toLowerCase();
-      filtered = filtered.filter(r => 
+
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      filtered = filtered.filter(r =>
         r.productName?.toLowerCase().includes(searchLower) ||
         r.orderNumber?.toLowerCase().includes(searchLower) ||
         r.machineCode?.toLowerCase().includes(searchLower)
@@ -289,8 +405,11 @@ router.get('/sales', async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    console.error('Error fetching sales:', error);
-    res.status(500).json({ error: error.message || 'Ошибка при получении данных о продажах' });
+    console.error('[Upload] Error fetching sales:', error);
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.status(500).json({
+      error: isProduction ? 'Ошибка при получении данных о продажах' : (error.message || 'Ошибка при получении данных о продажах')
+    });
   }
 });
 
