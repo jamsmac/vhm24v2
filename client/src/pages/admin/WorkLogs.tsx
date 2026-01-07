@@ -107,7 +107,7 @@ export default function WorkLogs() {
 
     createMutation.mutate({
       employeeId: parseInt(formData.employeeId),
-      machineId: formData.machineId ? parseInt(formData.machineId) : undefined,
+      machineId: formData.machineId && formData.machineId !== 'none' ? parseInt(formData.machineId) : undefined,
       workType: formData.workType,
       description: formData.description || undefined,
       notes: formData.notes || undefined,
@@ -250,7 +250,7 @@ export default function WorkLogs() {
                     <SelectValue placeholder="Выберите автомат" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Не указан</SelectItem>
+                    <SelectItem value="none">Не указан</SelectItem>
                     {machines.map((machine) => (
                       <SelectItem key={machine.id} value={machine.id.toString()}>
                         {machine.name} - {machine.address}

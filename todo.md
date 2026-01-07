@@ -723,3 +723,6 @@
 - [x] Build Performance admin page UI
 - [x] Add navigation menu items
 - [x] Write and pass all vitest tests (23/23)
+
+## Bug Fixes
+- [x] Fix Select.Item empty value error on Work Logs page
