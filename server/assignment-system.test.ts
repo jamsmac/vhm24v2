@@ -53,7 +53,7 @@ describe('Employee Assignment System', () => {
         machineId: testMachine.id,
         employeeId: testEmployee.id,
         assignmentType: 'primary',
-        status: 'active',
+        assignmentStatus: 'active',
         responsibilities: 'Maintenance and refills',
         notes: 'Test assignment',
       });
@@ -100,12 +100,12 @@ describe('Employee Assignment System', () => {
     it('should deactivate assignment', async () => {
       const deactivated = await db.deactivateMachineAssignment(testAssignment.id);
       expect(deactivated).toBeDefined();
-      expect(deactivated?.status).toBe('inactive');
+      expect(deactivated?.assignmentStatus).toBe('inactive');
       expect(deactivated?.endDate).toBeDefined();
 
       // Reactivate for other tests
       await db.updateMachineAssignment(testAssignment.id, {
-        status: 'active',
+        assignmentStatus: 'active',
         endDate: null,
       });
     });
@@ -117,7 +117,7 @@ describe('Employee Assignment System', () => {
         employeeId: testEmployee.id,
         machineId: testMachine.id,
         workType: 'maintenance',
-        status: 'in_progress',
+        workStatus: 'in_progress',
         description: 'Test maintenance work',
         notes: 'Test notes',
       });
@@ -126,7 +126,7 @@ describe('Employee Assignment System', () => {
       expect(testWorkLog.employeeId).toBe(testEmployee.id);
       expect(testWorkLog.machineId).toBe(testMachine.id);
       expect(testWorkLog.workType).toBe('maintenance');
-      expect(testWorkLog.status).toBe('in_progress');
+      expect(testWorkLog.workStatus).toBe('in_progress');
     });
 
     it('should get work log by ID', async () => {
@@ -254,20 +254,20 @@ describe('Employee Assignment System', () => {
         machineId: testMachine.id,
         employeeId: testEmployee.id,
         assignmentType: 'temporary',
-        status: 'pending',
+        assignmentStatus: 'pending',
       });
 
-      expect(newAssignment?.status).toBe('pending');
+      expect(newAssignment?.assignmentStatus).toBe('pending');
 
       // Update to active
       const activated = await db.updateMachineAssignment(newAssignment!.id, {
-        status: 'active',
+        assignmentStatus: 'active',
       });
-      expect(activated?.status).toBe('active');
+      expect(activated?.assignmentStatus).toBe('active');
 
       // Deactivate
       const deactivated = await db.deactivateMachineAssignment(newAssignment!.id);
-      expect(deactivated?.status).toBe('inactive');
+      expect(deactivated?.assignmentStatus).toBe('inactive');
       expect(deactivated?.endDate).toBeDefined();
 
       // Cleanup
@@ -282,15 +282,15 @@ describe('Employee Assignment System', () => {
         employeeId: testEmployee.id,
         machineId: testMachine.id,
         workType: 'cleaning',
-        status: 'in_progress',
+        workStatus: 'in_progress',
         description: 'Test cleaning',
       });
 
-      expect(newLog?.status).toBe('in_progress');
+      expect(newLog?.workStatus).toBe('in_progress');
 
       // Cancel it
       const cancelled = await db.cancelWorkLog(newLog!.id, 'Test cancellation');
-      expect(cancelled?.status).toBe('cancelled');
+      expect(cancelled?.workStatus).toBe('cancelled');
       expect(cancelled?.endTime).toBeDefined();
       expect(cancelled?.notes).toBe('Test cancellation');
 

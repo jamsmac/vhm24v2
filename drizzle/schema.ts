@@ -740,7 +740,7 @@ export const machineAssignments = mysqlTable("machine_assignments", {
   machineId: int("machineId").notNull(),
   employeeId: int("employeeId").notNull(),
   assignmentType: mysqlEnum("assignmentType", ["primary", "secondary", "temporary"]).default("primary").notNull(),
-  status: mysqlEnum("status", ["active", "inactive", "pending"]).default("active").notNull(),
+  assignmentStatus: mysqlEnum("assignmentStatus", ["active", "inactive", "pending"]).default("active").notNull(),
   startDate: timestamp("startDate").defaultNow().notNull(),
   endDate: timestamp("endDate"),
   responsibilities: text("responsibilities"), // JSON array of responsibilities
@@ -751,9 +751,9 @@ export const machineAssignments = mysqlTable("machine_assignments", {
 }, (table) => [
   index("idx_assignments_machine").on(table.machineId),
   index("idx_assignments_employee").on(table.employeeId),
-  index("idx_assignments_status").on(table.status),
-  index("idx_assignments_employee_status").on(table.employeeId, table.status),
-  index("idx_assignments_machine_status").on(table.machineId, table.status),
+  index("idx_assignments_status").on(table.assignmentStatus),
+  index("idx_assignments_employee_status").on(table.employeeId, table.assignmentStatus),
+  index("idx_assignments_machine_status").on(table.machineId, table.assignmentStatus),
 ]);
 
 export type MachineAssignment = typeof machineAssignments.$inferSelect;
@@ -767,7 +767,7 @@ export const workLogs = mysqlTable("work_logs", {
   employeeId: int("employeeId").notNull(),
   machineId: int("machineId"),
   workType: mysqlEnum("workType", ["maintenance", "refill", "cleaning", "repair", "inspection", "installation", "other"]).notNull(),
-  status: mysqlEnum("status", ["in_progress", "completed", "cancelled"]).default("in_progress").notNull(),
+  workStatus: mysqlEnum("workStatus", ["in_progress", "completed", "cancelled"]).default("in_progress").notNull(),
   startTime: timestamp("startTime").defaultNow().notNull(),
   endTime: timestamp("endTime"),
   duration: int("duration"), // in minutes, calculated on completion
@@ -783,9 +783,9 @@ export const workLogs = mysqlTable("work_logs", {
 }, (table) => [
   index("idx_worklogs_employee").on(table.employeeId),
   index("idx_worklogs_machine").on(table.machineId),
-  index("idx_worklogs_status").on(table.status),
+  index("idx_worklogs_status").on(table.workStatus),
   index("idx_worklogs_start").on(table.startTime),
-  index("idx_worklogs_employee_status").on(table.employeeId, table.status),
+  index("idx_worklogs_employee_status").on(table.employeeId, table.workStatus),
 ]);
 
 export type WorkLog = typeof workLogs.$inferSelect;

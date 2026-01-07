@@ -2041,7 +2041,7 @@ export async function getActiveMachineAssignments(): Promise<MachineAssignment[]
   if (!db) return [];
 
   return await db.select().from(machineAssignments)
-    .where(eq(machineAssignments.status, 'active'))
+    .where(eq(machineAssignments.assignmentStatus, 'active'))
     .orderBy(desc(machineAssignments.startDate));
 }
 
@@ -2061,7 +2061,7 @@ export async function getActiveMachineAssignmentsByEmployee(employeeId: number):
   return await db.select().from(machineAssignments)
     .where(and(
       eq(machineAssignments.employeeId, employeeId),
-      eq(machineAssignments.status, 'active')
+      eq(machineAssignments.assignmentStatus, 'active')
     ))
     .orderBy(desc(machineAssignments.startDate));
 }
@@ -2082,7 +2082,7 @@ export async function getActiveMachineAssignmentsByMachine(machineId: number): P
   return await db.select().from(machineAssignments)
     .where(and(
       eq(machineAssignments.machineId, machineId),
-      eq(machineAssignments.status, 'active')
+      eq(machineAssignments.assignmentStatus, 'active')
     ))
     .orderBy(desc(machineAssignments.startDate));
 }
@@ -2096,8 +2096,8 @@ export async function updateMachineAssignment(id: number, updates: Partial<Inser
 }
 
 export async function deactivateMachineAssignment(id: number): Promise<MachineAssignment | null> {
-  return await updateMachineAssignment(id, { 
-    status: 'inactive',
+  return await updateMachineAssignment(id, {
+    assignmentStatus: 'inactive',
     endDate: new Date()
   });
 }
@@ -2171,7 +2171,7 @@ export async function getInProgressWorkLogs(): Promise<WorkLog[]> {
   if (!db) return [];
 
   return await db.select().from(workLogs)
-    .where(eq(workLogs.status, 'in_progress'))
+    .where(eq(workLogs.workStatus, 'in_progress'))
     .orderBy(desc(workLogs.startTime));
 }
 
@@ -2185,7 +2185,7 @@ export async function completeWorkLog(id: number, endTime: Date, notes?: string,
   const duration = Math.floor((endTime.getTime() - new Date(log.startTime).getTime()) / 60000); // minutes
 
   await db.update(workLogs).set({
-    status: 'completed',
+    workStatus: 'completed',
     endTime,
     duration,
     notes: notes || log.notes,
@@ -2203,7 +2203,7 @@ export async function cancelWorkLog(id: number, notes?: string): Promise<WorkLog
   if (!db) return null;
 
   await db.update(workLogs).set({
-    status: 'cancelled',
+    workStatus: 'cancelled',
     endTime: new Date(),
     notes
   }).where(eq(workLogs.id, id));
@@ -2281,13 +2281,13 @@ export async function updateEmployeePerformanceOnWorkComplete(employeeId: number
   const completedLogs = await db.select().from(workLogs)
     .where(and(
       eq(workLogs.employeeId, employeeId),
-      eq(workLogs.status, 'completed')
+      eq(workLogs.workStatus, 'completed')
     ));
 
   const cancelledLogs = await db.select().from(workLogs)
     .where(and(
       eq(workLogs.employeeId, employeeId),
-      eq(workLogs.status, 'cancelled')
+      eq(workLogs.workStatus, 'cancelled')
     ));
 
   const totalWorkLogs = completedLogs.length;

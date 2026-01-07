@@ -1104,7 +1104,7 @@ export const appRouter = router({
           machineId: z.number(),
           employeeId: z.number(),
           assignmentType: z.enum(['primary', 'secondary', 'temporary']).default('primary'),
-          status: z.enum(['active', 'inactive', 'pending']).default('active'),
+          assignmentStatus: z.enum(['active', 'inactive', 'pending']).default('active'),
           startDate: z.date().optional(),
           endDate: z.date().optional(),
           responsibilities: z.string().optional(),
@@ -1125,7 +1125,7 @@ export const appRouter = router({
           machineId: z.number().optional(),
           employeeId: z.number().optional(),
           assignmentType: z.enum(['primary', 'secondary', 'temporary']).optional(),
-          status: z.enum(['active', 'inactive', 'pending']).optional(),
+          assignmentStatus: z.enum(['active', 'inactive', 'pending']).optional(),
           endDate: z.date().optional(),
           responsibilities: z.string().optional(),
           notes: z.string().optional(),
@@ -1195,7 +1195,7 @@ export const appRouter = router({
         .mutation(async ({ input }) => {
           return await db.createWorkLog({
             ...input,
-            status: 'in_progress',
+            workStatus: 'in_progress',
             startTime: new Date(),
           });
         }),

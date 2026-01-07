@@ -134,14 +134,14 @@ export default function WorkLogs() {
   const filteredLogs = workLogs.filter((log) => {
     if (filterEmployee !== "all" && log.employeeId !== parseInt(filterEmployee)) return false;
     if (filterWorkType !== "all" && log.workType !== filterWorkType) return false;
-    if (filterStatus !== "all" && log.status !== filterStatus) return false;
+    if (filterStatus !== "all" && log.workStatus !== filterStatus) return false;
     return true;
   });
 
   // Calculate statistics
-  const inProgressCount = workLogs.filter((l) => l.status === "in_progress").length;
+  const inProgressCount = workLogs.filter((l) => l.workStatus === "in_progress").length;
   const completedToday = workLogs.filter((l) => {
-    if (l.status !== "completed" || !l.endTime) return false;
+    if (l.workStatus !== "completed" || !l.endTime) return false;
     const today = new Date();
     const logDate = new Date(l.endTime);
     return logDate.toDateString() === today.toDateString();
@@ -149,7 +149,7 @@ export default function WorkLogs() {
   
   const totalHoursToday = workLogs
     .filter((l) => {
-      if (l.status !== "completed" || !l.endTime) return false;
+      if (l.workStatus !== "completed" || !l.endTime) return false;
       const today = new Date();
       const logDate = new Date(l.endTime);
       return logDate.toDateString() === today.toDateString();
@@ -451,7 +451,7 @@ export default function WorkLogs() {
                       </TableCell>
                       <TableCell>{getMachineName(log.machineId)}</TableCell>
                       <TableCell>{getWorkTypeName(log.workType)}</TableCell>
-                      <TableCell>{getStatusBadge(log.status)}</TableCell>
+                      <TableCell>{getStatusBadge(log.workStatus)}</TableCell>
                       <TableCell>
                         {format(new Date(log.startTime), "dd.MM.yyyy HH:mm")}
                       </TableCell>
@@ -468,7 +468,7 @@ export default function WorkLogs() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {log.status === "in_progress" && (
+                          {log.workStatus === "in_progress" && (
                             <>
                               <Button
                                 variant="outline"

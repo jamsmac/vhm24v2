@@ -87,7 +87,7 @@ export default function Assignments() {
     machineId: "",
     employeeId: "",
     assignmentType: "primary" as "primary" | "secondary" | "temporary",
-    status: "active" as "active" | "inactive" | "pending",
+    assignmentStatus: "active" as "active" | "inactive" | "pending",
     responsibilities: "",
     notes: "",
   });
@@ -102,7 +102,7 @@ export default function Assignments() {
       machineId: parseInt(formData.machineId),
       employeeId: parseInt(formData.employeeId),
       assignmentType: formData.assignmentType,
-      status: formData.status,
+      assignmentStatus: formData.assignmentStatus,
       responsibilities: formData.responsibilities || undefined,
       notes: formData.notes || undefined,
     });
@@ -122,23 +122,23 @@ export default function Assignments() {
 
   // Filter assignments
   const filteredAssignments = assignments.filter((assignment) => {
-    if (filterStatus !== "all" && assignment.status !== filterStatus) return false;
+    if (filterStatus !== "all" && assignment.assignmentStatus !== filterStatus) return false;
     if (filterEmployee !== "all" && assignment.employeeId !== parseInt(filterEmployee)) return false;
     if (filterMachine !== "all" && assignment.machineId !== parseInt(filterMachine)) return false;
     return true;
   });
 
   // Calculate statistics
-  const activeCount = assignments.filter((a) => a.status === "active").length;
+  const activeCount = assignments.filter((a) => a.assignmentStatus === "active").length;
   const employeeWorkload = employees.map((emp) => ({
     employee: emp,
     activeAssignments: assignments.filter(
-      (a) => a.employeeId === emp.id && a.status === "active"
+      (a) => a.employeeId === emp.id && a.assignmentStatus === "active"
     ).length,
   }));
 
   const machinesWithoutAssignment = machines.filter(
-    (machine) => !assignments.some((a) => a.machineId === machine.id && a.status === "active")
+    (machine) => !assignments.some((a) => a.machineId === machine.id && a.assignmentStatus === "active")
   );
 
   const getStatusBadge = (status: string) => {
@@ -257,8 +257,8 @@ export default function Assignments() {
                 <div className="grid gap-2">
                   <Label htmlFor="status">Статус</Label>
                   <Select
-                    value={formData.status}
-                    onValueChange={(value: any) => setFormData({ ...formData, status: value })}
+                    value={formData.assignmentStatus}
+                    onValueChange={(value: any) => setFormData({ ...formData, assignmentStatus: value })}
                   >
                     <SelectTrigger id="status">
                       <SelectValue />
@@ -440,7 +440,7 @@ export default function Assignments() {
                       </TableCell>
                       <TableCell>{getMachineName(assignment.machineId)}</TableCell>
                       <TableCell>{getTypeBadge(assignment.assignmentType)}</TableCell>
-                      <TableCell>{getStatusBadge(assignment.status)}</TableCell>
+                      <TableCell>{getStatusBadge(assignment.assignmentStatus)}</TableCell>
                       <TableCell>
                         {format(new Date(assignment.startDate), "dd.MM.yyyy")}
                       </TableCell>
@@ -451,7 +451,7 @@ export default function Assignments() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {assignment.status === "active" && (
+                          {assignment.assignmentStatus === "active" && (
                             <Button
                               variant="outline"
                               size="sm"
