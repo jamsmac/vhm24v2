@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, decimal, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, decimal, boolean, index, uniqueIndex } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -97,7 +97,10 @@ export const favorites = mysqlTable("favorites", {
   userId: int("userId").notNull(),
   productId: int("productId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_favorites_user").on(table.userId),
+  uniqueIndex("idx_favorites_user_product").on(table.userId, table.productId),
+]);
 
 export type Favorite = typeof favorites.$inferSelect;
 export type InsertFavorite = typeof favorites.$inferInsert;
@@ -114,7 +117,10 @@ export const cartItems = mysqlTable("cart_items", {
   customizations: json("customizations"), // JSON for size, sugar, milk, etc.
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("idx_cart_user").on(table.userId),
+  index("idx_cart_user_product").on(table.userId, table.productId),
+]);
 
 export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = typeof cartItems.$inferInsert;
@@ -127,34 +133,40 @@ export const orders = mysqlTable("orders", {
   orderNumber: varchar("orderNumber", { length: 32 }).notNull().unique(),
   userId: int("userId").notNull(),
   machineId: int("machineId").notNull(),
-  
+
   // Order details
   items: json("items").notNull(), // JSON array of ordered items
   subtotal: int("subtotal").notNull(),
   discount: int("discount").default(0).notNull(),
   total: int("total").notNull(),
-  
+
   // Payment info
   paymentMethod: mysqlEnum("paymentMethod", ["click", "payme", "uzum", "telegram", "cash", "bonus"]).notNull(),
   paymentStatus: mysqlEnum("paymentStatus", ["pending", "paid", "failed", "refunded"]).default("pending").notNull(),
   telegramPaymentChargeId: varchar("telegramPaymentChargeId", { length: 128 }),
-  
+
   // Order status
   status: mysqlEnum("status", ["pending", "confirmed", "preparing", "ready", "completed", "cancelled"]).default("pending").notNull(),
-  
+
   // Promo code
   promoCode: varchar("promoCode", { length: 32 }),
   promoDiscount: int("promoDiscount").default(0),
-  
+
   // Points
   pointsEarned: int("pointsEarned").default(0).notNull(),
   pointsUsed: int("pointsUsed").default(0).notNull(),
-  
+
   // Timestamps
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   completedAt: timestamp("completedAt"),
-});
+}, (table) => [
+  index("idx_orders_user").on(table.userId),
+  index("idx_orders_status").on(table.status),
+  index("idx_orders_created").on(table.createdAt),
+  index("idx_orders_user_status").on(table.userId, table.status),
+  index("idx_orders_machine").on(table.machineId),
+]);
 
 export type Order = typeof orders.$inferSelect;
 export type InsertOrder = typeof orders.$inferInsert;
@@ -189,7 +201,11 @@ export const notifications = mysqlTable("notifications", {
   isRead: boolean("isRead").default(false).notNull(),
   data: json("data"), // Additional data like orderId, promoCode, etc.
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_notifications_user").on(table.userId),
+  index("idx_notifications_user_read").on(table.userId, table.isRead),
+  index("idx_notifications_created").on(table.createdAt),
+]);
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
@@ -208,7 +224,11 @@ export const pointsTransactions = mysqlTable("points_transactions", {
   source: mysqlEnum("source", ["order", "welcome_bonus", "first_order", "referral", "achievement", "daily_quest", "promo", "admin", "refund"]).notNull(),
   referenceId: varchar("referenceId", { length: 64 }), // Order ID, promo code, etc.
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_points_user").on(table.userId),
+  index("idx_points_user_created").on(table.userId, table.createdAt),
+  index("idx_points_created").on(table.createdAt),
+]);
 
 export type PointsTransaction = typeof pointsTransactions.$inferSelect;
 export type InsertPointsTransaction = typeof pointsTransactions.$inferInsert;
@@ -245,7 +265,11 @@ export const userDailyQuestProgress = mysqlTable("user_daily_quest_progress", {
   questDate: timestamp("questDate").notNull(), // Date for which this progress applies
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_quest_progress_user").on(table.userId),
+  index("idx_quest_progress_user_date").on(table.userId, table.questDate),
+  index("idx_quest_progress_user_quest_date").on(table.userId, table.questId, table.questDate),
+]);
 
 export type UserDailyQuestProgress = typeof userDailyQuestProgress.$inferSelect;
 export type InsertUserDailyQuestProgress = typeof userDailyQuestProgress.$inferInsert;
@@ -329,7 +353,10 @@ export const bunkers = mysqlTable("bunkers", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("idx_bunkers_machine").on(table.machineId),
+  index("idx_bunkers_ingredient").on(table.ingredientId),
+]);
 
 export type Bunker = typeof bunkers.$inferSelect;
 export type InsertBunker = typeof bunkers.$inferInsert;
@@ -350,7 +377,10 @@ export const mixers = mysqlTable("mixers", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("idx_mixers_machine").on(table.machineId),
+  index("idx_mixers_status").on(table.status),
+]);
 
 export type Mixer = typeof mixers.$inferSelect;
 export type InsertMixer = typeof mixers.$inferInsert;
@@ -476,7 +506,12 @@ export const maintenanceHistory = mysqlTable("maintenance_history", {
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("idx_maintenance_machine").on(table.machineId),
+  index("idx_maintenance_employee").on(table.employeeId),
+  index("idx_maintenance_status").on(table.status),
+  index("idx_maintenance_scheduled").on(table.scheduledDate),
+]);
 
 export type MaintenanceHistory = typeof maintenanceHistory.$inferSelect;
 export type InsertMaintenanceHistory = typeof maintenanceHistory.$inferInsert;
@@ -526,7 +561,13 @@ export const salesRecords = mysqlTable("sales_records", {
   notes: text("notes"),
   importBatchId: varchar("importBatchId", { length: 64 }), // To track which import batch this record belongs to
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (table) => [
+  index("idx_sales_created").on(table.createdAt),
+  index("idx_sales_machine").on(table.machineCode),
+  index("idx_sales_order_resource").on(table.orderResource),
+  index("idx_sales_batch").on(table.importBatchId),
+  index("idx_sales_created_resource").on(table.createdAt, table.orderResource),
+]);
 
 export type SalesRecord = typeof salesRecords.$inferSelect;
 export type InsertSalesRecord = typeof salesRecords.$inferInsert;
@@ -644,27 +685,34 @@ export const tasks = mysqlTable("tasks", {
   taskType: mysqlEnum("taskType", ["maintenance", "refill", "cleaning", "repair", "inspection", "inventory", "other"]).default("other").notNull(),
   priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default("medium").notNull(),
   status: mysqlEnum("taskStatus", ["pending", "in_progress", "completed", "cancelled"]).default("pending").notNull(),
-  
+
   // Assignments
   assignedTo: int("assignedTo"), // Employee ID
   createdBy: int("createdBy"), // Employee ID
-  
+
   // Related entities
   machineId: int("machineId"), // Related machine
   inventoryCheckId: int("inventoryCheckId"), // Related inventory check
-  
+
   // Timing
   dueDate: timestamp("dueDate"),
   startedAt: timestamp("startedAt"),
   completedAt: timestamp("completedAt"),
-  
+
   // Results
   notes: text("notes"),
   completionNotes: text("completionNotes"),
-  
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("idx_tasks_assigned").on(table.assignedTo),
+  index("idx_tasks_status").on(table.status),
+  index("idx_tasks_machine").on(table.machineId),
+  index("idx_tasks_due").on(table.dueDate),
+  index("idx_tasks_assigned_status").on(table.assignedTo, table.status),
+  index("idx_tasks_priority_status").on(table.priority, table.status),
+]);
 
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = typeof tasks.$inferInsert;
@@ -700,7 +748,13 @@ export const machineAssignments = mysqlTable("machine_assignments", {
   assignedBy: int("assignedBy"), // Employee ID who made the assignment
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("idx_assignments_machine").on(table.machineId),
+  index("idx_assignments_employee").on(table.employeeId),
+  index("idx_assignments_status").on(table.status),
+  index("idx_assignments_employee_status").on(table.employeeId, table.status),
+  index("idx_assignments_machine_status").on(table.machineId, table.status),
+]);
 
 export type MachineAssignment = typeof machineAssignments.$inferSelect;
 export type InsertMachineAssignment = typeof machineAssignments.$inferInsert;
@@ -726,7 +780,13 @@ export const workLogs = mysqlTable("work_logs", {
   verifiedBy: int("verifiedBy"), // Employee ID who verified the work
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (table) => [
+  index("idx_worklogs_employee").on(table.employeeId),
+  index("idx_worklogs_machine").on(table.machineId),
+  index("idx_worklogs_status").on(table.status),
+  index("idx_worklogs_start").on(table.startTime),
+  index("idx_worklogs_employee_status").on(table.employeeId, table.status),
+]);
 
 export type WorkLog = typeof workLogs.$inferSelect;
 export type InsertWorkLog = typeof workLogs.$inferInsert;
