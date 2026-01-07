@@ -349,21 +349,40 @@ export async function addToCart(item: InsertCartItem): Promise<void> {
   }
 }
 
-export async function updateCartItemQuantity(id: number, quantity: number): Promise<void> {
+export async function getCartItemById(id: number): Promise<{ id: number; userId: number } | null> {
   const db = await getDb();
-  if (!db) return;
-  
+  if (!db) return null;
+  const [item] = await db.select({ id: cartItems.id, userId: cartItems.userId })
+    .from(cartItems)
+    .where(eq(cartItems.id, id))
+    .limit(1);
+  return item || null;
+}
+
+export async function updateCartItemQuantity(id: number, quantity: number, userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
+  // Security: Only update if cart item belongs to the user
   if (quantity <= 0) {
-    await db.delete(cartItems).where(eq(cartItems.id, id));
+    const result = await db.delete(cartItems)
+      .where(and(eq(cartItems.id, id), eq(cartItems.userId, userId)));
+    return (result as any).rowsAffected > 0 || (result as any).affectedRows > 0;
   } else {
-    await db.update(cartItems).set({ quantity }).where(eq(cartItems.id, id));
+    const result = await db.update(cartItems)
+      .set({ quantity })
+      .where(and(eq(cartItems.id, id), eq(cartItems.userId, userId)));
+    return (result as any).rowsAffected > 0 || (result as any).affectedRows > 0;
   }
 }
 
-export async function removeFromCart(id: number): Promise<void> {
+export async function removeFromCart(id: number, userId: number): Promise<boolean> {
   const db = await getDb();
-  if (!db) return;
-  await db.delete(cartItems).where(eq(cartItems.id, id));
+  if (!db) return false;
+  // Security: Only delete if cart item belongs to the user
+  const result = await db.delete(cartItems)
+    .where(and(eq(cartItems.id, id), eq(cartItems.userId, userId)));
+  return (result as any).rowsAffected > 0 || (result as any).affectedRows > 0;
 }
 
 export async function clearUserCart(userId: number): Promise<void> {
@@ -471,10 +490,14 @@ export async function createNotification(notification: InsertNotification): Prom
   await db.insert(notifications).values(notification);
 }
 
-export async function markNotificationAsRead(id: number): Promise<void> {
+export async function markNotificationAsRead(id: number, userId: number): Promise<boolean> {
   const db = await getDb();
-  if (!db) return;
-  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  if (!db) return false;
+  // Security: Only mark as read if notification belongs to the user
+  const result = await db.update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
+  return (result as any).rowsAffected > 0 || (result as any).affectedRows > 0;
 }
 
 export async function markAllNotificationsAsRead(userId: number): Promise<void> {

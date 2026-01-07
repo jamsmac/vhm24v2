@@ -173,9 +173,16 @@ export const appRouter = router({
     add: protectedProcedure
       .input(z.object({
         productId: z.number(),
-        quantity: z.number().optional().default(1),
+        quantity: z.number().min(1).max(99).optional().default(1),
         machineId: z.number().optional(),
-        customizations: z.any().optional(),
+        // Strict customizations schema to prevent injection
+        customizations: z.object({
+          size: z.enum(['small', 'medium', 'large']).optional(),
+          sugar: z.number().min(0).max(5).optional(),
+          milk: z.enum(['none', 'regular', 'oat', 'soy', 'almond']).optional(),
+          temperature: z.enum(['hot', 'iced']).optional(),
+          extras: z.array(z.string().max(50)).max(10).optional(),
+        }).optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         await db.addToCart({
@@ -191,17 +198,25 @@ export const appRouter = router({
     updateQuantity: protectedProcedure
       .input(z.object({
         id: z.number(),
-        quantity: z.number(),
+        quantity: z.number().min(0).max(99),
       }))
-      .mutation(async ({ input }) => {
-        await db.updateCartItemQuantity(input.id, input.quantity);
+      .mutation(async ({ ctx, input }) => {
+        // Security: Pass userId to ensure user can only modify their own cart items
+        const updated = await db.updateCartItemQuantity(input.id, input.quantity, ctx.user.id);
+        if (!updated) {
+          return { success: false, error: 'Cart item not found or access denied' };
+        }
         return { success: true };
       }),
-    
+
     remove: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        await db.removeFromCart(input.id);
+      .mutation(async ({ ctx, input }) => {
+        // Security: Pass userId to ensure user can only remove their own cart items
+        const removed = await db.removeFromCart(input.id, ctx.user.id);
+        if (!removed) {
+          return { success: false, error: 'Cart item not found or access denied' };
+        }
         return { success: true };
       }),
     
@@ -244,11 +259,18 @@ export const appRouter = router({
         machineId: z.number(),
         items: z.array(z.object({
           productId: z.number(),
-          name: z.string(),
-          price: z.number(),
-          quantity: z.number(),
-          customizations: z.any().optional(),
-        })),
+          name: z.string().max(200),
+          price: z.number().min(0).max(10000000),
+          quantity: z.number().min(1).max(99),
+          // Strict customizations schema to prevent injection
+          customizations: z.object({
+            size: z.enum(['small', 'medium', 'large']).optional(),
+            sugar: z.number().min(0).max(5).optional(),
+            milk: z.enum(['none', 'regular', 'oat', 'soy', 'almond']).optional(),
+            temperature: z.enum(['hot', 'iced']).optional(),
+            extras: z.array(z.string().max(50)).max(10).optional(),
+          }).optional(),
+        })).min(1).max(50),
         subtotal: z.number(),
         discount: z.number().optional().default(0),
         total: z.number(),
@@ -424,8 +446,12 @@ export const appRouter = router({
     
     markAsRead: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(async ({ input }) => {
-        await db.markNotificationAsRead(input.id);
+      .mutation(async ({ ctx, input }) => {
+        // Security: Pass userId to ensure user can only mark their own notifications as read
+        const updated = await db.markNotificationAsRead(input.id, ctx.user.id);
+        if (!updated) {
+          return { success: false, error: 'Notification not found or access denied' };
+        }
         return { success: true };
       }),
     
