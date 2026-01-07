@@ -396,9 +396,125 @@ export async function clearUserCart(userId: number): Promise<void> {
 export async function createOrder(order: InsertOrder): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
-  
+
   const result = await db.insert(orders).values(order);
   return Number(result[0].insertId);
+}
+
+// Transaction-safe order creation
+export interface CreateOrderParams {
+  order: InsertOrder;
+  userId: number;
+  pointsEarned: number;
+  pointsUsed: number;
+  promoCode?: string;
+}
+
+export interface CreateOrderResult {
+  success: boolean;
+  orderId: number;
+  orderNumber: string;
+  pointsEarned: number;
+  error?: string;
+}
+
+export async function createOrderWithTransaction(params: CreateOrderParams): Promise<CreateOrderResult> {
+  const db = await getDb();
+  if (!db) {
+    return { success: false, orderId: 0, orderNumber: '', pointsEarned: 0, error: 'Database not available' };
+  }
+
+  const { order, userId, pointsEarned, pointsUsed, promoCode } = params;
+
+  try {
+    // Execute all operations in a transaction
+    const result = await db.transaction(async (tx) => {
+      // 1. Create the order
+      const orderResult = await tx.insert(orders).values(order);
+      const orderId = Number(orderResult[0].insertId);
+
+      if (!orderId) {
+        throw new Error('Failed to create order');
+      }
+
+      // 2. Update user stats (totalSpent, totalOrders)
+      await tx.update(users)
+        .set({
+          totalSpent: sql`${users.totalSpent} + ${order.total}`,
+          totalOrders: sql`${users.totalOrders} + 1`,
+        })
+        .where(eq(users.id, userId));
+
+      // 3. Add earned points
+      if (pointsEarned > 0) {
+        await tx.update(users)
+          .set({ pointsBalance: sql`${users.pointsBalance} + ${pointsEarned}` })
+          .where(eq(users.id, userId));
+
+        // Record points transaction
+        await tx.insert(pointsTransactions).values({
+          userId,
+          amount: pointsEarned,
+          type: 'earn',
+          description: `Кэшбэк за заказ ${order.orderNumber}`,
+          referenceId: String(orderId),
+        });
+      }
+
+      // 4. Deduct used points
+      if (pointsUsed > 0) {
+        await tx.update(users)
+          .set({ pointsBalance: sql`${users.pointsBalance} - ${pointsUsed}` })
+          .where(eq(users.id, userId));
+
+        // Record points transaction
+        await tx.insert(pointsTransactions).values({
+          userId,
+          amount: -pointsUsed,
+          type: 'spend',
+          description: `Оплата баллами заказа ${order.orderNumber}`,
+          referenceId: String(orderId),
+        });
+      }
+
+      // 5. Increment promo code usage
+      if (promoCode) {
+        await tx.update(promoCodes)
+          .set({ currentUses: sql`${promoCodes.currentUses} + 1` })
+          .where(eq(promoCodes.code, promoCode));
+      }
+
+      // 6. Clear user's cart
+      await tx.delete(cartItems).where(eq(cartItems.userId, userId));
+
+      // 7. Create notification
+      await tx.insert(notifications).values({
+        userId,
+        type: 'order',
+        title: 'Заказ создан',
+        message: `Ваш заказ ${order.orderNumber} успешно создан`,
+        data: { orderId, orderNumber: order.orderNumber },
+      });
+
+      return { orderId, orderNumber: order.orderNumber as string };
+    });
+
+    return {
+      success: true,
+      orderId: result.orderId,
+      orderNumber: result.orderNumber,
+      pointsEarned,
+    };
+  } catch (error: any) {
+    console.error('[Database] Order transaction failed:', error);
+    return {
+      success: false,
+      orderId: 0,
+      orderNumber: '',
+      pointsEarned: 0,
+      error: error.message || 'Transaction failed',
+    };
+  }
 }
 
 export async function getOrderById(id: number): Promise<Order | undefined> {

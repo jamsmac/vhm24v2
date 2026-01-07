@@ -281,56 +281,50 @@ export const appRouter = router({
       }))
       .mutation(async ({ ctx, input }) => {
         const orderNumber = `VH-${Date.now().toString(36).toUpperCase()}-${nanoid(4).toUpperCase()}`;
-        
+
         // Calculate points earned (1% of total)
         const pointsEarned = Math.floor(input.total * 0.01);
-        
-        const orderId = await db.createOrder({
-          orderNumber,
+
+        // Validate points usage doesn't exceed balance
+        if (input.pointsUsed > 0) {
+          const user = await db.getUserById(ctx.user.id);
+          if (!user || user.pointsBalance < input.pointsUsed) {
+            throw new Error('Insufficient points balance');
+          }
+        }
+
+        // Execute all order operations in a single transaction
+        // This ensures data consistency - if any step fails, all changes are rolled back
+        const result = await db.createOrderWithTransaction({
+          order: {
+            orderNumber,
+            userId: ctx.user.id,
+            machineId: input.machineId,
+            items: input.items,
+            subtotal: input.subtotal,
+            discount: input.discount,
+            total: input.total,
+            paymentMethod: input.paymentMethod,
+            promoCode: input.promoCode,
+            promoDiscount: input.promoDiscount,
+            pointsEarned,
+            pointsUsed: input.pointsUsed,
+          },
           userId: ctx.user.id,
-          machineId: input.machineId,
-          items: input.items,
-          subtotal: input.subtotal,
-          discount: input.discount,
-          total: input.total,
-          paymentMethod: input.paymentMethod,
-          promoCode: input.promoCode,
-          promoDiscount: input.promoDiscount,
           pointsEarned,
           pointsUsed: input.pointsUsed,
+          promoCode: input.promoCode,
         });
-        
-        // Update user stats
-        await db.updateUserStats(ctx.user.id, input.total);
-        
-        // Add earned points
-        if (pointsEarned > 0) {
-          await db.updateUserPoints(ctx.user.id, pointsEarned);
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to create order');
         }
-        
-        // Deduct used points
-        if (input.pointsUsed > 0) {
-          await db.updateUserPoints(ctx.user.id, -input.pointsUsed);
-        }
-        
-        // Increment promo code usage
-        if (input.promoCode) {
-          await db.incrementPromoCodeUsage(input.promoCode);
-        }
-        
-        // Clear cart after order
-        await db.clearUserCart(ctx.user.id);
-        
-        // Create notification
-        await db.createNotification({
-          userId: ctx.user.id,
-          type: 'order',
-          title: 'Заказ создан',
-          message: `Ваш заказ ${orderNumber} успешно создан`,
-          data: { orderId, orderNumber },
-        });
-        
-        return { orderId, orderNumber, pointsEarned };
+
+        return {
+          orderId: result.orderId,
+          orderNumber: result.orderNumber,
+          pointsEarned: result.pointsEarned,
+        };
       }),
     
     updateStatus: adminProcedure
