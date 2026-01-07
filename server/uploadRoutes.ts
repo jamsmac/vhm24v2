@@ -5,6 +5,7 @@ import { getDb } from './db';
 import { salesRecords, importBatches } from '../drizzle/schema';
 import { sdk } from './_core/sdk';
 import type { User } from '../drizzle/schema';
+import { eq, and, gte, lte, or, like, desc, sql, SQL } from 'drizzle-orm';
 
 const router = Router();
 
@@ -305,7 +306,7 @@ router.get('/history', async (req: Request, res: Response) => {
   }
 });
 
-// Get sales records with filtering
+// Get sales records with filtering - OPTIMIZED: All filtering done in SQL
 router.get('/sales', async (req: Request, res: Response) => {
   try {
     const db = await getDb();
@@ -317,65 +318,101 @@ router.get('/sales', async (req: Request, res: Response) => {
 
     // Validate and sanitize pagination parameters
     const pageNum = Math.max(1, parseInt(page as string) || 1);
-    const limitNum = Math.min(500, Math.max(1, parseInt(limit as string) || 50)); // Max 500 records
+    const limitNum = Math.min(500, Math.max(1, parseInt(limit as string) || 50));
     const offset = (pageNum - 1) * limitNum;
 
     // Validate search parameter length
-    const searchQuery = typeof search === 'string' ? search.slice(0, 100) : undefined;
+    const searchQuery = typeof search === 'string' ? search.slice(0, 100).trim() : undefined;
 
     // Validate date formats
-    const validDateFrom = dateFrom && typeof dateFrom === 'string' && !isNaN(Date.parse(dateFrom)) ? dateFrom : undefined;
-    const validDateTo = dateTo && typeof dateTo === 'string' && !isNaN(Date.parse(dateTo)) ? dateTo : undefined;
+    const validDateFrom = dateFrom && typeof dateFrom === 'string' && !isNaN(Date.parse(dateFrom))
+      ? new Date(dateFrom) : undefined;
+    const validDateTo = dateTo && typeof dateTo === 'string' && !isNaN(Date.parse(dateTo))
+      ? new Date(dateTo) : undefined;
 
     // Validate payment type against allowed values
     const allowedPaymentTypes = ['all', 'cash', 'qr', 'vip', 'card'];
-    const validPaymentType = typeof paymentType === 'string' && allowedPaymentTypes.includes(paymentType) ? paymentType : undefined;
+    const validPaymentType = typeof paymentType === 'string' && allowedPaymentTypes.includes(paymentType)
+      ? paymentType : undefined;
 
-    // Build query with filters
-    let query = db.select().from(salesRecords);
+    // Build WHERE conditions array for SQL filtering
+    const conditions: SQL[] = [];
 
-    // For now, get all and filter in memory (can be optimized with proper where clauses)
-    const allRecords = await query.orderBy((await import('drizzle-orm')).desc(salesRecords.createdAt));
-
-    let filtered = allRecords;
-
+    // Payment type filter - map to actual database values
     if (validPaymentType && validPaymentType !== 'all') {
-      filtered = filtered.filter(r => r.orderResource === validPaymentType);
+      const paymentTypeMap: Record<string, string[]> = {
+        'cash': ['%налич%'],
+        'qr': ['%qr%', '%таможен%'],
+        'vip': ['%vip%'],
+        'card': ['%карт%'],
+      };
+      const patterns = paymentTypeMap[validPaymentType];
+      if (patterns && patterns.length > 0) {
+        if (patterns.length === 1) {
+          conditions.push(sql`LOWER(${salesRecords.orderResource}) LIKE ${patterns[0]}`);
+        } else {
+          // OR condition for multiple patterns (e.g., qr)
+          conditions.push(sql`(LOWER(${salesRecords.orderResource}) LIKE ${patterns[0]} OR LOWER(${salesRecords.orderResource}) LIKE ${patterns[1]})`);
+        }
+      }
     }
 
+    // Date range filters
     if (validDateFrom) {
-      const from = new Date(validDateFrom);
-      filtered = filtered.filter(r => r.createdAt && new Date(r.createdAt) >= from);
+      conditions.push(gte(salesRecords.createdAt, validDateFrom));
     }
-
     if (validDateTo) {
-      const to = new Date(validDateTo);
-      filtered = filtered.filter(r => r.createdAt && new Date(r.createdAt) <= to);
+      // Set end of day for dateTo
+      const endOfDay = new Date(validDateTo);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(salesRecords.createdAt, endOfDay));
     }
 
+    // Search filter - use SQL LIKE for text search
     if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.productName?.toLowerCase().includes(searchLower) ||
-        r.orderNumber?.toLowerCase().includes(searchLower) ||
-        r.machineCode?.toLowerCase().includes(searchLower)
-      );
+      const searchPattern = `%${searchQuery.toLowerCase()}%`;
+      conditions.push(sql`(
+        LOWER(${salesRecords.productName}) LIKE ${searchPattern} OR
+        LOWER(${salesRecords.orderNumber}) LIKE ${searchPattern} OR
+        LOWER(${salesRecords.machineCode}) LIKE ${searchPattern}
+      )`);
     }
 
-    const total = filtered.length;
-    const paginated = filtered.slice(offset, offset + limitNum);
+    // Build the WHERE clause
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    // Calculate totals using correct column names
-    const totals = {
-      total: filtered.reduce((sum, r) => sum + (r.orderPrice || 0), 0),
-      cash: filtered.filter(r => r.orderResource?.toLowerCase().includes('налич')).reduce((sum, r) => sum + (r.orderPrice || 0), 0),
-      qr: filtered.filter(r => r.orderResource?.toLowerCase().includes('qr') || r.orderResource?.toLowerCase().includes('таможен')).reduce((sum, r) => sum + (r.orderPrice || 0), 0),
-      vip: filtered.filter(r => r.orderResource?.toLowerCase().includes('vip')).reduce((sum, r) => sum + (r.orderPrice || 0), 0),
-      card: filtered.filter(r => r.orderResource?.toLowerCase().includes('карт')).reduce((sum, r) => sum + (r.orderPrice || 0), 0),
-    };
+    // Execute queries in parallel for better performance
+    const [records, countResult, totalsResult] = await Promise.all([
+      // 1. Get paginated records with filters
+      db.select()
+        .from(salesRecords)
+        .where(whereClause)
+        .orderBy(desc(salesRecords.createdAt))
+        .limit(limitNum)
+        .offset(offset),
+
+      // 2. Get total count with filters
+      db.select({ count: sql<number>`COUNT(*)` })
+        .from(salesRecords)
+        .where(whereClause),
+
+      // 3. Get totals by payment type with filters (using SQL aggregation)
+      db.select({
+        total: sql<number>`COALESCE(SUM(${salesRecords.orderPrice}), 0)`,
+        cash: sql<number>`COALESCE(SUM(CASE WHEN LOWER(${salesRecords.orderResource}) LIKE '%налич%' THEN ${salesRecords.orderPrice} ELSE 0 END), 0)`,
+        qr: sql<number>`COALESCE(SUM(CASE WHEN LOWER(${salesRecords.orderResource}) LIKE '%qr%' OR LOWER(${salesRecords.orderResource}) LIKE '%таможен%' THEN ${salesRecords.orderPrice} ELSE 0 END), 0)`,
+        vip: sql<number>`COALESCE(SUM(CASE WHEN LOWER(${salesRecords.orderResource}) LIKE '%vip%' THEN ${salesRecords.orderPrice} ELSE 0 END), 0)`,
+        card: sql<number>`COALESCE(SUM(CASE WHEN LOWER(${salesRecords.orderResource}) LIKE '%карт%' THEN ${salesRecords.orderPrice} ELSE 0 END), 0)`,
+      })
+        .from(salesRecords)
+        .where(whereClause),
+    ]);
+
+    const total = Number(countResult[0]?.count || 0);
+    const totals = totalsResult[0] || { total: 0, cash: 0, qr: 0, vip: 0, card: 0 };
 
     // Map records to expected frontend format
-    const mappedRecords = paginated.map(r => ({
+    const mappedRecords = records.map(r => ({
       id: r.id,
       orderNumber: r.orderNumber,
       productName: r.flavorName || r.productName,
@@ -401,7 +438,13 @@ router.get('/sales', async (req: Request, res: Response) => {
         page: pageNum,
         limit: limitNum,
         totalPages: Math.ceil(total / limitNum),
-        totals
+        totals: {
+          total: Number(totals.total),
+          cash: Number(totals.cash),
+          qr: Number(totals.qr),
+          vip: Number(totals.vip),
+          card: Number(totals.card),
+        }
       }
     });
   } catch (error: any) {
