@@ -33,7 +33,7 @@ import { motion } from "framer-motion";
 // Mock user data
 const mockUser = {
   firstName: "Jamshid",
-  lastName: "Mamatov",
+  lastName: "Sadikov",
   phone: "+998 90 123 45 67",
   pointsBalance: 25000,
   level: "silver" as const,

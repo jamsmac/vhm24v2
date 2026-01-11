@@ -1,0 +1,37 @@
+{
+  "query": "SELECT id, name, email, role, loginMethod, createdAt, lastSignedIn FROM users WHERE role = 'admin' ORDER BY createdAt DESC",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3FfdjCLoumdFxBM.c17094cb1ee7 --database ThTAtwhLC93Gu4TaZSL8s7 --execute SELECT id, name, email, role, loginMethod, createdAt, lastSignedIn FROM users WHERE role = 'admin' ORDER BY createdAt DESC",
+  "rows": [
+    {
+      "id": "750075",
+      "name": "VIESTERN7",
+      "email": "kadyrovbehruz10@gmail.com",
+      "role": "admin",
+      "loginMethod": "google",
+      "createdAt": "2026-01-07 10:52:03",
+      "lastSignedIn": "2026-01-07 11:18:48"
+    },
+    {
+      "id": "630199",
+      "name": "Admin User",
+      "email": "admin@vendhub.uz",
+      "role": "admin",
+      "loginMethod": "NULL",
+      "createdAt": "2026-01-06 09:49:01",
+      "lastSignedIn": "2026-01-06 09:49:01"
+    },
+    {
+      "id": "1",
+      "name": "Jamshid S",
+      "email": "jamshidsmac@gmail.com",
+      "role": "admin",
+      "loginMethod": "google",
+      "createdAt": "2025-12-28 16:09:56",
+      "lastSignedIn": "2026-01-07 12:24:14"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tname\temail\trole\tloginMethod\tcreatedAt\tlastSignedIn\n750075\tVIESTERN7\tkadyrovbehruz10@gmail.com\tadmin\tgoogle\t2026-01-07 10:52:03\t2026-01-07 11:18:48\n630199\tAdmin User\tadmin@vendhub.uz\tadmin\tNULL\t2026-01-06 09:49:01\t2026-01-06 09:49:01\n1\tJamshid S\tjamshidsmac@gmail.com\tadmin\tgoogle\t2025-12-28 16:09:56\t2026-01-07 12:24:14\n",
+  "stderr": "",
+  "execution_time_ms": 3602
+}

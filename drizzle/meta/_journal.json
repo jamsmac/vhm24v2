@@ -57,6 +57,13 @@
       "when": 1767819509845,
       "tag": "0007_add_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1768149769309,
+      "tag": "0008_next_lucky_pierre",
+      "breakpoints": true
     }
   ]
 }
