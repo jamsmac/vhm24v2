@@ -726,3 +726,6 @@
 
 ## Bug Fixes
 - [x] Fix Select.Item empty value error on Work Logs page
+
+## Profile Page Improvements
+- [x] Replace mock user data with real database data

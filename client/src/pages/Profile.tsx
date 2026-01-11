@@ -30,15 +30,6 @@ import {
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 
-// Mock user data
-const mockUser = {
-  firstName: "Jamshid",
-  lastName: "Sadikov",
-  phone: "+998 90 123 45 67",
-  pointsBalance: 25000,
-  level: "silver" as const,
-};
-
 export default function Profile() {
   const { user, haptic, webApp } = useTelegram();
   const { profile, loyalty, logout } = useUserStore();
@@ -46,9 +37,12 @@ export default function Profile() {
   const { getOrderStats } = useOrderHistoryStore();
   const { user: authUser } = useAuth(); // Get user from server with role
   
-  const displayName = user?.first_name || profile?.firstName || mockUser.firstName;
-  const lastName = user?.last_name || profile?.lastName || mockUser.lastName;
-  const points = loyalty?.pointsBalance || mockUser.pointsBalance;
+  // Use real user data from authUser (database), fallback to Telegram data, then profile store
+  const displayName = authUser?.name?.split(' ')[0] || user?.first_name || profile?.firstName || 'User';
+  const lastName = authUser?.name?.split(' ').slice(1).join(' ') || user?.last_name || profile?.lastName || '';
+  const userEmail = authUser?.email || '';
+  const points = authUser?.pointsBalance ?? loyalty?.pointsBalance ?? 0;
+  const loyaltyLevel = authUser?.loyaltyLevel || loyalty?.level || 'bronze';
   const orderStats = getOrderStats();
 
   // Check if user is admin or employee (from server-provided role)
@@ -179,7 +173,7 @@ export default function Profile() {
                 )}
               </div>
               {/* Level badge */}
-              <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-gradient-to-br ${getLevelColor(mockUser.level)} flex items-center justify-center shadow-lg`}>
+              <div className={`absolute -bottom-1 -right-1 w-7 h-7 rounded-lg bg-gradient-to-br ${getLevelColor(loyaltyLevel)} flex items-center justify-center shadow-lg`}>
                 <Star className="w-4 h-4 text-white fill-white" />
               </div>
             </div>
@@ -187,10 +181,10 @@ export default function Profile() {
               <h1 className="font-display text-xl font-bold text-white">
                 {displayName} {lastName}
               </h1>
-              <p className="text-white/70 text-sm">{mockUser.phone}</p>
+              <p className="text-white/70 text-sm">{userEmail || 'No email'}</p>
               <div className="flex items-center gap-1 mt-1">
                 <Sparkles className="w-3 h-3 text-caramel" />
-                <span className="text-xs text-caramel font-medium capitalize">{getLoyaltyLevelName(mockUser.level)}</span>
+                <span className="text-xs text-caramel font-medium capitalize">{getLoyaltyLevelName(loyaltyLevel)}</span>
               </div>
             </div>
           </motion.div>
